@@ -55,6 +55,23 @@
     if (!Number.isFinite(angle)) return null;
     return fromJulian(solarTransitJ(approxTransit(angle, lw, n), meanAnomaly, longitudeEcliptic));
   }
+  function sunriseForChinaDate(dateKey, latitude, longitude) {
+    const match = String(dateKey).match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (!match || !Number.isFinite(Number(latitude)) || !Number.isFinite(Number(longitude))) return null;
+    const year = Number(match[1]); const month = Number(match[2]); const day = Number(match[3]);
+    const localNoon = new Date(Date.UTC(year, month - 1, day, 4));
+    const lw = -Number(longitude) * RAD;
+    const phi = Number(latitude) * RAD;
+    const days = toDays(localNoon);
+    const n = julianCycle(days, lw);
+    const ds = approxTransit(0, lw, n);
+    const meanAnomaly = solarMeanAnomaly(ds);
+    const longitudeEcliptic = eclipticLongitude(meanAnomaly);
+    const dec = declination(longitudeEcliptic, 0);
+    const angle = hourAngle(-0.833 * RAD, phi, dec);
+    if (!Number.isFinite(angle)) return null;
+    return fromJulian(solarTransitJ(approxTransit(-angle, lw, n), meanAnomaly, longitudeEcliptic));
+  }
   function classifyPhotography(deltaMinutes) {
     if (!Number.isFinite(deltaMinutes)) return null;
     if (deltaMinutes >= -50 && deltaMinutes < -10) return { kind: 'golden', icon: '☀', label: '黄金时刻' };
@@ -63,7 +80,7 @@
     return null;
   }
 
-  const api = { CHINA_OFFSET_MS, chinaParts, chinaDateKey, chinaDateTimeToDate, sunsetForChinaDate, classifyPhotography };
+  const api = { CHINA_OFFSET_MS, chinaParts, chinaDateKey, chinaDateTimeToDate, sunriseForChinaDate, sunsetForChinaDate, classifyPhotography };
   if (typeof module !== 'undefined') module.exports = api;
   root.SolarPhotography = api;
 })(typeof window !== 'undefined' ? window : globalThis);
