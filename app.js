@@ -161,6 +161,12 @@
     if (modalControl.id === 'deleteCancel') { pendingDeleteIndex = null; $('#deleteModal').hidden = true; }
     else removePending();
   });
+  // Keep the dialog controls usable even if an embedding browser stops bubbling
+  // clicks through an inert backdrop; the delegated listener above remains a fallback.
+  $('#deleteCancel').addEventListener('click', () => { pendingDeleteIndex = null; $('#deleteModal').hidden = true; });
+  $('#deleteConfirm').addEventListener('click', removePending);
+  $('#deleteModal').addEventListener('click', (event) => { if (event.target === event.currentTarget) { pendingDeleteIndex = null; event.currentTarget.hidden = true; } });
+  document.addEventListener('keydown', (event) => { if (event.key === 'Escape' && !$('#deleteModal').hidden) { pendingDeleteIndex = null; $('#deleteModal').hidden = true; } });
   $('#addDestination').addEventListener('click', addDestination); $('#returnOrigin').addEventListener('click', addReturnOrigin); $('#clearTrip').addEventListener('click', () => { if (!trip.destinations.length || window.confirm('确定清空所有目的地和已保存的路线吗？')) { trip = createTrip(); routeCache = {}; persist(); render(); } }); $('#departureDate').addEventListener('change', setDeparture); $('#departureTime').addEventListener('change', setDeparture); document.querySelectorAll('[data-quick-start]').forEach((button) => button.addEventListener('click', () => setQuickDeparture(button.dataset.quickStart)));
   calculate(); render(); if (activeLegs().some((leg) => !leg.destination.route)) rebuildRouteGraph(); refreshElevations();
 })();
