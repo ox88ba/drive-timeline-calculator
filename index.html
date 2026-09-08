@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#f5f6f8" />
+    <title>自驾时间计算器</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Noto+Sans+SC:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <aside class="trip-dock" aria-label="行程导航"><div class="dock-title">行程</div><div id="tripDock"></div></aside>
+    <main class="shell">
+      <header class="hero">
+        <div class="eyebrow"><span class="pulse"></span> ROADBOOK / 01</div>
+        <div class="hero-row">
+          <div>
+            <h1>自驾时间计算器</h1>
+            <p>基于官方导航数据的行程时间轴</p>
+          </div>
+          <button id="clearTrip" class="icon-button" type="button" aria-label="清空行程">⌫</button>
+        </div>
+      </header>
+
+      <section class="summary" aria-label="行程汇总">
+        <div><span>总里程</span><strong id="totalDistance">—</strong></div>
+        <div><span>驾驶时间</span><strong id="totalDrive">—</strong></div>
+        <div><span>停留时间</span><strong id="totalStay">0h</strong></div>
+        <div><span>总行程</span><strong id="totalDuration">—</strong></div>
+        <div class="summary-arrival"><span>预计最终抵达</span><strong id="finalArrival">添加目的地后计算</strong></div>
+      </section>
+
+      <section id="startCard" class="start-card" aria-label="固定起点">
+        <div class="station-number start-number">01</div>
+        <div class="start-copy"><span class="section-label">固定起点</span><h2>重庆市</h2></div>
+        <label class="date-field">出发日期<input id="departureDate" type="date" /></label>
+        <label class="time-field">时间<input id="departureTime" type="time" /></label>
+        <div class="quick-starts" aria-label="快捷出发时间">
+          <span>快捷出发</span>
+          <button type="button" data-quick-start="2026-09-30T18:00:00">9/30 18:00</button>
+          <button type="button" data-quick-start="2026-09-30T19:00:00">9/30 19:00</button>
+          <button type="button" data-quick-start="2026-09-30T20:00:00">9/30 20:00</button>
+        </div>
+      </section>
+
+      <div id="timeline" class="timeline" aria-live="polite"></div>
+
+      <div class="trip-actions">
+        <button id="addDestination" class="add-destination" type="button"><span>＋</span> 添加目的地</button>
+        <button id="returnOrigin" class="return-origin" type="button">↩ 回到起点</button>
+      </div>
+      <section class="route-preview" aria-label="路线预览"><div><span class="section-label">高德道路轨迹</span><h2>路线预览</h2></div><div id="routeMap" class="route-map" tabindex="0"></div></section>
+      <p class="footnote">路线、里程与预计驾驶时长均来自高德地图官方驾车路径规划。未来行程使用地图服务返回的基础预计时长。</p>
+    </main>
+
+    <template id="destinationTemplate">
+      <article class="destination-wrap">
+        <div class="route-connector" data-route-connector></div>
+        <div class="date-divider" hidden></div>
+        <section class="destination-card">
+          <div class="card-topline"><span class="station-number" data-station-number></span><span class="section-label">目的地</span><div class="card-actions"><button type="button" data-action="toggle-skip" aria-label="暂时跳过目的地">◌</button><button type="button" data-action="move-up" aria-label="上移">↑</button><button type="button" data-action="move-down" aria-label="下移">↓</button><button type="button" data-action="remove" aria-label="删除">×</button></div></div>
+          <div class="place-picker">
+            <input data-place-input type="search" autocomplete="off" placeholder="搜索地点，如：大柴旦翡翠湖" />
+            <span class="search-mark">⌕</span>
+            <div class="poi-results" data-poi-results hidden></div>
+          </div>
+          <p class="place-address" data-place-address>请搜索并选择具体 POI</p>
+          <p class="place-meta" data-place-meta>日落 — · 海拔待获取</p>
+          <div class="time-grid">
+            <div><span>预计到达</span><strong data-arrival>等待导航数据</strong></div>
+          </div>
+          <div class="route-status" data-route-status></div>
+          <div class="stay-section">
+            <span>停留时间</span>
+            <div class="stay-buttons" data-stay-buttons></div>
+            <p data-stay-current>当前停留：0小时</p>
+            <div class="departure-block" data-departure-block hidden><span>预计出发</span><strong data-departure>—</strong></div>
+          </div>
+        </section>
+      </article>
+    </template>
+
+    <div id="deleteModal" class="modal-backdrop" hidden role="dialog" aria-modal="true" aria-labelledby="deleteTitle">
+      <section class="delete-modal"><span class="section-label">删除确认</span><h2 id="deleteTitle">删除目的地？</h2><p>确定要删除「<b id="deleteName"></b>」吗？删除后将重新计算后续路线。</p><div><button id="deleteCancel" type="button">取消</button><button id="deleteConfirm" class="danger" type="button">删除</button></div></section>
+    </div>
+
+    <!-- config.js is generated by GitHub Pages from the public API URL only; it never contains the AMap key. -->
+    <script src="./config.js"></script>
+    <script src="./timeline.js"></script>
+    <script src="./sunset.js"></script>
+    <script src="./app.js"></script>
+  </body>
+</html>
