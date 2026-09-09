@@ -13,7 +13,7 @@
   const timelineNode = $('#timeline'); const dockNode = $('#tripDock'); const mapNode = $('#routeMap'); const template = $('#destinationTemplate');
   const dockShell = document.querySelector('.trip-dock'); const dockToggle = $('#dockToggle'); const dockTitle = document.querySelector('.dock-title');
   let routeCache = readJson(ROUTE_CACHE_KEY, {}); let sunsetCache = readJson(SUNSET_CACHE_KEY, {}); let elevationCache = readJson(ELEVATION_CACHE_KEY, {});
-  let searchTimers = new Map(); let pendingDeleteIndex = null; let activeDockId = null; let dockPointer = null; let dockSuppressClickUntil = 0; let dockToastTimer = null; let mapGesture = null;
+  let searchTimers = new Map(); let pendingDeleteIndex = null; let activeDockId = null; let dockPointer = null; let dockSuppressClickUntil = 0; let dockToastTimer = null; let mapGesture = null; let routeRebuildVersion = 0;
   const newId = () => (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`);
   const cloneStart = () => ({ ...START_LOCATION });
   function isValidLocation(location) { return Boolean(location && Number.isFinite(Number(location.latitude)) && Number.isFinite(Number(location.longitude))); }
@@ -67,7 +67,12 @@
     return legs;
   }
   function legForDestination(id) { return activeLegs().find((leg) => leg.destination.id === id) || null; }
-  function plannedDeparture(leg) { const prior = activeLegs().find((item) => item.destination === leg.destination); const ordinal = activeLegs().indexOf(prior); return ordinal > 0 ? activeLegs()[ordinal - 1].destination.departureTime : trip.initialDepartureTime; }
+  function plannedDeparture(leg) {
+    // Timeline calculation recreates destination objects. Resolve by a stable ID
+    // instead of object identity so every later route starts at the current ETA.
+    const legs = activeLegs(); const ordinal = legs.findIndex((item) => item.destination.id === leg.destination.id);
+    return ordinal > 0 ? legs[ordinal - 1].destination.departureTime : trip.initialDepartureTime;
+  }
 
   function photoFor(location, iso) {
     if (!location || !iso) return null;
@@ -118,7 +123,20 @@
     const latestDestination = trip.destinations.find((item) => item.id === current.id); if (latestDestination) delete latestDestination.routeLoading;
     calculate(); persist(); render();
   }
-  async function rebuildRouteGraph(force = false) { clearActiveRoutes(); calculate(); persist(); render(); for (const leg of activeLegs()) await loadRoute(leg, force); }
+  async function rebuildRouteGraph(force = false) {
+    // Each route completion recalculates the timeline and replaces destination
+    // objects. Re-read the next leg after every request rather than iterating a
+    // stale snapshot. A new rebuild cancels the older queue cleanly.
+    const version = ++routeRebuildVersion; const completedIds = new Set();
+    clearActiveRoutes(); calculate(); persist(); render();
+    while (version === routeRebuildVersion) {
+      const leg = activeLegs().find((item) => !completedIds.has(item.destination.id));
+      if (!leg) break;
+      const destinationId = leg.destination.id;
+      await loadRoute(leg, force);
+      completedIds.add(destinationId);
+    }
+  }
 
   function badge(moment) { if (!moment) return null; const node = document.createElement('b'); node.className = `photo-badge ${moment.kind}`; node.textContent = moment.label; return node; }
   function attachTime(node, iso, photo) { node.replaceChildren(); node.append(document.createTextNode(formatDateTime(iso))); if (photo?.moment) node.append(badge(photo.moment)); }
