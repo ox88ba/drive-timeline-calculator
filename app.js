@@ -42,7 +42,36 @@
     });
   }
   syncReturnOrigins();
-  function persist() { localStorage.setItem(STORAGE_KEY, JSON.stringify(trip)); localStorage.setItem(ROUTE_CACHE_KEY, JSON.stringify(routeCache)); localStorage.setItem(SUNSET_CACHE_KEY, JSON.stringify(sunsetCache)); localStorage.setItem(ELEVATION_CACHE_KEY, JSON.stringify(elevationCache)); }
+  // A high-detail AMap road geometry can contain many thousands of coordinate
+  // pairs. Keeping it in both trip and routeCache easily exhausts the roughly
+  // 5 MB browser localStorage quota on a multi-stop journey. A quota error used
+  // to escape from loadRoute() and silently stop the remaining route queue.
+  // Persist the navigation facts, but retain road geometry only for this page
+  // session; the preview's refresh action can request fresh geometry later.
+  function routeForStorage(route) {
+    if (!route) return null;
+    const { polyline, ...summary } = route;
+    return summary;
+  }
+  function tripForStorage() {
+    return { ...trip, destinations: trip.destinations.map((destination) => ({ ...destination, route: routeForStorage(destination.route) })) };
+  }
+  function cacheForStorage() {
+    return Object.fromEntries(Object.entries(routeCache).map(([key, route]) => [key, routeForStorage(route)]));
+  }
+  function persist() {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(tripForStorage()));
+      localStorage.setItem(ROUTE_CACHE_KEY, JSON.stringify(cacheForStorage()));
+      localStorage.setItem(SUNSET_CACHE_KEY, JSON.stringify(sunsetCache));
+      localStorage.setItem(ELEVATION_CACHE_KEY, JSON.stringify(elevationCache));
+    } catch (error) {
+      // Navigation and timeline calculation must remain usable even when the
+      // user has old, oversized browser data. The next successful save replaces
+      // the former payload with the compact representation above.
+      console.warn('行程本地保存失败，将在下次操作重试。', error);
+    }
+  }
 
   function chinaParts(date) { return SolarPhotography.chinaParts(date); }
   function dateInputValue(date) { const p = chinaParts(date); return `${p.year}-${String(p.month).padStart(2, '0')}-${String(p.day).padStart(2, '0')}`; }
@@ -118,12 +147,16 @@
       if (leg.origin.poiId) params.set('originPoiId', leg.origin.poiId); if (current.location.poiId) params.set('destinationPoiId', current.location.poiId);
       const route = await requestJson(`/api/route?${params}`);
       if (!Number.isFinite(route.durationSeconds) || !Number.isFinite(route.distanceMeters)) throw new Error('地图服务返回的路线数据无效。');
-      routeCache[key] = { durationSeconds: route.durationSeconds, distanceMeters: route.distanceMeters, origin: route.origin, destination: route.destination, provider: route.provider, strategy: route.strategy, polyline: Array.isArray(route.polyline) ? route.polyline : [] };
+      const fullRoute = { durationSeconds: route.durationSeconds, distanceMeters: route.distanceMeters, origin: route.origin, destination: route.destination, provider: route.provider, strategy: route.strategy, polyline: Array.isArray(route.polyline) ? route.polyline : [] };
+      // Deliberately keep the large path out of the persistent cache. See
+      // routeForStorage() above; the in-memory cache still supports an instant
+      // map redraw during this session.
+      routeCache[key] = fullRoute;
       // Timeline and elevation updates replace destination objects while a route
       // request is in flight. The destination ID and origin endpoint stay stable;
       // use those to attach a valid response instead of recomputing a time-based
       // cache key that can change mid-request.
-      const latest = legForDestination(current.id); if (latest && endpointKey(latest.origin) === requestedOriginKey) { latest.destination.route = routeCache[key]; delete latest.destination.routeError; }
+      const latest = legForDestination(current.id); if (latest && endpointKey(latest.origin) === requestedOriginKey) { latest.destination.route = fullRoute; delete latest.destination.routeError; }
     } catch (error) { const latest = legForDestination(current.id); if (latest) { latest.destination.route = null; latest.destination.routeError = error.message; } }
     const latestDestination = trip.destinations.find((item) => item.id === current.id); if (latestDestination) delete latestDestination.routeLoading;
     calculate(); persist(); render();
