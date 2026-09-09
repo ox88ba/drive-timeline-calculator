@@ -45,6 +45,48 @@
     return Number.isFinite(longitude) && Number.isFinite(latitude) ? [longitude, latitude] : null;
   }
 
+  function routeTitleSize(title) {
+    const length = Array.from(String(title || '')).length;
+    if (length <= 24) return 27;
+    if (length <= 42) return 23;
+    if (length <= 62) return 20;
+    if (length <= 86) return 17;
+    if (length <= 118) return 15;
+    return 13;
+  }
+
+  function shortPlaceName(name, limit) {
+    const characters = Array.from(String(name || '').replace(/\s+/g, ' ').trim());
+    return characters.length > limit ? `${characters.slice(0, limit).join('')}…` : characters.join('');
+  }
+
+  function overlaps(first, second) {
+    return first.x < second.x + second.width && first.x + first.width > second.x && first.y < second.y + second.height && first.y + first.height > second.y;
+  }
+
+  function placeNameLabels(stops, project, svg) {
+    const count = stops.length;
+    const longestName = Math.max(...stops.map((stop) => Array.from(String(stop.name || '')).length), 1);
+    const fontSize = Math.max(7.5, Math.min(12, 12 - Math.max(0, count - 5) * .35 - Math.max(0, longestName - 8) * .18));
+    const nameLimit = count > 10 ? 6 : count > 7 ? 8 : 12;
+    const placed = [];
+    const candidates = [[24, -15], [-24, -15], [24, 26], [-24, 26], [0, -31], [0, 38], [39, 4], [-39, 4]];
+    stops.forEach((stop) => {
+      const point = validPoint(stop.location); if (!point) return;
+      const [x, y] = project(point); const labelText = shortPlaceName(stop.name, nameLimit) || stop.number;
+      const width = Math.max(fontSize * 2, Array.from(labelText).reduce((total, character) => total + (/[\u4e00-\u9fff]/.test(character) ? fontSize : fontSize * .62), 0));
+      const height = fontSize + 4;
+      const choices = candidates.map(([offsetX, offsetY]) => ({ x: Math.max(10, Math.min(990 - width, x + offsetX - (offsetX < 0 ? width : 0))), y: Math.max(height + 6, Math.min(434, y + offsetY)), width, height }));
+      const choice = choices.find((candidate) => !placed.some((rectangle) => overlaps(candidate, rectangle))) || choices.reduce((best, candidate) => {
+        const score = placed.reduce((total, rectangle) => total + (overlaps(candidate, rectangle) ? 1 : 0), 0);
+        return score < best.score ? { candidate, score } : best;
+      }, { candidate: choices[0], score: Infinity }).candidate;
+      placed.push(choice);
+      const label = svgNode('text', { x: choice.x + (choice.x < x ? choice.width : 0), y: choice.y, 'text-anchor': choice.x < x ? 'end' : 'start', 'font-size': fontSize });
+      label.classList.add('share-route-place-label'); label.textContent = labelText; svg.append(label);
+    });
+  }
+
   function buildRouteOverview(model) {
     const wrapper = document.createElement('section'); wrapper.className = 'share-route';
     text(wrapper, 'span', 'share-section-label', '路线概览');
@@ -80,6 +122,7 @@
       const label = svgNode('text', { x, y: y + 5, 'text-anchor': 'middle' }); label.classList.add('share-route-marker-label'); label.textContent = stop.number;
       svg.append(circle, label);
     });
+    placeNameLabels(stops, project, svg);
     wrapper.append(svg);
     if (hasFallback) text(wrapper, 'p', 'share-route-note', '虚线路段为站点位置示意');
     return wrapper;
@@ -109,7 +152,7 @@
 
   function buildPoster(model) {
     const poster = document.createElement('article'); poster.id = 'sharePoster'; poster.className = 'share-poster';
-    const header = document.createElement('header'); header.className = 'share-header'; text(header, 'span', 'share-kicker', 'ROADBOOK / SHARE'); text(header, 'h2', '', model.title); text(header, 'p', 'share-subtitle', `${model.departureText} 出发 · ${model.subtitle}`); poster.append(header);
+    const header = document.createElement('header'); header.className = 'share-header'; text(header, 'span', 'share-kicker', 'ROADBOOK / SHARE'); const title = text(header, 'h2', 'share-route-title', model.title); title.style.setProperty('--route-title-size', `${routeTitleSize(model.title)}px`); text(header, 'p', 'share-subtitle', `${model.departureText} 出发 · ${model.subtitle}`); poster.append(header);
     const summary = document.createElement('section'); summary.className = 'share-summary';
     [['总里程', model.summary.distance], ['驾驶时间', model.summary.drive], ['停留时间', model.summary.stay], ['总行程', model.summary.duration]].forEach(([label, value]) => { const item = document.createElement('div'); text(item, 'span', '', label); text(item, 'strong', '', value); summary.append(item); });
     const final = document.createElement('div'); final.className = 'share-summary-final'; text(final, 'span', '', '预计最终抵达'); text(final, 'strong', '', model.summary.finalArrival); summary.append(final); poster.append(summary, buildRouteOverview(model));

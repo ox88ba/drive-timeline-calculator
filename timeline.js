@@ -10,7 +10,7 @@
   function stayMinutes(selectedStayButtons) { return normaliseStayButtons(selectedStayButtons).reduce((total, value) => total + value, 0); }
   function addMinutes(date, minutes) { return new Date(date.getTime() + minutes * MINUTE); }
   function nextChinaClock(arrival, clock) {
-    const match = String(clock || '').match(/^(09|10):00$/); if (!match) return null;
+    const match = String(clock || '').match(/^(08|09|10):00$/); if (!match) return null;
     const local = new Date(arrival.getTime() + CHINA_OFFSET);
     let target = new Date(Date.UTC(local.getUTCFullYear(), local.getUTCMonth(), local.getUTCDate(), Number(match[1]), 0, 0));
     target = new Date(target.getTime() - CHINA_OFFSET);
@@ -19,7 +19,7 @@
   }
   function departureFor(arrival, destination) {
     const selectedStayButtons = normaliseStayButtons(destination.selectedStayButtons);
-    const stayMode = destination.stayMode === 'until' && /^(09|10):00$/.test(destination.untilTime || '') ? 'until' : 'duration';
+    const stayMode = destination.stayMode === 'until' && /^(08|09|10):00$/.test(destination.untilTime || '') ? 'until' : 'duration';
     if (stayMode === 'until') {
       const departure = nextChinaClock(arrival, destination.untilTime);
       return { selectedStayButtons, stayMode, untilTime: destination.untilTime, stayMinutes: Math.max(0, Math.round((departure.getTime() - arrival.getTime()) / MINUTE)), departure };
