@@ -92,6 +92,7 @@
   .dock-head { margin:0; }
   .trip-dock:not(.is-collapsed) #tripDock {
     display:grid!important;
+    grid-template-columns:repeat(3, minmax(0, 1fr));
     width:100%;
     margin-top:7px;
     overflow:visible;
@@ -107,6 +108,6 @@
   .shell { width:100%; margin:0; padding-top:17px; }
 }
 
-@media (min-width:520px) and (max-width:760px) {
-  #tripDock { grid-template-columns:repeat(3, minmax(0, 1fr)); }
+@media (min-width:480px) and (max-width:760px) {
+  #tripDock { grid-template-columns:repeat(auto-fit, minmax(96px, 1fr)); }
 }
