@@ -109,5 +109,5 @@
 }
 
 @media (min-width:480px) and (max-width:760px) {
-  #tripDock { grid-template-columns:repeat(auto-fit, minmax(96px, 1fr)); }
+  .trip-dock:not(.is-collapsed) #tripDock { grid-template-columns:repeat(auto-fit, minmax(96px, 1fr)); }
 }
