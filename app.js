@@ -7,7 +7,7 @@
   const ELEVATION_CACHE_KEY = 'drive-timeline-elevation-cache-v1';
   // Empty for the integrated local/Sites server. GitHub Pages supplies the Worker origin in config.js.
   const API_BASE_URL = String(globalThis.DRIVE_API_BASE_URL || '').replace(/\/$/, '');
-  const STAY_OPTIONS = [{ minutes: 30, label: '+30min' }, { minutes: 60, label: '+1H' }, { minutes: 120, label: '+2H' }, { minutes: 180, label: '+3H' }, { minutes: 240, label: '+4H' }, { minutes: 480, label: '+8H' }, { minutes: 600, label: '+10H' }];
+  const STAY_OPTIONS = [{ minutes: 30, label: '+30分' }, { minutes: 60, label: '+1小时' }, { minutes: 120, label: '+2小时' }, { minutes: 180, label: '+3小时' }, { minutes: 240, label: '+4小时' }, { minutes: 480, label: '+8小时' }, { minutes: 600, label: '+10小时' }];
   const START_LOCATION = { name: '重庆市', address: '重庆市', latitude: 29.56301, longitude: 106.55156, poiId: 'START_CHONGQING' };
   const $ = (selector) => document.querySelector(selector);
   const timelineNode = $('#timeline'); const dockNode = $('#tripDock'); const mapNode = $('#routeMap'); const template = $('#destinationTemplate');
@@ -16,19 +16,32 @@
   let searchTimers = new Map(); let pendingDeleteIndex = null; let activeDockId = null; let dockPointer = null; let dockSuppressClickUntil = 0; let dockToastTimer = null; let mapGesture = null;
   const newId = () => (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`);
   const cloneStart = () => ({ ...START_LOCATION });
+  function isValidLocation(location) { return Boolean(location && Number.isFinite(Number(location.latitude)) && Number.isFinite(Number(location.longitude))); }
 
   function readJson(key, fallback) { try { return JSON.parse(localStorage.getItem(key)) || fallback; } catch { return fallback; } }
   function defaultDeparture() { const now = SolarPhotography.chinaParts(new Date()); return SolarPhotography.chinaDateTimeToDate(`${now.year}-${String(now.month).padStart(2, '0')}-${String(now.day).padStart(2, '0')}T${String(now.hour).padStart(2, '0')}:${String(Math.ceil(now.minute / 15) * 15).padStart(2, '0')}`).toISOString(); }
-  function createTrip() { return { startLocation: cloneStart(), initialDepartureTime: defaultDeparture(), destinations: [] }; }
+  function createTrip() { const startLocation = cloneStart(); return { startLocation, startSearchText: startLocation.name, initialDepartureTime: defaultDeparture(), destinations: [] }; }
   function validTrip(raw) {
     if (!raw || !raw.initialDepartureTime || !Array.isArray(raw.destinations)) return createTrip();
-    return { startLocation: cloneStart(), initialDepartureTime: raw.initialDepartureTime, destinations: raw.destinations.map((item) => ({
+    const storedStart = Object.prototype.hasOwnProperty.call(raw, 'startLocation') ? raw.startLocation : cloneStart();
+    const startLocation = isValidLocation(storedStart) ? storedStart : null;
+    return { startLocation, startSearchText: raw.startSearchText || startLocation?.name || '', initialDepartureTime: raw.initialDepartureTime, destinations: raw.destinations.map((item) => ({
       id: item.id || newId(), location: item.location || null, searchText: item.searchText || '', route: item.route || null, elevationMeters: Number.isFinite(item.elevationMeters) ? item.elevationMeters : null,
       selectedStayButtons: TripTimeline.normaliseStayButtons(item.selectedStayButtons || []), stayMode: item.stayMode === 'until' ? 'until' : 'duration', untilTime: /^(09|10):00$/.test(item.untilTime || '') ? item.untilTime : null,
       isSkipped: Boolean(item.isSkipped), isReturnToOrigin: Boolean(item.isReturnToOrigin)
     })) };
   }
   let trip = validTrip(readJson(STORAGE_KEY, null));
+  function syncReturnOrigins() {
+    trip.destinations.forEach((destination) => {
+      if (!destination.isReturnToOrigin) return;
+      const previous = destination.location;
+      destination.location = isValidLocation(trip.startLocation) ? { ...trip.startLocation } : null;
+      destination.searchText = trip.startLocation?.name || trip.startSearchText || '';
+      if (!previous || !destination.location || elevationKey(previous) !== elevationKey(destination.location)) destination.elevationMeters = null;
+    });
+  }
+  syncReturnOrigins();
   function persist() { localStorage.setItem(STORAGE_KEY, JSON.stringify(trip)); localStorage.setItem(ROUTE_CACHE_KEY, JSON.stringify(routeCache)); localStorage.setItem(SUNSET_CACHE_KEY, JSON.stringify(sunsetCache)); localStorage.setItem(ELEVATION_CACHE_KEY, JSON.stringify(elevationCache)); }
 
   function chinaParts(date) { return SolarPhotography.chinaParts(date); }
@@ -38,9 +51,9 @@
   function formatTime(iso) { const p = chinaParts(iso); return `${String(p.hour).padStart(2, '0')}:${String(p.minute).padStart(2, '0')}`; }
   function dayKey(iso) { return iso ? SolarPhotography.chinaDateKey(iso) : ''; }
   function formatDay(iso) { const p = chinaParts(iso); return `${p.month}月${p.day}日 星期${['日', '一', '二', '三', '四', '五', '六'][new Date(Date.UTC(p.year, p.month - 1, p.day)).getUTCDay()]}`; }
-  function formatDuration(seconds) { const minutes = Math.round(Number(seconds) / 60); if (!Number.isFinite(minutes)) return '—'; const h = Math.floor(minutes / 60); return h ? `${h}h${minutes % 60 ? `${minutes % 60}min` : ''}` : `${minutes}min`; }
-  function formatStay(minutes) { const whole = Math.round(Number(minutes) || 0); const h = Math.floor(whole / 60); const m = whole % 60; return h ? `${h}小时${m ? `${m}分钟` : ''}` : `${m}分钟`; }
-  function formatDistance(meters) { return Number.isFinite(Number(meters)) ? `${Math.round(Number(meters) / 100) / 10}km` : '—'; }
+  function formatDuration(seconds) { const minutes = Math.round(Number(seconds) / 60); if (!Number.isFinite(minutes)) return '—'; const h = Math.floor(minutes / 60); const m = minutes % 60; return h ? `${h}小时${m ? `${m}分` : ''}` : `${m}分`; }
+  function formatStay(minutes) { const whole = Math.round(Number(minutes) || 0); const h = Math.floor(whole / 60); const m = whole % 60; return h ? `${h}小时${m ? `${m}分` : ''}` : `${m}分`; }
+  function formatDistance(meters) { return Number.isFinite(Number(meters)) ? `${Math.round(Number(meters) / 100) / 10}公里` : '—'; }
   function locationText(location) { return location ? location.name : '未选择地点'; }
   function coords(location) { return `${location.longitude},${location.latitude}`; }
   function cacheKey(location, dateKey) { return `${Number(location.latitude).toFixed(4)},${Number(location.longitude).toFixed(4)}_${dateKey}`; }
@@ -48,6 +61,7 @@
   function routeCacheKey(origin, destination, strategy) { return [strategy, origin.poiId || coords(origin), destination.poiId || coords(destination)].join('|'); }
   function routeStrategy(iso) { const time = Date.parse(iso); return Number.isFinite(time) && time >= Date.now() - 6 * 3600e3 && time <= Date.now() + 3 * 3600e3 ? 'traffic-highway' : 'highway'; }
   function activeLegs() {
+    if (!isValidLocation(trip.startLocation)) return [];
     let origin = trip.startLocation; const legs = [];
     trip.destinations.forEach((destination, index) => { if (!destination.isSkipped && destination.location) { legs.push({ index, destination, origin }); origin = destination.location; } });
     return legs;
@@ -65,7 +79,8 @@
     return { sunriseAt, sunsetAt, deltaMinutes, moment: SolarPhotography.classifyPhotography(deltaMinutes) };
   }
   function calculate() {
-    const timeline = TripTimeline.calculateTimeline(trip);
+    const sourceTrip = isValidLocation(trip.startLocation) ? trip : { ...trip, destinations: trip.destinations.map((destination) => ({ ...destination, route: null })) };
+    const timeline = TripTimeline.calculateTimeline(sourceTrip);
     trip = { ...timeline, destinations: timeline.destinations.map((destination) => {
       const arrivalPhoto = destination.isSkipped ? null : photoFor(destination.location, destination.arrivalTime);
       const departurePhoto = destination.isSkipped || !destination.hasDepartureDisplay ? null : photoFor(destination.location, destination.departureTime);
@@ -94,7 +109,7 @@
     current.route = null; current.routeLoading = true; delete current.routeError; render();
     try {
       const params = new URLSearchParams({ origin: coords(leg.origin), destination: coords(current.location), plannedDeparture: planned });
-      if (leg.origin.poiId && leg.origin.poiId !== START_LOCATION.poiId) params.set('originPoiId', leg.origin.poiId); if (current.location.poiId) params.set('destinationPoiId', current.location.poiId);
+      if (leg.origin.poiId) params.set('originPoiId', leg.origin.poiId); if (current.location.poiId) params.set('destinationPoiId', current.location.poiId);
       const route = await requestJson(`/api/route?${params}`);
       if (!Number.isFinite(route.durationSeconds) || !Number.isFinite(route.distanceMeters)) throw new Error('地图服务返回的路线数据无效。');
       routeCache[key] = { durationSeconds: route.durationSeconds, distanceMeters: route.distanceMeters, origin: route.origin, destination: route.destination, provider: route.provider, strategy: route.strategy, polyline: Array.isArray(route.polyline) ? route.polyline : [] };
@@ -109,27 +124,30 @@
   function attachTime(node, iso, photo) { node.replaceChildren(); node.append(document.createTextNode(formatDateTime(iso))); if (photo?.moment) node.append(badge(photo.moment)); }
   function updateSummary() { const s = trip.summary; const distance = s.routeChainIsComplete ? formatDistance(s.distanceMeters) : '待导航'; const drive = s.routeChainIsComplete ? formatDuration(s.drivingSeconds) : '待导航'; const stay = formatStay(s.totalStayMinutes); const duration = s.routeChainIsComplete ? formatDuration(s.totalDurationSeconds) : '待导航'; const finalArrival = s.finalArrivalTime ? formatDateTime(s.finalArrivalTime, true) : (trip.destinations.length ? '等待完整导航数据' : '添加目的地后计算'); $('#totalDistance').textContent = distance; $('#totalDrive').textContent = drive; $('#totalStay').textContent = stay; $('#totalDuration').textContent = duration; $('#finalArrival').textContent = finalArrival; $('#previewDistance').textContent = distance; $('#previewDrive').textContent = drive; $('#previewStay').textContent = stay; $('#previewDuration').textContent = duration; $('#previewDeparture').textContent = trip.initialDepartureTime ? formatDateTime(trip.initialDepartureTime, true) : '—'; $('#previewFinalArrival').textContent = finalArrival; }
   function routeConnector(destination) { const node = document.createElement('div'); node.className = 'route-connector'; if (destination.isSkipped) { node.classList.add('skipped-connector'); node.textContent = '此站已跳过'; return node; } if (!destination.location) { node.textContent = '选择具体 POI 后获取导航'; return node; } if (destination.routeLoading) { node.innerHTML = '<span class="route-loading"><i class="spinner"></i>正在获取导航数据…</span>'; return node; } if (destination.route) { node.classList.add('connector-route'); node.textContent = `${formatDistance(destination.route.distanceMeters)} · ${formatDuration(destination.route.durationSeconds)}`; return node; } node.textContent = '导航数据待获取'; return node; }
-  function routeStatus(destination, index) { const node = document.createElement('div'); node.className = 'route-status'; if (destination.isSkipped) { node.textContent = '已跳过，不参与导航、时间与汇总计算。'; return node; } if (!destination.location) { node.textContent = '选择候选地点后，才会调用官方导航服务。'; return node; } if (destination.routeLoading) { node.innerHTML = '<span class="route-loading"><i class="spinner"></i>正在获取导航数据…</span>'; return node; } if (destination.routeError) { node.classList.add('error'); node.append('导航数据获取失败，'); const retry = document.createElement('button'); retry.className = 'retry'; retry.dataset.action = 'retry-route'; retry.dataset.index = index; retry.textContent = '点击重新计算'; node.append(retry); return node; } if (destination.route) { node.textContent = `${index === 0 ? '重庆市' : '上一有效站'} → ${locationText(destination.location)} · 高德导航 / ${destination.route.strategy === 'traffic-highway' ? '路况＋高速优先' : '高速优先'}`; const retry = document.createElement('button'); retry.className = 'retry'; retry.dataset.action = 'retry-route'; retry.dataset.index = index; retry.textContent = '重新获取'; node.append(retry); return node; } node.textContent = '正在等待可用的起终点坐标。'; return node; }
+  function routeStatus(destination, index) { const node = document.createElement('div'); node.className = 'route-status'; if (destination.isSkipped) { node.textContent = '已跳过，不参与导航、时间与汇总计算。'; return node; } if (!destination.location) { node.textContent = '选择候选地点后，才会调用官方导航服务。'; return node; } if (!isValidLocation(trip.startLocation)) { node.textContent = '请先搜索并选择出发点 POI。'; return node; } if (destination.routeLoading) { node.innerHTML = '<span class="route-loading"><i class="spinner"></i>正在获取导航数据…</span>'; return node; } if (destination.routeError) { node.classList.add('error'); node.append('导航数据获取失败，'); const retry = document.createElement('button'); retry.className = 'retry'; retry.dataset.action = 'retry-route'; retry.dataset.index = index; retry.textContent = '点击重新计算'; node.append(retry); return node; } if (destination.route) { const leg = legForDestination(destination.id); const originName = leg ? locationText(leg.origin) : '上一有效站'; node.textContent = `${originName} → ${locationText(destination.location)} · 高德导航 / ${destination.route.strategy === 'traffic-highway' ? '路况＋高速优先' : '高速优先'}`; const retry = document.createElement('button'); retry.className = 'retry'; retry.dataset.action = 'retry-route'; retry.dataset.index = index; retry.textContent = '重新获取'; node.append(retry); return node; } node.textContent = '正在等待可用的起终点坐标。'; return node; }
   function setDockCollapsed(collapsed) { dockShell.classList.toggle('is-collapsed', collapsed); dockNode.hidden = collapsed; dockToggle.setAttribute('aria-expanded', String(!collapsed)); dockToggle.textContent = collapsed ? '展开' : '收起'; }
   function showDockToast(message) { let node = $('#dockToast'); if (!node) { node = document.createElement('div'); node.id = 'dockToast'; node.className = 'dock-toast'; node.setAttribute('role', 'status'); node.setAttribute('aria-live', 'polite'); document.body.append(node); } node.textContent = message; node.hidden = false; clearTimeout(dockToastTimer); dockToastTimer = setTimeout(() => { node.hidden = true; }, 2400); }
   function clearDockDragFeedback(pointer = dockPointer) { if (pointer?.pressTimer) clearTimeout(pointer.pressTimer); pointer?.source?.classList.remove('is-pressing', 'is-dragging'); dockNode.querySelectorAll('.dock-item.drag-over').forEach((node) => node.classList.remove('drag-over')); dockShell.classList.remove('is-dragging'); dockTitle.textContent = '行程'; }
   function armDockDrag(pointer) { if (!pointer || pointer.armed) return; pointer.armed = true; pointer.source.classList.remove('is-pressing'); pointer.source.classList.add('is-dragging'); dockShell.classList.add('is-dragging'); dockTitle.textContent = '拖到目标位置'; }
-  function renderDock() { dockNode.replaceChildren(); const start = document.createElement('button'); start.type = 'button'; start.className = 'dock-item'; start.dataset.anchor = 'startCard'; start.innerHTML = '<b>01</b><span>重庆市</span>'; dockNode.append(start); trip.destinations.forEach((destination, index) => { const button = document.createElement('button'); button.type = 'button'; button.className = `dock-item${destination.isSkipped ? ' is-skipped' : ''}${destination.id === activeDockId ? ' is-active' : ''}`; button.dataset.id = destination.id; button.draggable = false; button.setAttribute('aria-label', `${String(index + 2).padStart(2, '0')} ${destination.location?.name || destination.searchText || '未命名目的地'}`); const number = String(index + 2).padStart(2, '0'); button.innerHTML = `<b>${number}</b><span>${destination.location?.name || destination.searchText || '未命名目的地'}</span>`; dockNode.append(button); }); dockNode.hidden = dockShell.classList.contains('is-collapsed'); }
+  function renderDock() { dockNode.replaceChildren(); const start = document.createElement('button'); start.type = 'button'; start.className = 'dock-item'; start.dataset.anchor = 'startCard'; const startName = trip.startLocation?.name || trip.startSearchText || '未选择出发点'; start.innerHTML = `<b>01</b><span></span>`; start.querySelector('span').textContent = startName; dockNode.append(start); trip.destinations.forEach((destination, index) => { const button = document.createElement('button'); button.type = 'button'; button.className = `dock-item${destination.isSkipped ? ' is-skipped' : ''}${destination.id === activeDockId ? ' is-active' : ''}`; button.dataset.id = destination.id; button.draggable = false; button.setAttribute('aria-label', `${String(index + 2).padStart(2, '0')} ${destination.location?.name || destination.searchText || '未命名目的地'}`); const number = String(index + 2).padStart(2, '0'); button.innerHTML = `<b>${number}</b><span></span>`; button.querySelector('span').textContent = destination.location?.name || destination.searchText || '未命名目的地'; dockNode.append(button); }); dockNode.hidden = dockShell.classList.contains('is-collapsed'); }
   function renderMap() {
-    mapNode.replaceChildren(); const legs = activeLegs(); const points = [trip.startLocation, ...legs.map((leg) => leg.destination.location)];
+    mapNode.replaceChildren(); if (!isValidLocation(trip.startLocation)) { mapNode.textContent = '请先搜索并选择出发点 POI。'; return; } const legs = activeLegs(); const points = [trip.startLocation, ...legs.map((leg) => leg.destination.location)];
     if (!legs.length) { mapNode.textContent = '添加有效目的地后，在这里预览高德真实驾车道路轨迹。'; return; }
     const geometry = legs.flatMap((leg) => leg.destination.route?.polyline?.map((point) => [Number(point[0]), Number(point[1])]) || []).filter(([x, y]) => Number.isFinite(x) && Number.isFinite(y));
     if (!geometry.length) { mapNode.textContent = '高德路线时间已获取，真实道路轨迹正在等待地图服务返回。'; return; }
     const all = [...geometry, ...points.map((point) => [Number(point.longitude), Number(point.latitude)])]; const xs = all.map((p) => p[0]); const ys = all.map((p) => p[1]); const minX = Math.min(...xs); const maxX = Math.max(...xs); const minY = Math.min(...ys); const maxY = Math.max(...ys); const dx = Math.max(maxX - minX, .001); const dy = Math.max(maxY - minY, .001);
     const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); svg.setAttribute('viewBox', '0 0 1000 500'); svg.setAttribute('aria-label', '高德驾车道路路线预览'); svg.classList.add('route-map-svg'); const scene = document.createElementNS(svg.namespaceURI, 'g'); scene.dataset.mapScene = 'true';
-    const project = ([x, y]) => [65 + (x - minX) / dx * 870, 450 - (y - minY) / dy * 400];
+    // Use one scale for both axes. The previous independent X/Y scaling could
+    // place an end of a long route against the SVG edge on narrow screens.
+    const padding = 62; const scale = Math.min((1000 - padding * 2) / dx, (500 - padding * 2) / dy); const centerX = (minX + maxX) / 2; const centerY = (minY + maxY) / 2;
+    const project = ([x, y]) => [500 + (x - centerX) * scale, 250 - (y - centerY) * scale];
     legs.forEach((leg) => { const polyline = leg.destination.route?.polyline || []; if (!polyline.length) return; const line = document.createElementNS(svg.namespaceURI, 'polyline'); line.setAttribute('points', polyline.map(project).map((p) => p.join(',')).join(' ')); line.classList.add('map-road'); scene.append(line); });
     [{ location: trip.startLocation, number: '01' }, ...legs.map((leg) => ({ location: leg.destination.location, number: String(leg.index + 2).padStart(2, '0') }))].forEach((marker) => { const [x, y] = project([Number(marker.location.longitude), Number(marker.location.latitude)]); const circle = document.createElementNS(svg.namespaceURI, 'circle'); circle.setAttribute('cx', x); circle.setAttribute('cy', y); circle.setAttribute('r', '15'); circle.classList.add('map-marker'); const label = document.createElementNS(svg.namespaceURI, 'text'); label.setAttribute('x', x); label.setAttribute('y', y + 4); label.setAttribute('text-anchor', 'middle'); label.classList.add('map-marker-label'); label.textContent = marker.number; scene.append(circle, label); });
     svg.append(scene); mapNode.append(svg); bindMapGestures(svg, scene);
   }
   function bindMapGestures(svg, scene) { let scale = 1; let tx = 0; let ty = 0; const paint = () => scene.setAttribute('transform', `translate(${tx} ${ty}) scale(${scale})`); svg.addEventListener('wheel', (event) => { event.preventDefault(); scale = Math.max(.7, Math.min(4, scale * (event.deltaY < 0 ? 1.12 : .89))); paint(); }, { passive: false }); svg.addEventListener('pointerdown', (event) => { mapGesture = { x: event.clientX, y: event.clientY, tx, ty }; svg.setPointerCapture(event.pointerId); }); svg.addEventListener('pointermove', (event) => { if (!mapGesture) return; tx = mapGesture.tx + (event.clientX - mapGesture.x) * 1.4; ty = mapGesture.ty + (event.clientY - mapGesture.y) * 1.4; paint(); }); svg.addEventListener('pointerup', () => { mapGesture = null; }); }
   function render() {
-    calculate(); const departure = new Date(trip.initialDepartureTime); $('#departureDate').value = dateInputValue(departure); $('#departureTime').value = timeInputValue(departure); document.querySelectorAll('[data-quick-start]').forEach((button) => { const date = SolarPhotography.chinaDateTimeToDate(button.dataset.quickStart); button.classList.toggle('active', date?.getTime() === departure.getTime()); }); updateSummary(); renderDock(); timelineNode.replaceChildren(); let priorDay = dayKey(trip.initialDepartureTime);
+    calculate(); const departure = new Date(trip.initialDepartureTime); $('#departureDate').value = dateInputValue(departure); $('#departureTime').value = timeInputValue(departure); const startInput = $('#startPlaceInput'); startInput.value = trip.startLocation?.name || trip.startSearchText || ''; $('#startPlaceAddress').textContent = trip.startLocation ? (trip.startLocation.address || '已选择具体地点') : '请搜索并选择具体 POI'; $('#startPoiResults').hidden = true; $('#startPoiResults').replaceChildren(); document.querySelectorAll('[data-quick-start]').forEach((button) => { const date = SolarPhotography.chinaDateTimeToDate(button.dataset.quickStart); button.classList.toggle('active', date?.getTime() === departure.getTime()); }); updateSummary(); renderDock(); timelineNode.replaceChildren(); let priorDay = dayKey(trip.initialDepartureTime);
     trip.destinations.forEach((destination, index) => {
       const fragment = template.content.cloneNode(true); const wrap = fragment.querySelector('.destination-wrap'); const card = wrap.querySelector('.destination-card'); card.id = `destination-${destination.id}`; card.dataset.id = destination.id; card.dataset.index = index; if (destination.isSkipped) card.classList.add('is-skipped'); const cardMoment = destination.arrivalPhoto?.moment || destination.departurePhoto?.moment; if (cardMoment) card.classList.add(`photo-${cardMoment.kind}`);
       wrap.replaceChild(routeConnector(destination), wrap.querySelector('[data-route-connector]')); const divider = wrap.querySelector('.date-divider'); if (!destination.isSkipped && destination.arrivalTime && dayKey(destination.arrivalTime) !== priorDay) { divider.hidden = false; divider.textContent = formatDay(destination.arrivalTime); priorDay = dayKey(destination.arrivalTime); }
@@ -142,11 +160,46 @@
     const closed = trip.destinations.at(-1)?.isReturnToOrigin; $('#addDestination').hidden = Boolean(closed); $('#returnOrigin').hidden = Boolean(closed); renderMap();
   }
   function showSearchStatus(results, text) { results.hidden = false; results.replaceChildren(); const row = document.createElement('div'); row.className = 'poi-option'; row.textContent = text; results.append(row); }
+  function bindStartPicker(input, results) {
+    input.addEventListener('input', () => {
+      trip.startSearchText = input.value;
+      trip.startLocation = null;
+      syncReturnOrigins();
+      clearActiveRoutes();
+      calculate();
+      persist();
+      const caret = input.selectionStart;
+      render();
+      const refreshedInput = $('#startPlaceInput');
+      refreshedInput.focus();
+      if (Number.isInteger(caret)) refreshedInput.setSelectionRange(caret, caret);
+      results = $('#startPoiResults');
+      const prior = searchTimers.get('start'); if (prior) clearTimeout(prior);
+      const query = input.value.trim();
+      if (query.length < 2) { results.hidden = true; return; }
+      showSearchStatus(results, '正在搜索地点…');
+      searchTimers.set('start', setTimeout(() => searchStartPoi(query, results), 350));
+    });
+  }
+  async function searchStartPoi(query, results) {
+    try {
+      const data = await requestJson(`/api/poi?keywords=${encodeURIComponent(query)}`);
+      if (trip.startSearchText.trim() !== query) return;
+      results.replaceChildren(); results.hidden = false;
+      if (!data.pois?.length) return showSearchStatus(results, '没有找到带坐标的候选地点，请换一个关键词。');
+      data.pois.forEach((poi) => {
+        const button = document.createElement('button'); button.type = 'button'; button.className = 'poi-option'; button.innerHTML = '<b></b><small></small>'; button.querySelector('b').textContent = poi.name; button.querySelector('small').textContent = poi.address || '高德地图 POI'; button.addEventListener('click', () => selectStartPoi(poi)); results.append(button);
+      });
+    } catch (error) { showSearchStatus(results, `地点搜索失败：${error.message}`); }
+  }
+  function selectStartPoi(poi) {
+    trip.startLocation = poi; trip.startSearchText = poi.name; syncReturnOrigins(); rebuildRouteGraph(); refreshElevations();
+  }
   function bindPicker(input, results, id) { if (input.disabled) return; input.addEventListener('input', () => { const destination = trip.destinations.find((item) => item.id === id); if (!destination) return; destination.searchText = input.value; destination.location = null; destination.route = null; calculate(); persist(); const prior = searchTimers.get(id); if (prior) clearTimeout(prior); const query = input.value.trim(); if (query.length < 2) { results.hidden = true; return; } showSearchStatus(results, '正在搜索地点…'); searchTimers.set(id, setTimeout(() => searchPoi(id, query, results), 350)); }); }
   async function searchPoi(id, query, results) { try { const data = await requestJson(`/api/poi?keywords=${encodeURIComponent(query)}`); const destination = trip.destinations.find((item) => item.id === id); if (!destination || destination.searchText.trim() !== query) return; results.replaceChildren(); results.hidden = false; if (!data.pois?.length) return showSearchStatus(results, '没有找到带坐标的候选地点，请换一个关键词。'); data.pois.forEach((poi) => { const button = document.createElement('button'); button.type = 'button'; button.className = 'poi-option'; button.innerHTML = `<b></b><small></small>`; button.querySelector('b').textContent = poi.name; button.querySelector('small').textContent = poi.address || '高德地图 POI'; button.addEventListener('click', () => selectPoi(id, poi)); results.append(button); }); } catch (error) { showSearchStatus(results, `地点搜索失败：${error.message}`); } }
   function selectPoi(id, poi) { const destination = trip.destinations.find((item) => item.id === id); if (!destination) return; destination.location = poi; destination.searchText = poi.name; destination.elevationMeters = null; delete destination.elevationError; rebuildRouteGraph(); loadElevation(id); }
   function addDestination() { trip.destinations.push({ id: newId(), location: null, searchText: '', route: null, elevationMeters: null, selectedStayButtons: [], stayMode: 'duration', untilTime: null, isSkipped: false, isReturnToOrigin: false }); calculate(); persist(); render(); timelineNode.querySelector('.destination-wrap:last-child [data-place-input]')?.focus(); }
-  function addReturnOrigin() { if (trip.destinations.at(-1)?.isReturnToOrigin) return; trip.destinations.push({ id: newId(), location: cloneStart(), searchText: '重庆市', route: null, elevationMeters: null, selectedStayButtons: [], stayMode: 'duration', untilTime: null, isSkipped: false, isReturnToOrigin: true }); rebuildRouteGraph(); loadElevation(trip.destinations.at(-1).id); }
+  function addReturnOrigin() { if (trip.destinations.at(-1)?.isReturnToOrigin || !isValidLocation(trip.startLocation)) return; trip.destinations.push({ id: newId(), location: { ...trip.startLocation }, searchText: trip.startLocation.name, route: null, elevationMeters: null, selectedStayButtons: [], stayMode: 'duration', untilTime: null, isSkipped: false, isReturnToOrigin: true }); rebuildRouteGraph(); loadElevation(trip.destinations.at(-1).id); }
   function moveDestination(index, direction) { const target = index + direction; const current = trip.destinations[index]; if (!current || current.isReturnToOrigin || target < 0 || target >= trip.destinations.length || trip.destinations[target].isReturnToOrigin) return; [trip.destinations[index], trip.destinations[target]] = [trip.destinations[target], trip.destinations[index]]; rebuildRouteGraph(); }
   function reorderByIds(fromId, toId) { const from = trip.destinations.findIndex((item) => item.id === fromId); const to = trip.destinations.findIndex((item) => item.id === toId); if (from < 0 || to < 0 || from === to || trip.destinations[from].isReturnToOrigin || trip.destinations[to].isReturnToOrigin) return; const [item] = trip.destinations.splice(from, 1); trip.destinations.splice(to, 0, item); rebuildRouteGraph(); }
   function requestRemove(index) { const destination = trip.destinations[index]; if (!destination) return; pendingDeleteIndex = index; $('#deleteName').textContent = destination.location?.name || destination.searchText || '该目的地'; $('#deleteModal').hidden = false; }
@@ -176,6 +229,6 @@
   $('#deleteConfirm').addEventListener('click', removePending);
   $('#deleteModal').addEventListener('click', (event) => { if (event.target === event.currentTarget) { pendingDeleteIndex = null; event.currentTarget.hidden = true; } });
   document.addEventListener('keydown', (event) => { if (event.key === 'Escape' && !$('#deleteModal').hidden) { pendingDeleteIndex = null; $('#deleteModal').hidden = true; } });
-  $('#addDestination').addEventListener('click', addDestination); $('#returnOrigin').addEventListener('click', addReturnOrigin); $('#clearTrip').addEventListener('click', () => { if (!trip.destinations.length || window.confirm('确定清空所有目的地和已保存的路线吗？')) { trip = createTrip(); routeCache = {}; persist(); render(); } }); $('#departureDate').addEventListener('change', setDeparture); $('#departureTime').addEventListener('change', setDeparture); document.querySelectorAll('[data-quick-start]').forEach((button) => button.addEventListener('click', () => setQuickDeparture(button.dataset.quickStart)));
+  bindStartPicker($('#startPlaceInput'), $('#startPoiResults')); $('#addDestination').addEventListener('click', addDestination); $('#returnOrigin').addEventListener('click', addReturnOrigin); $('#refreshRoutePreview').addEventListener('click', () => renderMap()); $('#clearTrip').addEventListener('click', () => { if (!trip.destinations.length || window.confirm('确定清空所有目的地和已保存的路线吗？')) { trip = createTrip(); routeCache = {}; persist(); render(); } }); $('#departureDate').addEventListener('change', setDeparture); $('#departureTime').addEventListener('change', setDeparture); document.querySelectorAll('[data-quick-start]').forEach((button) => button.addEventListener('click', () => setQuickDeparture(button.dataset.quickStart)));
   calculate(); render(); if (activeLegs().some((leg) => !leg.destination.route)) rebuildRouteGraph(); refreshElevations();
 })();

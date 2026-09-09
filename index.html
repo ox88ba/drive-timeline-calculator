@@ -30,14 +30,22 @@
       <section class="summary" aria-label="行程汇总">
         <div><span>总里程</span><strong id="totalDistance">—</strong></div>
         <div><span>驾驶时间</span><strong id="totalDrive">—</strong></div>
-        <div><span>停留时间</span><strong id="totalStay">0h</strong></div>
+        <div><span>停留时间</span><strong id="totalStay">0分</strong></div>
         <div><span>总行程</span><strong id="totalDuration">—</strong></div>
         <div class="summary-arrival"><span>预计最终抵达</span><strong id="finalArrival">添加目的地后计算</strong></div>
       </section>
 
-      <section id="startCard" class="start-card" aria-label="固定起点">
+      <section id="startCard" class="start-card" aria-label="出发点">
         <div class="station-number start-number">01</div>
-        <div class="start-copy"><span class="section-label">固定起点</span><h2>重庆市</h2></div>
+        <div class="start-copy">
+          <span class="section-label">出发点</span>
+          <div class="place-picker start-place-picker">
+            <input id="startPlaceInput" type="search" autocomplete="off" placeholder="搜索出发地点，如：重庆市" />
+            <span class="search-mark">⌕</span>
+            <div id="startPoiResults" class="poi-results" hidden></div>
+          </div>
+          <p id="startPlaceAddress" class="place-address">请搜索并选择具体 POI</p>
+        </div>
         <label class="date-field">出发日期<input id="departureDate" type="date" /></label>
         <label class="time-field">时间<input id="departureTime" type="time" /></label>
         <div class="quick-starts" aria-label="快捷出发时间">
@@ -54,7 +62,7 @@
         <button id="addDestination" class="add-destination" type="button"><span>＋</span> 添加目的地</button>
         <button id="returnOrigin" class="return-origin" type="button">↩ 回到起点</button>
       </div>
-      <section class="route-preview" aria-label="路线预览"><div><span class="section-label">高德道路轨迹</span><h2>路线预览</h2></div><div id="routeMap" class="route-map" tabindex="0"></div><div class="preview-summary" aria-label="路线统计"><div><span>总里程</span><strong id="previewDistance">—</strong></div><div><span>驾驶时间</span><strong id="previewDrive">—</strong></div><div><span>停留时间</span><strong id="previewStay">0分钟</strong></div><div><span>总行程</span><strong id="previewDuration">—</strong></div><div><span>出发时间</span><strong id="previewDeparture">—</strong></div><div><span>最终抵达</span><strong id="previewFinalArrival">—</strong></div></div></section>
+      <section class="route-preview" aria-label="路线预览"><div class="route-preview-head"><div><span class="section-label">高德道路轨迹</span><h2>路线预览</h2></div><button id="refreshRoutePreview" class="refresh-route-preview" type="button" title="使用已获取的路线数据重新绘制预览">刷新预览</button></div><div id="routeMap" class="route-map" tabindex="0"></div><div class="preview-summary" aria-label="路线统计"><div><span>总里程</span><strong id="previewDistance">—</strong></div><div><span>驾驶时间</span><strong id="previewDrive">—</strong></div><div><span>停留时间</span><strong id="previewStay">0分</strong></div><div><span>总行程</span><strong id="previewDuration">—</strong></div><div class="preview-departure"><span>出发时间</span><strong id="previewDeparture">—</strong></div><div class="preview-arrival"><span>最终抵达</span><strong id="previewFinalArrival">—</strong></div></div></section>
       <p class="footnote">路线、里程与预计驾驶时长均来自高德地图官方驾车路径规划。未来行程使用地图服务返回的基础预计时长。</p>
     </main>
 
@@ -78,7 +86,7 @@
           <div class="stay-section">
             <span>停留时间</span>
             <div class="stay-buttons" data-stay-buttons></div>
-            <p data-stay-current>当前停留：0小时</p>
+            <p data-stay-current>当前停留：0分</p>
             <div class="departure-block" data-departure-block hidden><span>预计出发</span><strong data-departure>—</strong></div>
           </div>
         </section>

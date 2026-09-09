@@ -47,7 +47,7 @@
     });
     return {
       ...trip, destinations,
-      summary: { drivingSeconds, distanceMeters, totalStayMinutes, totalDurationSeconds: drivingSeconds + totalStayMinutes * MINUTE, finalArrivalTime: destinations.length && routeChainIsComplete ? [...destinations].reverse().find((item) => !item.isSkipped)?.arrivalTime || null : null, routeChainIsComplete: destinations.some((item) => !item.isSkipped) && routeChainIsComplete }
+      summary: { drivingSeconds, distanceMeters, totalStayMinutes, totalDurationSeconds: drivingSeconds + totalStayMinutes * 60, finalArrivalTime: destinations.length && routeChainIsComplete ? [...destinations].reverse().find((item) => !item.isSkipped)?.arrivalTime || null : null, routeChainIsComplete: destinations.some((item) => !item.isSkipped) && routeChainIsComplete }
     };
   }
   const api = { MINUTE, HOUR, RELATIVE_STAY_MINUTES, normaliseStayButtons, stayMinutes, nextChinaClock, calculateTimeline };
