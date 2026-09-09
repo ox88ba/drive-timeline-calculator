@@ -58,6 +58,7 @@
   function coords(location) { return `${location.longitude},${location.latitude}`; }
   function cacheKey(location, dateKey) { return `${Number(location.latitude).toFixed(4)},${Number(location.longitude).toFixed(4)}_${dateKey}`; }
   function elevationKey(location) { return `${Number(location.latitude).toFixed(4)},${Number(location.longitude).toFixed(4)}`; }
+  function endpointKey(location) { return location?.poiId || coords(location); }
   function routeCacheKey(origin, destination, strategy) { return [strategy, origin.poiId || coords(origin), destination.poiId || coords(destination)].join('|'); }
   function routeStrategy(iso) { const time = Date.parse(iso); return Number.isFinite(time) && time >= Date.now() - 6 * 3600e3 && time <= Date.now() + 3 * 3600e3 ? 'traffic-highway' : 'highway'; }
   function activeLegs() {
@@ -109,7 +110,7 @@
   function clearActiveRoutes() { trip.destinations.forEach((item) => { if (!item.isSkipped) { item.route = null; delete item.routeError; delete item.routeLoading; } }); }
   async function loadRoute(leg, force = false) {
     const current = trip.destinations[leg.index]; if (!current || current.isSkipped || !current.location) return;
-    const planned = plannedDeparture(leg) || trip.initialDepartureTime; const strategy = routeStrategy(planned); const key = routeCacheKey(leg.origin, current.location, strategy);
+    const planned = plannedDeparture(leg) || trip.initialDepartureTime; const strategy = routeStrategy(planned); const key = routeCacheKey(leg.origin, current.location, strategy); const requestedOriginKey = endpointKey(leg.origin);
     if (!force && routeCache[key]) { current.route = routeCache[key]; delete current.routeError; calculate(); persist(); render(); return; }
     current.route = null; current.routeLoading = true; delete current.routeError; render();
     try {
@@ -118,7 +119,11 @@
       const route = await requestJson(`/api/route?${params}`);
       if (!Number.isFinite(route.durationSeconds) || !Number.isFinite(route.distanceMeters)) throw new Error('地图服务返回的路线数据无效。');
       routeCache[key] = { durationSeconds: route.durationSeconds, distanceMeters: route.distanceMeters, origin: route.origin, destination: route.destination, provider: route.provider, strategy: route.strategy, polyline: Array.isArray(route.polyline) ? route.polyline : [] };
-      const latest = legForDestination(current.id); if (latest && routeCacheKey(latest.origin, latest.destination.location, routeStrategy(plannedDeparture(latest) || trip.initialDepartureTime)) === key) { latest.destination.route = routeCache[key]; delete latest.destination.routeError; }
+      // Timeline and elevation updates replace destination objects while a route
+      // request is in flight. The destination ID and origin endpoint stay stable;
+      // use those to attach a valid response instead of recomputing a time-based
+      // cache key that can change mid-request.
+      const latest = legForDestination(current.id); if (latest && endpointKey(latest.origin) === requestedOriginKey) { latest.destination.route = routeCache[key]; delete latest.destination.routeError; }
     } catch (error) { const latest = legForDestination(current.id); if (latest) { latest.destination.route = null; latest.destination.routeError = error.message; } }
     const latestDestination = trip.destinations.find((item) => item.id === current.id); if (latestDestination) delete latestDestination.routeLoading;
     calculate(); persist(); render();
@@ -127,14 +132,13 @@
     // Each route completion recalculates the timeline and replaces destination
     // objects. Re-read the next leg after every request rather than iterating a
     // stale snapshot. A new rebuild cancels the older queue cleanly.
-    const version = ++routeRebuildVersion; const completedIds = new Set();
+    const version = ++routeRebuildVersion; const destinationIds = activeLegs().map((leg) => leg.destination.id);
     clearActiveRoutes(); calculate(); persist(); render();
-    while (version === routeRebuildVersion) {
-      const leg = activeLegs().find((item) => !completedIds.has(item.destination.id));
-      if (!leg) break;
-      const destinationId = leg.destination.id;
+    for (const destinationId of destinationIds) {
+      if (version !== routeRebuildVersion) break;
+      const leg = legForDestination(destinationId);
+      if (!leg) continue;
       await loadRoute(leg, force);
-      completedIds.add(destinationId);
     }
   }
 
