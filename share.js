@@ -3,10 +3,12 @@
   'use strict';
 
   const $ = (selector) => document.querySelector(selector);
+  const API_BASE_URL = String(globalThis.DRIVE_API_BASE_URL || '').replace(/\/$/, '');
   let shareBlob = null;
   let shareFilename = '';
   let shareState = 'idle';
   let generation = 0;
+  let shareCleanup = () => {};
 
   function text(parent, tag, className, value) {
     const node = document.createElement(tag);
@@ -43,6 +45,46 @@
   function validPoint(location) {
     const longitude = Number(location?.longitude); const latitude = Number(location?.latitude);
     return Number.isFinite(longitude) && Number.isFinite(latitude) ? [longitude, latitude] : null;
+  }
+
+  function mercatorPoint([longitude, latitude]) {
+    const x = (longitude + 180) / 360;
+    const clippedLatitude = Math.max(-85.05112878, Math.min(85.05112878, latitude));
+    const radians = clippedLatitude * Math.PI / 180;
+    return [x, (1 - Math.log(Math.tan(radians) + 1 / Math.cos(radians)) / Math.PI) / 2];
+  }
+
+  function fromMercator([x, y]) {
+    const longitude = x * 360 - 180;
+    const latitude = (Math.atan(Math.sinh(Math.PI * (1 - 2 * y))) * 180) / Math.PI;
+    return [longitude, latitude];
+  }
+
+  function routeMapView(geometry, width = 1000, height = 440, padding = 58) {
+    const projected = geometry.map(mercatorPoint); const xs = projected.map(([x]) => x); const ys = projected.map(([, y]) => y);
+    const dx = Math.max(Math.max(...xs) - Math.min(...xs), 1e-6); const dy = Math.max(Math.max(...ys) - Math.min(...ys), 1e-6);
+    const zoom = Math.max(3, Math.min(15, Math.floor(Math.min(Math.log2((width - padding * 2) / (256 * dx)), Math.log2((height - padding * 2) / (256 * dy))))));
+    const center = [(Math.min(...xs) + Math.max(...xs)) / 2, (Math.min(...ys) + Math.max(...ys)) / 2]; const scale = 256 * (2 ** zoom);
+    return { center: fromMercator(center), zoom, project: (point) => { const [x, y] = mercatorPoint(point); return [width / 2 + (x - center[0]) * scale, height / 2 + (y - center[1]) * scale]; } };
+  }
+
+  function simplifyPath(points, maxPoints = 170) {
+    if (points.length <= maxPoints) return points;
+    const step = (points.length - 1) / (maxPoints - 1); const compact = [];
+    for (let index = 0; index < maxPoints; index += 1) compact.push(points[Math.round(index * step)]);
+    return compact;
+  }
+
+  async function setStaticMapBackdrop(frame, wrapper, spec, path) {
+    if (!API_BASE_URL) return () => {};
+    const query = encodeURIComponent(JSON.stringify({ center: spec.center, zoom: spec.zoom, path: simplifyPath(path) }));
+    const response = await fetch(`${API_BASE_URL}/api/static-map?data=${query}`);
+    if (!response.ok) throw new Error('地图底图暂时不可用。');
+    const blob = await response.blob(); if (!blob.type.startsWith('image/')) throw new Error('地图底图返回无效。');
+    const imageUrl = URL.createObjectURL(blob); const image = document.createElement('img'); image.className = 'share-route-map-backdrop'; image.alt = '';
+    const loaded = new Promise((resolve, reject) => { image.onload = resolve; image.onerror = reject; }); image.src = imageUrl; await loaded;
+    frame.prepend(image); wrapper.classList.add('has-amap-backdrop');
+    return () => URL.revokeObjectURL(imageUrl);
   }
 
   function routeTitleSize(title) {
@@ -105,13 +147,8 @@
     });
     const markerPoints = stops.map((stop) => validPoint(stop.location)).filter(Boolean);
     const geometry = [...markerPoints, ...segments.flatMap((segment) => segment.points)];
-    if (!geometry.length) { text(wrapper, 'p', 'share-route-empty', '暂无可绘制的路线位置'); return wrapper; }
-    const xs = geometry.map(([x]) => x); const ys = geometry.map(([, y]) => y);
-    const minX = Math.min(...xs); const maxX = Math.max(...xs); const minY = Math.min(...ys); const maxY = Math.max(...ys);
-    const dx = Math.max(maxX - minX, .001); const dy = Math.max(maxY - minY, .001); const padding = 58;
-    const scale = Math.min((1000 - padding * 2) / dx, (440 - padding * 2) / dy);
-    const centerX = (minX + maxX) / 2; const centerY = (minY + maxY) / 2;
-    const project = ([x, y]) => [500 + (x - centerX) * scale, 220 - (y - centerY) * scale];
+    if (!geometry.length) { text(wrapper, 'p', 'share-route-empty', '暂无可绘制的路线位置'); return { wrapper, ready: Promise.resolve(), cleanup: () => {} }; }
+    const view = routeMapView(geometry); const project = view.project;
     segments.forEach((segment) => {
       const line = svgNode('polyline', { points: segment.points.map(project).map((point) => point.join(',')).join(' ') });
       line.classList.add('share-route-line'); if (segment.fallback) line.classList.add('is-fallback'); svg.append(line);
@@ -123,9 +160,12 @@
       svg.append(circle, label);
     });
     placeNameLabels(stops, project, svg);
-    wrapper.append(svg);
+    const frame = document.createElement('div'); frame.className = 'share-route-map-frame'; frame.append(svg); wrapper.append(frame);
     if (hasFallback) text(wrapper, 'p', 'share-route-note', '虚线路段为站点位置示意');
-    return wrapper;
+    const path = segments.flatMap((segment) => segment.points);
+    let cleanup = () => {};
+    const ready = setStaticMapBackdrop(frame, wrapper, view, path).then((dispose) => { cleanup = dispose; }).catch((error) => { console.warn('分享地图底图加载失败', error); });
+    return { wrapper, ready, cleanup: () => cleanup() };
   }
 
   function buildStation(stop, isStart = false) {
@@ -155,12 +195,12 @@
     const header = document.createElement('header'); header.className = 'share-header'; text(header, 'span', 'share-kicker', 'ROADBOOK / SHARE'); const title = text(header, 'h2', 'share-route-title', model.title); title.style.setProperty('--route-title-size', `${routeTitleSize(model.title)}px`); text(header, 'p', 'share-subtitle', `${model.departureText} 出发 · ${model.subtitle}`); poster.append(header);
     const summary = document.createElement('section'); summary.className = 'share-summary';
     [['总里程', model.summary.distance], ['驾驶时间', model.summary.drive], ['停留时间', model.summary.stay], ['总行程', model.summary.duration]].forEach(([label, value]) => { const item = document.createElement('div'); text(item, 'span', '', label); text(item, 'strong', '', value); summary.append(item); });
-    const final = document.createElement('div'); final.className = 'share-summary-final'; text(final, 'span', '', '预计最终抵达'); text(final, 'strong', '', model.summary.finalArrival); summary.append(final); poster.append(summary, buildRouteOverview(model));
+    const final = document.createElement('div'); final.className = 'share-summary-final'; text(final, 'span', '', '预计最终抵达'); text(final, 'strong', '', model.summary.finalArrival); summary.append(final); const routeOverview = buildRouteOverview(model); poster.append(summary, routeOverview.wrapper);
     const timeline = document.createElement('section'); timeline.className = 'share-timeline'; text(timeline, 'span', 'share-section-label', '行程时间轴'); timeline.append(buildStation(model.start, true));
     model.destinations.forEach((destination) => { timeline.append(buildLeg(destination.routeFromPrevious), buildStation(destination)); });
     poster.append(timeline);
     const footer = document.createElement('footer'); footer.className = 'share-footer'; text(footer, 'strong', '', '自驾时间计算器'); text(footer, 'span', '', '基于官方导航数据生成'); poster.append(footer);
-    return poster;
+    return { poster, routeReady: routeOverview.ready, cleanup: routeOverview.cleanup };
   }
 
   function computeCaptureScale(node) {
@@ -190,9 +230,9 @@
     return canvasToBlob(canvas);
   }
 
-  async function prepare(model, token) {
+  async function prepare(model, poster, routeReady, token) {
     try {
-      const poster = $('#sharePoster'); const blob = await capturePoster(poster);
+      await routeReady; const blob = await capturePoster(poster);
       if (token !== generation || $('#shareModal').hidden) return;
       shareBlob = blob; shareFilename = buildFilename(model); setActionsEnabled(true); setShareStatus('长图已生成', 'ready');
     } catch (error) {
@@ -213,12 +253,12 @@
   }
 
   function close() {
-    generation += 1; shareBlob = null; shareFilename = ''; shareState = 'idle'; setActionsEnabled(false); $('#sharePosterHost').replaceChildren(); $('#shareModal').hidden = true;
+    generation += 1; shareCleanup(); shareCleanup = () => {}; shareBlob = null; shareFilename = ''; shareState = 'idle'; setActionsEnabled(false); $('#sharePosterHost').replaceChildren(); $('#shareModal').hidden = true;
   }
 
   function open(model) {
     if (!model?.start?.location || !model.destinations?.length) return;
-    generation += 1; const token = generation; shareBlob = null; shareFilename = ''; setActionsEnabled(false); $('#sharePosterHost').replaceChildren(buildPoster(model)); $('#shareModal').hidden = false; setShareStatus('正在生成高清长图…', 'preparing'); prepare(model, token);
+    generation += 1; const token = generation; shareCleanup(); shareCleanup = () => {}; shareBlob = null; shareFilename = ''; setActionsEnabled(false); const built = buildPoster(model); shareCleanup = built.cleanup; $('#sharePosterHost').replaceChildren(built.poster); $('#shareModal').hidden = false; setShareStatus('正在加载地图底图并生成高清长图…', 'preparing'); prepare(model, built.poster, built.routeReady, token);
   }
 
   $('#shareClose').addEventListener('click', close);

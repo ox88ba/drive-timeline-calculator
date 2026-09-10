@@ -13,7 +13,7 @@
   const timelineNode = $('#timeline'); const dockNode = $('#tripDock'); const mapNode = $('#routeMap'); const template = $('#destinationTemplate');
   const dockShell = document.querySelector('.trip-dock'); const dockToggle = $('#dockToggle'); const dockTitle = document.querySelector('.dock-title');
   let routeCache = readJson(ROUTE_CACHE_KEY, {}); let sunsetCache = readJson(SUNSET_CACHE_KEY, {}); let elevationCache = readJson(ELEVATION_CACHE_KEY, {});
-  let searchTimers = new Map(); let pendingDeleteIndex = null; let activeDockId = null; let dockPointer = null; let dockSuppressClickUntil = 0; let dockToastTimer = null; let mapGesture = null; let routeRebuildVersion = 0;
+  let searchTimers = new Map(); let pendingDeleteIndex = null; let activeDockId = null; let dockPointer = null; let dockSuppressClickUntil = 0; let dockToastTimer = null; let mapGesture = null; let routeRebuildVersion = 0; let mapRenderVersion = 0; let amapLoadPromise = null; let amapMap = null;
   const newId = () => (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`);
   const cloneStart = () => ({ ...START_LOCATION });
   function isValidLocation(location) { return Boolean(location && Number.isFinite(Number(location.latitude)) && Number.isFinite(Number(location.longitude))); }
@@ -206,20 +206,63 @@
   function clearDockDragFeedback(pointer = dockPointer) { if (pointer?.pressTimer) clearTimeout(pointer.pressTimer); pointer?.source?.classList.remove('is-pressing', 'is-dragging'); dockNode.querySelectorAll('.dock-item.drag-over').forEach((node) => node.classList.remove('drag-over')); dockShell.classList.remove('is-dragging'); dockTitle.textContent = '行程'; }
   function armDockDrag(pointer) { if (!pointer || pointer.armed) return; pointer.armed = true; pointer.source.classList.remove('is-pressing'); pointer.source.classList.add('is-dragging'); dockShell.classList.add('is-dragging'); dockTitle.textContent = '拖到目标位置'; }
   function renderDock() { dockNode.replaceChildren(); const start = document.createElement('button'); start.type = 'button'; start.className = 'dock-item'; start.dataset.anchor = 'startCard'; const startName = trip.startLocation?.name || trip.startSearchText || '未选择出发点'; start.innerHTML = `<b>01</b><span></span>`; start.querySelector('span').textContent = startName; dockNode.append(start); trip.destinations.forEach((destination, index) => { const button = document.createElement('button'); button.type = 'button'; button.className = `dock-item${destination.isSkipped ? ' is-skipped' : ''}${destination.id === activeDockId ? ' is-active' : ''}`; button.dataset.id = destination.id; button.draggable = false; button.setAttribute('aria-label', `${String(index + 2).padStart(2, '0')} ${destination.location?.name || destination.searchText || '未命名目的地'}`); const number = String(index + 2).padStart(2, '0'); button.innerHTML = `<b>${number}</b><span></span>`; button.querySelector('span').textContent = destination.location?.name || destination.searchText || '未命名目的地'; dockNode.append(button); }); dockNode.hidden = dockShell.classList.contains('is-collapsed'); }
-  function renderMap() {
-    mapNode.replaceChildren(); if (!isValidLocation(trip.startLocation)) { mapNode.textContent = '请先搜索并选择出发点 POI。'; return; } const legs = activeLegs(); const points = [trip.startLocation, ...legs.map((leg) => leg.destination.location)];
-    if (!legs.length) { mapNode.textContent = '添加有效目的地后，在这里预览高德真实驾车道路轨迹。'; return; }
+  function mapPreviewData() {
+    if (!isValidLocation(trip.startLocation)) return { message: '请先搜索并选择出发点 POI。' };
+    const legs = activeLegs(); if (!legs.length) return { message: '添加有效目的地后，在这里预览高德真实驾车道路轨迹。' };
     const geometry = legs.flatMap((leg) => leg.destination.route?.polyline?.map((point) => [Number(point[0]), Number(point[1])]) || []).filter(([x, y]) => Number.isFinite(x) && Number.isFinite(y));
-    if (!geometry.length) { mapNode.textContent = '高德路线时间已获取，真实道路轨迹正在等待地图服务返回。'; return; }
+    if (!geometry.length) return { message: '高德路线时间已获取，真实道路轨迹正在等待地图服务返回。' };
+    return { legs, geometry, points: [trip.startLocation, ...legs.map((leg) => leg.destination.location)] };
+  }
+  function disposeAmap() { if (!amapMap) return; try { amapMap.destroy(); } catch { /* A failed map initialization may not be destroyable. */ } amapMap = null; }
+  function renderFallbackMap(data, note = '') {
+    const { legs, geometry, points } = data; mapNode.replaceChildren();
     const all = [...geometry, ...points.map((point) => [Number(point.longitude), Number(point.latitude)])]; const xs = all.map((p) => p[0]); const ys = all.map((p) => p[1]); const minX = Math.min(...xs); const maxX = Math.max(...xs); const minY = Math.min(...ys); const maxY = Math.max(...ys); const dx = Math.max(maxX - minX, .001); const dy = Math.max(maxY - minY, .001);
     const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); svg.setAttribute('viewBox', '0 0 1000 500'); svg.setAttribute('aria-label', '高德驾车道路路线预览'); svg.classList.add('route-map-svg'); const scene = document.createElementNS(svg.namespaceURI, 'g'); scene.dataset.mapScene = 'true';
-    // Use one scale for both axes. The previous independent X/Y scaling could
-    // place an end of a long route against the SVG edge on narrow screens.
     const padding = 62; const scale = Math.min((1000 - padding * 2) / dx, (500 - padding * 2) / dy); const centerX = (minX + maxX) / 2; const centerY = (minY + maxY) / 2;
     const project = ([x, y]) => [500 + (x - centerX) * scale, 250 - (y - centerY) * scale];
     legs.forEach((leg) => { const polyline = leg.destination.route?.polyline || []; if (!polyline.length) return; const line = document.createElementNS(svg.namespaceURI, 'polyline'); line.setAttribute('points', polyline.map(project).map((p) => p.join(',')).join(' ')); line.classList.add('map-road'); scene.append(line); });
     [{ location: trip.startLocation, number: '01' }, ...legs.map((leg) => ({ location: leg.destination.location, number: String(leg.index + 2).padStart(2, '0') }))].forEach((marker) => { const [x, y] = project([Number(marker.location.longitude), Number(marker.location.latitude)]); const circle = document.createElementNS(svg.namespaceURI, 'circle'); circle.setAttribute('cx', x); circle.setAttribute('cy', y); circle.setAttribute('r', '15'); circle.classList.add('map-marker'); const label = document.createElementNS(svg.namespaceURI, 'text'); label.setAttribute('x', x); label.setAttribute('y', y + 4); label.setAttribute('text-anchor', 'middle'); label.classList.add('map-marker-label'); label.textContent = marker.number; scene.append(circle, label); });
-    svg.append(scene); mapNode.append(svg); bindMapGestures(svg, scene);
+    svg.append(scene); mapNode.append(svg); bindMapGestures(svg, scene); if (note) { const hint = document.createElement('span'); hint.className = 'map-fallback-note'; hint.textContent = note; mapNode.append(hint); }
+  }
+  async function loadAmap() {
+    if (globalThis.AMap?.Map) return globalThis.AMap;
+    if (amapLoadPromise) return amapLoadPromise;
+    amapLoadPromise = (async () => {
+      if (!API_BASE_URL) throw new Error('地图底图需要通过已部署的网页加载。');
+      const config = await requestJson('/api/map-config');
+      if (!config?.jsApiKey || !config?.serviceHost) throw new Error('地图底图配置无效。');
+      globalThis._AMapSecurityConfig = { ...(globalThis._AMapSecurityConfig || {}), serviceHost: config.serviceHost };
+      await new Promise((resolve, reject) => {
+        const existing = document.querySelector('script[data-amap-jsapi]');
+        if (existing) { existing.addEventListener('load', resolve, { once: true }); existing.addEventListener('error', () => reject(new Error('地图底图加载失败。')), { once: true }); return; }
+        const script = document.createElement('script'); script.dataset.amapJsapi = 'true'; script.async = true; script.src = `https://webapi.amap.com/maps?v=2.0&key=${encodeURIComponent(config.jsApiKey)}`; script.onload = resolve; script.onerror = () => reject(new Error('地图底图加载失败。')); document.head.append(script);
+      });
+      if (!globalThis.AMap?.Map) throw new Error('地图底图未正确初始化。');
+      return globalThis.AMap;
+    })().catch((error) => { amapLoadPromise = null; throw error; });
+    return amapLoadPromise;
+  }
+  function mapMarkerContent(number) { const node = document.createElement('span'); node.className = 'amap-route-marker'; node.textContent = number; return node.outerHTML; }
+  async function renderAmapMap(data, version) {
+    try {
+      const AMap = await loadAmap(); if (version !== mapRenderVersion) return;
+      mapNode.replaceChildren(); const canvas = document.createElement('div'); canvas.className = 'amap-route-canvas'; canvas.setAttribute('aria-label', '可缩放的高德地图路线预览'); mapNode.append(canvas);
+      const map = new AMap.Map(canvas, { viewMode: '2D', zoom: 5, zooms: [3, 12], resizeEnable: true, showLabel: true }); amapMap = map;
+      const overlays = [];
+      data.legs.forEach((leg) => { const path = (leg.destination.route?.polyline || []).map((point) => [Number(point[0]), Number(point[1])]).filter(([x, y]) => Number.isFinite(x) && Number.isFinite(y)); if (path.length >= 2) { const line = new AMap.Polyline({ path, strokeColor: '#315efb', strokeOpacity: .9, strokeWeight: 5, strokeLineJoin: 'round', strokeLineCap: 'round', zIndex: 20 }); overlays.push(line); } });
+      [{ location: trip.startLocation, number: '01' }, ...data.legs.map((leg) => ({ location: leg.destination.location, number: String(leg.index + 2).padStart(2, '0') }))].forEach((marker) => { const instance = new AMap.Marker({ position: [Number(marker.location.longitude), Number(marker.location.latitude)], content: mapMarkerContent(marker.number), offset: new AMap.Pixel(-15, -15), anchor: 'top-left', zIndex: 40 }); overlays.push(instance); });
+      map.add(overlays); map.setFitView(overlays, false, [36, 36, 36, 36]);
+      // The fitted view is allowed to reveal the complete route, but the user
+      // cannot zoom out into an unusably empty world map or into street-level detail.
+      setTimeout(() => { if (version !== mapRenderVersion || amapMap !== map) return; const fitted = Number(map.getZoom()); if (Number.isFinite(fitted)) map.setZooms([Math.max(3, Math.floor(fitted) - 1), Math.min(13, Math.max(9, Math.ceil(fitted) + 3))]); }, 0);
+    } catch (error) {
+      if (version === mapRenderVersion) renderFallbackMap(data, '地图底图暂不可用，已显示道路轨迹示意。');
+      console.warn('高德地图底图加载失败', error);
+    }
+  }
+  function renderMap() {
+    const version = ++mapRenderVersion; disposeAmap(); const data = mapPreviewData(); if (data.message) { mapNode.replaceChildren(); mapNode.textContent = data.message; return; }
+    renderFallbackMap(data); if (API_BASE_URL) renderAmapMap(data, version);
   }
   function bindMapGestures(svg, scene) { let scale = 1; let tx = 0; let ty = 0; const paint = () => scene.setAttribute('transform', `translate(${tx} ${ty}) scale(${scale})`); svg.addEventListener('wheel', (event) => { event.preventDefault(); scale = Math.max(.7, Math.min(4, scale * (event.deltaY < 0 ? 1.12 : .89))); paint(); }, { passive: false }); svg.addEventListener('pointerdown', (event) => { mapGesture = { x: event.clientX, y: event.clientY, tx, ty }; svg.setPointerCapture(event.pointerId); }); svg.addEventListener('pointermove', (event) => { if (!mapGesture) return; tx = mapGesture.tx + (event.clientX - mapGesture.x) * 1.4; ty = mapGesture.ty + (event.clientY - mapGesture.y) * 1.4; paint(); }); svg.addEventListener('pointerup', () => { mapGesture = null; }); }
   function render() {
