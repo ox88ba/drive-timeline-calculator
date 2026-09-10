@@ -4,7 +4,7 @@
 
   const $ = (selector) => document.querySelector(selector);
   const API_BASE_URL = String(globalThis.DRIVE_API_BASE_URL || '').replace(/\/$/, '');
-  const SHARE_NAME_LIMIT = 20;
+  const SHARE_NAME_LIMIT = 50;
   let shareBlob = null;
   let shareFilename = '';
   let shareModel = null;
