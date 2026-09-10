@@ -281,7 +281,7 @@
     const sunset = Date.parse(destination.arrivalPhoto?.sunsetAt);
     if (Date.parse(destination.arrivalTime) > sunset + 3600000) {
       const moon = document.createElement('span');
-      moon.className = 'night-arrival'; moon.textContent = '☾';
+      moon.className = 'night-arrival'; moon.textContent = '🌙';
       moon.title = '抵达时间晚于当地日落后1小时';
       moon.setAttribute('role', 'img'); moon.setAttribute('aria-label', moon.title);
       card.querySelector('[data-arrival]').append(moon);
@@ -290,10 +290,10 @@
     if (index < 0) return;
     const previous = index > 0 ? legs[index - 1].destination.elevationMeters : elevationCache[elevationKey(legs[index].origin)];
     const current = destination.elevationMeters;
-    if (Number.isFinite(previous) && Number.isFinite(current) && current >= 2500 && current > previous) {
+    if (Number.isFinite(current) && current >= 2500) {
       const note = document.createElement('p'); note.className = 'altitude-warning';
-      note.textContent = `本段海拔上升${Math.round(current - previous)}m，谨防高反。`;
-      note.title = '根据相邻有效站点海拔差计算，不代表道路累计爬升';
+      note.textContent = Number.isFinite(previous) && current > previous ? `本站位于高原，海拔上升${Math.round(current - previous)}m` : '本站位于高原';
+      note.title = Number.isFinite(previous) && current > previous ? '海拔上升根据相邻有效站点的海拔差计算，不代表道路累计爬升' : '本站海拔达到2500m';
       card.querySelector('.time-grid').after(note);
     }
   }
