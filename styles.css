@@ -130,3 +130,21 @@
 /* The shared Roadbook title and map labels adapt to dense, long itineraries. */
 .share-header .share-route-title { font-size:var(--route-title-size,27px); line-height:1.32; overflow-wrap:anywhere; }
 .share-route-place-label { fill:#4c566a; font:500 11px "Noto Sans SC",sans-serif; paint-order:stroke; stroke:#fff; stroke-linejoin:round; stroke-width:4px; pointer-events:none; }
+
+/* Route connectors also provide a quick insertion point for a via stop. */
+.route-connector { display:flex; align-items:flex-start; justify-content:space-between; gap:10px; padding-right:8px; }
+.route-connector > span { min-width:0; }
+.add-via-point { position:relative; z-index:1; flex:0 0 auto; margin-top:-2px; padding:5px 9px; border:1px solid #d5dcf5; border-radius:999px; color:#315bdc; background:#f5f7ff; font:500 11px "Noto Sans SC",sans-serif; }
+.add-via-point:active { transform:translateY(1px); }
+.route-preview-actions { display:flex; flex-wrap:wrap; justify-content:flex-end; gap:6px; }
+.route-map { aspect-ratio:1 / 1; min-height:0; }
+.amap-route-canvas,.route-map-svg { height:100%; min-height:0; }
+.refresh-modal { width:min(100%,390px); }
+.human-check { display:grid; gap:8px; margin-top:17px; color:var(--muted); font-size:12px; }
+.human-check input[type="range"] { width:100%; accent-color:var(--accent); }
+.human-check small { color:#7c879a; font-size:11px; }
+.refresh-modal button:disabled { cursor:not-allowed; opacity:.48; }
+@media (max-width:440px) {
+  .route-connector { gap:6px; padding-right:3px; }
+  .add-via-point { padding:5px 7px; font-size:10px; }
+}
