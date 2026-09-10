@@ -132,6 +132,11 @@
 .share-header .share-route-title { font-size:var(--route-title-size,27px); line-height:1.32; overflow-wrap:anywhere; }
 .share-route-place-label { fill:#4c566a; font:500 11px "Noto Sans SC",sans-serif; paint-order:stroke; stroke:#fff; stroke-linejoin:round; stroke-width:4px; pointer-events:none; }
 
+.drive-warning { display:inline-block; margin:6px 0 0 8px; padding:4px 8px; border-radius:999px; font:500 12px/1.5 sans-serif; vertical-align:middle; white-space:nowrap; }
+.drive-warning.is-orange { color:#a64b10; background:#fff0df; }
+.drive-warning.is-red { color:#b42332; background:#ffe7e9; }
+.night-arrival { display:inline-block; margin-left:8px; color:#596381; font:600 22px/1 sans-serif; vertical-align:middle; }
+.altitude-warning { margin:8px 0 0; color:#9b591e; font:400 12px/1.65 sans-serif; }
 /* Route connectors also provide a quick insertion point for a via stop. */
 .route-connector { display:flex; align-items:flex-start; justify-content:space-between; gap:10px; padding-right:8px; }
 .route-connector > span { min-width:0; }
