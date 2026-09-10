@@ -4,8 +4,10 @@
 
   const $ = (selector) => document.querySelector(selector);
   const API_BASE_URL = String(globalThis.DRIVE_API_BASE_URL || '').replace(/\/$/, '');
+  const SHARE_NAME_LIMIT = 20;
   let shareBlob = null;
   let shareFilename = '';
+  let shareModel = null;
   let shareState = 'idle';
   let generation = 0;
   let shareCleanup = () => {};
@@ -26,6 +28,54 @@
   function setActionsEnabled(enabled) {
     $('#shareSystem').disabled = !enabled;
     $('#shareDownload').disabled = !enabled;
+  }
+
+  function truncateShareName(value) {
+    return Array.from(String(value || '')).slice(0, SHARE_NAME_LIMIT).join('');
+  }
+
+  function getShareName() {
+    return truncateShareName($('#shareNameInput')?.value).trim();
+  }
+
+  function shareNameTimestamp(date = new Date()) {
+    const part = (value) => String(value).padStart(2, '0');
+    return `${part(date.getDate())}${part(date.getHours())}${part(date.getMinutes())}`;
+  }
+
+  function quickRouteName(model) {
+    const start = String(model?.start?.name || '出发地').trim();
+    const end = String(model?.destinations?.at(-1)?.name || start).trim();
+    return `${start}→${end}`;
+  }
+
+  function updateShareName() {
+    const input = $('#shareNameInput');
+    if (!input) return;
+    const next = truncateShareName(input.value);
+    if (input.value !== next) input.value = next;
+    $('#shareNameCount').textContent = `${Array.from(next).length}/${SHARE_NAME_LIMIT}`;
+    if (shareBlob && shareModel) shareFilename = buildFilename(shareModel);
+  }
+
+  function appendShareName(part) {
+    const input = $('#shareNameInput');
+    if (!input || !part) return;
+    const current = truncateShareName(input.value).trim();
+    if (!current.includes(part)) input.value = truncateShareName(`${current}${current ? ' ' : ''}${part}`);
+    updateShareName();
+    input.focus();
+  }
+
+  function configureShareName(model) {
+    const routeButton = $('#shareQuickRoute');
+    const stampButton = $('#shareQuickStamp');
+    routeButton.textContent = quickRouteName(model);
+    routeButton.title = '追加起点至最后一个目的地';
+    stampButton.textContent = shareNameTimestamp();
+    stampButton.title = '追加当前日期和时间';
+    $('#shareNameInput').value = '';
+    updateShareName();
   }
 
   function photoBadge(moment) {
@@ -217,7 +267,7 @@
   }
 
   function sanitizeName(value) { return String(value || '').replace(/[\\/:*?"<>|]/g, '').replace(/\s+/g, ' ').trim() || '行程'; }
-  function buildFilename(model) { const date = String(model.departureText || '').replace(/\//g, '-').slice(0, 10) || '行程'; return `roadbook_${sanitizeName(model.start.name)}-${sanitizeName(model.destinations.at(-1)?.name || model.start.name)}_${date}.png`; }
+  function buildFilename(model) { const customName = getShareName(); if (customName) return `roadbook_${sanitizeName(customName)}.png`; const date = String(model.departureText || '').replace(/\//g, '-').slice(0, 10) || '行程'; return `roadbook_${sanitizeName(model.start.name)}-${sanitizeName(model.destinations.at(-1)?.name || model.start.name)}_${date}.png`; }
 
   function downloadBlob(blob, filename) {
     const url = URL.createObjectURL(blob); const anchor = document.createElement('a'); anchor.href = url; anchor.download = filename; anchor.rel = 'noopener'; document.body.append(anchor); anchor.click(); anchor.remove(); setTimeout(() => URL.revokeObjectURL(url), 1000);
@@ -244,7 +294,8 @@
 
   async function shareFile() {
     if (!shareBlob) return;
-    const file = new File([shareBlob], shareFilename, { type: 'image/png' }); const shareData = { files: [file], title: '自驾行程', text: '我的自驾 Roadbook' };
+    const name = getShareName() || '自驾行程';
+    const file = new File([shareBlob], shareFilename, { type: 'image/png' }); const shareData = { files: [file], title: name, text: `${name} · 我的自驾 Roadbook` };
     let canShareFile = false;
     try { canShareFile = typeof navigator.share === 'function' && (typeof navigator.canShare !== 'function' || navigator.canShare(shareData)); } catch { canShareFile = false; }
     if (!canShareFile) { downloadBlob(shareBlob, shareFilename); setShareStatus('当前浏览器不支持直接分享图片，已改为保存 PNG', 'ready'); return; }
@@ -253,18 +304,22 @@
   }
 
   function close() {
-    generation += 1; shareCleanup(); shareCleanup = () => {}; shareBlob = null; shareFilename = ''; shareState = 'idle'; setActionsEnabled(false); $('#sharePosterHost').replaceChildren(); $('#shareModal').hidden = true;
+    generation += 1; shareCleanup(); shareCleanup = () => {}; shareBlob = null; shareFilename = ''; shareModel = null; shareState = 'idle'; setActionsEnabled(false); $('#sharePosterHost').replaceChildren(); $('#shareModal').hidden = true;
   }
 
   function open(model) {
     if (!model?.start?.location || !model.destinations?.length) return;
-    generation += 1; const token = generation; shareCleanup(); shareCleanup = () => {}; shareBlob = null; shareFilename = ''; setActionsEnabled(false); const built = buildPoster(model); shareCleanup = built.cleanup; $('#sharePosterHost').replaceChildren(built.poster); $('#shareModal').hidden = false; setShareStatus('正在加载地图底图并生成高清长图…', 'preparing'); prepare(model, built.poster, built.routeReady, token);
+    generation += 1; const token = generation; shareCleanup(); shareCleanup = () => {}; shareBlob = null; shareFilename = ''; shareModel = model; configureShareName(model); setActionsEnabled(false); const built = buildPoster(model); shareCleanup = built.cleanup; $('#sharePosterHost').replaceChildren(built.poster); $('#shareModal').hidden = false; setShareStatus('正在加载地图底图并生成高清长图…', 'preparing'); prepare(model, built.poster, built.routeReady, token);
   }
 
   $('#shareClose').addEventListener('click', close);
   $('#shareModal').addEventListener('click', (event) => { if (event.target === event.currentTarget) close(); });
   $('#shareSystem').addEventListener('click', shareFile);
   $('#shareDownload').addEventListener('click', () => { if (!shareBlob) return; downloadBlob(shareBlob, shareFilename); setShareStatus('PNG 已开始保存', 'ready'); });
+  $('#shareNameInput').addEventListener('input', updateShareName);
+  $('#shareQuickRoute').addEventListener('click', () => appendShareName($('#shareQuickRoute').textContent));
+  $('#shareQuickStamp').addEventListener('click', () => appendShareName($('#shareQuickStamp').textContent));
+  document.querySelectorAll('.share-name-suffix').forEach((button) => button.addEventListener('click', () => appendShareName(button.textContent)));
   document.addEventListener('keydown', (event) => { if (event.key === 'Escape' && !$('#shareModal').hidden) close(); });
 
   globalThis.DriveShare = { open, close };
