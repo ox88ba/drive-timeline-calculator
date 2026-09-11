@@ -1,0 +1,209 @@
+/* ============================================================
+   时光路书 · v2 视觉层
+   作用域：html[data-engine="timeflow"]
+   叠加在暗夜路书底座（data-skin="roadbook"）之上：
+   - 目的地卡片重构为「抵达片 / 停留带 / 出发片」三段天空
+   - 天空由 timeflow.js 注入的 --tf-a-bg / --tf-b-bg 变量渲染
+   - 停留按钮组按旅行场景标注「停留时间 / 过夜至」
+   ============================================================ */
+
+/* ---------- 目的地卡片：两片天空 ---------- */
+html[data-engine="timeflow"] .destination-card,
+html[data-engine="timeflow"] .destination-card.photo-golden,
+html[data-engine="timeflow"] .destination-card.photo-sunset,
+html[data-engine="timeflow"] .destination-card.photo-blue {
+  padding-bottom: 0;
+  border: 1px solid rgba(255, 255, 255, .12);
+  background: var(--tf-a-bg, linear-gradient(160deg, rgba(255, 255, 255, .058), rgba(255, 255, 255, .026)));
+  box-shadow: 0 20px 48px rgba(0, 0, 0, .5), inset 0 1px 0 rgba(255, 255, 255, .12);
+  transition: background .6s ease, box-shadow .3s ease;
+}
+
+/* 抵达片文字：随天空明暗自适应 */
+html[data-engine="timeflow"] .destination-card[data-sky-a] .place-picker input {
+  color: var(--tf-a-ink);
+  border-bottom-color: color-mix(in srgb, var(--tf-a-ink) 30%, transparent);
+}
+html[data-engine="timeflow"] .destination-card[data-sky-a] .place-picker input::placeholder {
+  color: color-mix(in srgb, var(--tf-a-ink) 45%, transparent);
+}
+html[data-engine="timeflow"] .destination-card[data-sky-a] .place-address {
+  color: color-mix(in srgb, var(--tf-a-ink) 78%, transparent);
+}
+html[data-engine="timeflow"] .destination-card[data-sky-a] .place-meta {
+  color: color-mix(in srgb, var(--tf-a-ink) 62%, transparent);
+}
+html[data-engine="timeflow"] .destination-card[data-sky-a] .search-mark {
+  color: color-mix(in srgb, var(--tf-a-ink) 55%, transparent);
+}
+html[data-engine="timeflow"] .destination-card[data-sky-a] .time-grid > span {
+  color: color-mix(in srgb, var(--tf-a-ink) 78%, transparent);
+}
+html[data-engine="timeflow"] .destination-card[data-sky-a] .time-grid strong {
+  color: var(--tf-a-ink);
+  font-size: 21px;
+  text-shadow: 0 1px 12px rgba(0, 0, 0, .18);
+}
+html[data-engine="timeflow"] .destination-card[data-sky-a] .route-status {
+  color: color-mix(in srgb, var(--tf-a-ink) 82%, transparent);
+  background: color-mix(in srgb, var(--tf-a-ink) 10%, transparent);
+}
+html[data-engine="timeflow"] .destination-card[data-sky-a] .route-status.error {
+  color: #ffd7da;
+  background: rgba(200, 40, 55, .35);
+}
+html[data-engine="timeflow"] .destination-card[data-sky-a] .card-actions button {
+  color: color-mix(in srgb, var(--tf-a-ink) 75%, transparent);
+  background: color-mix(in srgb, var(--tf-a-ink) 10%, transparent);
+}
+html[data-engine="timeflow"] .destination-card[data-sky-a] .card-actions button:last-child { color: #ff9aa1; }
+html[data-engine="timeflow"] .destination-card[data-sky-a] .station-number {
+  color: var(--tf-a-ink);
+  text-shadow: 0 0 10px color-mix(in srgb, var(--tf-a-ink) 45%, transparent);
+}
+html[data-engine="timeflow"] .destination-card[data-sky-a] .section-label {
+  color: color-mix(in srgb, var(--tf-a-ink) 60%, transparent);
+}
+
+/* 时段徽章 & 日光余额 */
+html[data-engine="timeflow"] .tf-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 8px;
+  border-radius: 999px;
+  font: 600 10px/1.4 "Noto Sans SC", sans-serif;
+  letter-spacing: .04em;
+  white-space: nowrap;
+}
+html[data-engine="timeflow"] .tf-moment {
+  color: var(--tf-a-ink, #e9edf6);
+  background: color-mix(in srgb, var(--tf-a-ink, #fff) 16%, transparent);
+  border: 1px solid color-mix(in srgb, var(--tf-a-ink, #fff) 26%, transparent);
+}
+html[data-engine="timeflow"] .departure-block .tf-moment {
+  color: var(--tf-b-ink, #e9edf6);
+  background: color-mix(in srgb, var(--tf-b-ink, #fff) 16%, transparent);
+  border-color: color-mix(in srgb, var(--tf-b-ink, #fff) 26%, transparent);
+}
+html[data-engine="timeflow"] .tf-daylight { margin-top: 7px; width: fit-content; }
+html[data-engine="timeflow"] .tf-good { color: #d9f4e2; background: rgba(46, 160, 100, .3); border: 1px solid rgba(120, 220, 160, .4); }
+html[data-engine="timeflow"] .tf-mid  { color: #ffedc9; background: rgba(220, 160, 60, .3); border: 1px solid rgba(255, 200, 110, .42); }
+html[data-engine="timeflow"] .tf-warn { color: #ffd9c9; background: rgba(220, 110, 50, .34); border: 1px solid rgba(255, 150, 90, .45); }
+html[data-engine="timeflow"] .tf-dim,
+html[data-engine="timeflow"] .tf-dark { color: #ccd6ee; background: rgba(90, 110, 170, .3); border: 1px solid rgba(150, 170, 230, .35); }
+
+/* ---------- 停留带：全幅玻璃夜带 ---------- */
+html[data-engine="timeflow"] .stay-section {
+  margin: 15px -16px 0;
+  padding: 13px 16px 15px;
+  border-top: 1px solid rgba(255, 255, 255, .13);
+  background: rgba(8, 12, 20, .46);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+/* 无出发片时由停留带收尾圆角 */
+html[data-engine="timeflow"] .destination-card:not(.tf-has-dep) .stay-section {
+  border-radius: 0 0 18px 18px;
+}
+/* 隐藏原区块级「停留时间」标题，改为按钮组小标题 */
+html[data-engine="timeflow"] .stay-section > span { display: none; }
+html[data-engine="timeflow"] .stay-buttons { margin-top: 0; gap: 9px; }
+html[data-engine="timeflow"] .stay-relative-buttons,
+html[data-engine="timeflow"] .stay-until-buttons { align-items: center; }
+html[data-engine="timeflow"] .stay-relative-buttons::before,
+html[data-engine="timeflow"] .stay-until-buttons::before {
+  flex: 0 0 auto;
+  margin-right: 1px;
+  font: 600 10px/1 "Noto Sans SC", sans-serif;
+  letter-spacing: .06em;
+  color: #93a0b8;
+  white-space: nowrap;
+}
+html[data-engine="timeflow"] .stay-relative-buttons::before { content: "停留时间"; }
+html[data-engine="timeflow"] .stay-until-buttons::before { content: "过夜至"; }
+html[data-engine="timeflow"] .stay-section p[data-stay-current] {
+  color: #aeb9cf;
+}
+html[data-engine="timeflow"] .destination-card[data-tf-overnight] .stay-section {
+  background:
+    radial-gradient(1.2px 1.2px at 22% 30%, rgba(255, 255, 255, .75), transparent),
+    radial-gradient(1px 1px at 45% 18%, rgba(255, 255, 255, .5), transparent),
+    radial-gradient(1.3px 1.3px at 70% 34%, rgba(255, 255, 255, .7), transparent),
+    radial-gradient(1px 1px at 88% 22%, rgba(255, 255, 255, .5), transparent),
+    linear-gradient(180deg, #0a0f1e, #141d35);
+  border-top-color: rgba(140, 165, 230, .25);
+}
+html[data-engine="timeflow"] .destination-card[data-tf-overnight] [data-stay-current]::after {
+  content: " · ☾ 过夜";
+  color: #9fb4e8;
+}
+
+/* ---------- 出发片 ---------- */
+html[data-engine="timeflow"] .departure-block {
+  margin: 13px -16px 0;
+  padding: 12px 16px 16px;
+  border-top: 1px solid rgba(255, 255, 255, .14);
+  border-radius: 0 0 18px 18px;
+  background: var(--tf-b-bg, rgba(255, 255, 255, .04));
+  transition: background .6s ease;
+}
+html[data-engine="timeflow"] .destination-card[data-sky-b] .departure-block > span {
+  color: color-mix(in srgb, var(--tf-b-ink) 68%, transparent);
+}
+html[data-engine="timeflow"] .destination-card[data-sky-b] .departure-block strong {
+  color: var(--tf-b-ink);
+  font-size: 19px;
+}
+
+/* ---------- 出发点卡片：出发时刻的天空 ---------- */
+html[data-engine="timeflow"] .start-card[data-sky-a] {
+  border: 1px solid rgba(255, 255, 255, .12);
+  background: var(--tf-a-bg);
+  box-shadow: 0 20px 48px rgba(0, 0, 0, .5), inset 0 1px 0 rgba(255, 255, 255, .12);
+}
+html[data-engine="timeflow"] .start-card[data-sky-a] .section-label,
+html[data-engine="timeflow"] .start-card[data-sky-a] .date-field,
+html[data-engine="timeflow"] .start-card[data-sky-a] .time-field {
+  color: color-mix(in srgb, var(--tf-a-ink) 66%, transparent);
+}
+html[data-engine="timeflow"] .start-card[data-sky-a] .place-picker input {
+  color: var(--tf-a-ink);
+  border-bottom-color: color-mix(in srgb, var(--tf-a-ink) 32%, transparent);
+}
+html[data-engine="timeflow"] .start-card[data-sky-a] .place-picker input::placeholder {
+  color: color-mix(in srgb, var(--tf-a-ink) 45%, transparent);
+}
+html[data-engine="timeflow"] .start-card[data-sky-a] .place-address {
+  color: color-mix(in srgb, var(--tf-a-ink) 76%, transparent);
+}
+html[data-engine="timeflow"] .start-card[data-sky-a] .date-field input,
+html[data-engine="timeflow"] .start-card[data-sky-a] .time-field input {
+  color: var(--tf-a-ink);
+}
+html[data-engine="timeflow"] .start-card[data-sky-a] .start-number { color: var(--tf-a-ink); }
+html[data-engine="timeflow"] .start-card[data-sky-a] .search-mark {
+  color: color-mix(in srgb, var(--tf-a-ink) 55%, transparent);
+}
+html[data-engine="timeflow"] .start-card[data-sky-a] .quick-starts > span {
+  color: color-mix(in srgb, var(--tf-a-ink) 62%, transparent);
+}
+html[data-engine="timeflow"] .start-card[data-sky-a] .quick-starts button {
+  border-color: color-mix(in srgb, var(--tf-a-ink) 18%, transparent);
+  color: color-mix(in srgb, var(--tf-a-ink) 88%, transparent);
+  background: color-mix(in srgb, var(--tf-a-ink) 10%, transparent);
+}
+
+/* ---------- 跨天分割线：日出刻度 ---------- */
+html[data-engine="timeflow"] .date-divider {
+  color: #f0b46c;
+  text-shadow: 0 0 12px rgba(255, 177, 77, .35);
+}
+html[data-engine="timeflow"] .date-divider::before,
+html[data-engine="timeflow"] .date-divider::after {
+  background: linear-gradient(90deg, transparent, rgba(255, 177, 77, .55), transparent);
+}
+
+/* ---------- 已跳过卡片：天空熄灯 ---------- */
+html[data-engine="timeflow"] .destination-card.is-skipped {
+  background: linear-gradient(160deg, rgba(255, 255, 255, .04), rgba(255, 255, 255, .02));
+}
