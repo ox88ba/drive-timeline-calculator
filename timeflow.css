@@ -105,6 +105,10 @@ html[data-engine="timeflow"] .stay-section {
 html[data-engine="timeflow"] .destination-card:not(.tf-has-dep) .stay-section {
   border-radius: 0 0 18px 18px;
 }
+/* 有出发片时停留带不再保留底padding，避免露出抵达片天空 */
+html[data-engine="timeflow"] .destination-card.tf-has-dep .stay-section {
+  padding-bottom: 0;
+}
 /* 隐藏原区块级「停留时间」标题，改为按钮组小标题 */
 html[data-engine="timeflow"] .stay-section > span { display: none; }
 html[data-engine="timeflow"] .stay-buttons { margin-top: 0; gap: 9px; }
@@ -206,4 +210,72 @@ html[data-engine="timeflow"] .date-divider::after {
 /* ---------- 已跳过卡片：天空熄灯 ---------- */
 html[data-engine="timeflow"] .destination-card.is-skipped {
   background: linear-gradient(160deg, rgba(255, 255, 255, .04), rgba(255, 255, 255, .02));
+}
+
+/* ============================================================
+   动效层：滚动苏醒 / 新站生长 / 天空交叉淡化
+   全走 transform / opacity / filter（可插值），
+   尊重 prefers-reduced-motion。
+   ============================================================ */
+
+/* ① 滚动即时间流逝：视口外「熄灯」，入视口天空苏醒 */
+html[data-engine="timeflow"] .destination-card.tf-preroll {
+  opacity: 0;
+  transform: translateY(12px);
+  filter: saturate(.35) brightness(.78);
+}
+html[data-engine="timeflow"] .destination-card.tf-inview {
+  opacity: 1;
+  transform: none;
+  filter: none;
+  transition: opacity .6s ease,
+              transform .6s cubic-bezier(.22, 1, .36, 1),
+              filter .75s ease,
+              background .6s ease,
+              box-shadow .3s ease;
+}
+
+/* ② 添加目的地：新站生长入场（按站点序号 stagger） */
+html[data-engine="timeflow"] .destination-wrap.tf-enter {
+  animation: tf-grow .55s cubic-bezier(.22, 1, .36, 1) both;
+}
+@keyframes tf-grow {
+  from { opacity: 0; transform: translateY(16px) scale(.985); }
+  to { opacity: 1; transform: none; }
+}
+
+/* ③ 改停留时间：出发片「幽灵层」淡出，露出新时刻天空 */
+html[data-engine="timeflow"] .departure-block {
+  position: relative;
+  overflow: hidden;
+}
+html[data-engine="timeflow"] .tf-skyfade {
+  position: absolute;
+  z-index: 3;
+  inset: 0;
+  border-radius: 0 0 18px 18px;
+  opacity: 1;
+  pointer-events: none;
+  transition: opacity .55s ease;
+}
+html[data-engine="timeflow"] .tf-skyfade.tf-out { opacity: 0; }
+html[data-engine="timeflow"] .tf-pop {
+  animation: tf-pop .5s cubic-bezier(.22, 1, .36, 1);
+}
+@keyframes tf-pop {
+  from { transform: translateY(9px); opacity: .15; }
+  to { transform: none; opacity: 1; }
+}
+
+/* 减少动态偏好：全部静默降级 */
+@media (prefers-reduced-motion: reduce) {
+  html[data-engine="timeflow"] .destination-wrap.tf-enter,
+  html[data-engine="timeflow"] .tf-pop { animation: none; }
+  html[data-engine="timeflow"] .destination-card.tf-preroll {
+    opacity: 1;
+    transform: none;
+    filter: none;
+  }
+  html[data-engine="timeflow"] .destination-card.tf-inview { transition: none; }
+  html[data-engine="timeflow"] .tf-skyfade { display: none; }
 }
