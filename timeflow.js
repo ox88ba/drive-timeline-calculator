@@ -232,12 +232,126 @@
     card.style.setProperty('--tf-a-ink', PALETTES[k].ink);
   }
 
+  /* ---------- 行程节律带：按天的 24h 驾驶/停留/过夜分布 ---------- */
+  var WEEK = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+  var NIGHT_END = 360;    /* 06:00 前为夜间窗口 */
+  var NIGHT_START = 1380; /* 23:00 起为夜间窗口 */
+
+  /* MM*100+DD + 年份 → 绝对分钟（处理跨年） */
+  function absOf(year, md, minutes, refDay) {
+    var mo = Math.floor(md / 100), d = md % 100;
+    var s = Date.UTC(year, mo - 1, d) / 86400000;
+    if (s < refDay - 180) s = Date.UTC(year + 1, mo - 1, d) / 86400000;
+    return s * 1440 + minutes;
+  }
+
+  function processRhythm() {
+    var summary = document.querySelector('.summary');
+    if (!summary) return;
+    var host = document.getElementById('tfRhythm');
+    if (!host) {
+      host = document.createElement('section');
+      host.id = 'tfRhythm';
+      host.className = 'tf-rhythm';
+      host.setAttribute('aria-label', '行程节律');
+      summary.parentNode.insertBefore(host, summary.nextSibling);
+    }
+    host.hidden = true;
+    host.innerHTML = '';
+
+    var dm = /^(\d{4})-(\d{2})-(\d{2})$/.exec((document.getElementById('departureDate') || {}).value || '');
+    var tm = /^(\d{1,2}):(\d{2})/.exec((document.getElementById('departureTime') || {}).value || '');
+    if (!dm || !tm) return;
+    var year = Number(dm[1]);
+    var day0 = Date.UTC(year, Number(dm[2]) - 1, Number(dm[3])) / 86400000;
+    var abs0 = day0 * 1440 + Number(tm[1]) * 60 + Number(tm[2]);
+
+    /* 沿卡片链推导 驾驶/停留 段 */
+    var segs = [];
+    var prev = abs0;
+    var lastEnd = abs0;
+    var cards = document.querySelectorAll('#timeline .destination-card');
+    for (var i = 0; i < cards.length; i++) {
+      var card = cards[i];
+      if (card.classList.contains('is-skipped')) continue;
+      var aEl = card.querySelector('[data-arrival]');
+      var a = aEl ? parseDT(aEl.textContent) : null;
+      if (!a) break; /* 导航未完成，链条到此为止 */
+      var aAbs = absOf(year, a.day, a.minutes, day0);
+      if (aAbs <= prev) break;
+      segs.push({ type: 'drive', from: prev, to: aAbs });
+      lastEnd = aAbs;
+      var depBlock = card.querySelector('[data-departure-block]');
+      var depEl = card.querySelector('[data-departure]');
+      var dd = (depBlock && !depBlock.hidden && depEl) ? parseDT(depEl.textContent) : null;
+      if (!dd) break;
+      var dAbs = absOf(year, dd.day, dd.minutes, day0);
+      if (dAbs <= aAbs) break;
+      segs.push({ type: 'stay', from: aAbs, to: dAbs });
+      prev = dAbs;
+      lastEnd = dAbs;
+    }
+    if (!segs.length || lastEnd <= abs0) return;
+
+    /* 按天切片并分类：白天驾驶/停留、凌晨驾驶（警示）、过夜 */
+    var firstDay = Math.floor(abs0 / 1440);
+    var lastDay = Math.floor((lastEnd - 1) / 1440);
+    var rows = '';
+    var warns = [];
+    for (var day = firstDay; day <= lastDay; day++) {
+      var blocks = '';
+      var lateMin = 0;
+      for (var s = 0; s < segs.length; s++) {
+        var seg = segs[s];
+        var from = Math.max(seg.from, day * 1440) - day * 1440;
+        var to = Math.min(seg.to, (day + 1) * 1440) - day * 1440;
+        if (to <= from) continue;
+        /* 按 06:00 / 23:00 边界切出夜间部分 */
+        var cuts = [[from, Math.min(to, NIGHT_END), true],
+                    [Math.max(from, NIGHT_END), Math.min(to, NIGHT_START), false],
+                    [Math.max(from, NIGHT_START), to, true]];
+        for (var c = 0; c < cuts.length; c++) {
+          var cs = cuts[c][0], ce = cuts[c][1], isNight = cuts[c][2];
+          if (ce <= cs) continue;
+          var cls;
+          if (seg.type === 'drive') {
+            cls = isNight ? 'tf-rb-latenight' : 'tf-rb-drive';
+            if (isNight) lateMin += ce - cs;
+          } else {
+            cls = isNight ? 'tf-rb-overnight' : 'tf-rb-stay';
+          }
+          blocks += '<i class="' + cls + '" style="left:' + (cs / 1440 * 100).toFixed(2) +
+            '%;width:' + ((ce - cs) / 1440 * 100).toFixed(2) + '%" title="' +
+            (seg.type === 'drive' ? '驾驶' : '停留') + ' ' + fmtDur(ce - cs) + '"></i>';
+        }
+      }
+      var date = new Date(day * 86400000);
+      var label = (date.getUTCMonth() + 1) + '/' + date.getUTCDate() + ' ' + WEEK[date.getUTCDay()];
+      rows += '<div class="tf-rhythm-row"><div class="tf-rhythm-day"><b>Day ' +
+        (day - firstDay + 1) + '</b><span>' + label + '</span></div>' +
+        '<div class="tf-rhythm-bar">' + blocks + '</div></div>';
+      if (lateMin > 0) warns.push('Day ' + (day - firstDay + 1) + ' 凌晨驾驶 ' + fmtDur(lateMin));
+    }
+
+    host.innerHTML =
+      '<div class="tf-rhythm-head"><span class="section-label">行程节律</span>' +
+      '<div class="tf-rhythm-legend">' +
+      '<span><i class="tf-rb-drive"></i>驾驶</span>' +
+      '<span><i class="tf-rb-stay"></i>停留</span>' +
+      '<span><i class="tf-rb-overnight"></i>过夜</span>' +
+      '<span><i class="tf-rb-latenight"></i>凌晨驾驶</span>' +
+      '</div></div>' + rows +
+      (warns.length ? '<p class="tf-rhythm-warn">⚠ ' + warns.join('；') + '，注意轮换休息</p>' : '');
+    host.hidden = false;
+  }
+
   function processAll() {
     var timeline = document.getElementById('timeline');
     if (timeline) {
       timeline.querySelectorAll('.destination-card').forEach(processCard);
     }
     processStart();
+    processRhythm();
   }
 
   /* 切回经典/暗夜时清理全部注入物，恢复原貌 */
@@ -308,6 +422,8 @@
     seenIds.clear();
     inviewIds.clear();
     prevDep.clear();
+    var rhythm = document.getElementById('tfRhythm');
+    if (rhythm) rhythm.remove();
     document.querySelectorAll('.destination-card, .start-card').forEach(teardownCard);
     document.querySelectorAll('.destination-wrap.tf-enter').forEach(function (w) {
       w.classList.remove('tf-enter');
