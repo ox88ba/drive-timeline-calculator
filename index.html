@@ -4,11 +4,13 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="theme-color" content="#f5f6f8" />
+    <script src="./skin.js?v=20260912-roadbook1"></script>
     <title>自驾时间计算器</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Noto+Sans+SC:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Noto+Sans+SC:wght@400;500;600;700&family=Noto+Serif+SC:wght@600;700&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="./styles.css?v=20260911-mapsnapshot2" />
+    <link rel="stylesheet" href="./roadbook.css?v=20260912-roadbook1" />
   </head>
   <body>
     <aside class="trip-dock is-collapsed" aria-label="行程导航">
@@ -24,6 +26,7 @@
             <p>基于官方导航数据的行程时间轴</p>
           </div>
           <div class="hero-actions">
+            <button id="skinToggle" class="icon-button" type="button" aria-label="进入暗夜路书" title="进入暗夜路书">☾</button>
             <button id="openShare" class="icon-button" type="button" aria-label="分享行程" title="分享行程">↗</button>
             <button id="clearTrip" class="icon-button" type="button" aria-label="清空行程">⌫</button>
           </div>

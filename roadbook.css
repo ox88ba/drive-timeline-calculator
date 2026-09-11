@@ -1,0 +1,505 @@
+/* ============================================================
+   暗夜路书 · Roadbook Dark Skin
+   纯覆盖式皮肤：只在 html[data-skin="roadbook"] 下生效，
+   不改动 styles.css 的任何浅色默认样式，用户可随时回撤。
+   ============================================================ */
+
+html[data-skin="roadbook"] {
+  color-scheme: dark;
+  --ink: #eceff5;
+  --muted: #98a1b1;
+  --line: rgba(255, 255, 255, .09);
+  --paper: rgba(22, 27, 36, .72);
+  --ground: #0b0e13;
+  --accent: #ffb14d;
+  --danger: #ff6b6b;
+  --shadow: 0 18px 44px rgba(0, 0, 0, .5);
+}
+
+/* ---------- 背景：深夜公路 + 落日余晖 ---------- */
+html[data-skin="roadbook"] body {
+  background:
+    radial-gradient(ellipse 95% 55% at 50% -12%, rgba(255, 177, 77, .15), transparent 62%),
+    radial-gradient(ellipse 70% 40% at 85% 108%, rgba(94, 169, 242, .07), transparent 65%),
+    linear-gradient(180deg, #10141b 0%, #0b0e13 100%);
+  background-attachment: fixed;
+}
+
+/* 胶片颗粒：消除纯黑底的廉价感 */
+html[data-skin="roadbook"] body::after {
+  position: fixed;
+  z-index: 999;
+  inset: 0;
+  content: "";
+  pointer-events: none;
+  opacity: .032;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* ---------- Hero：衬线标题，路书气质 ---------- */
+html[data-skin="roadbook"] .eyebrow,
+html[data-skin="roadbook"] .section-label {
+  color: #8d96a8;
+  letter-spacing: .14em;
+}
+
+html[data-skin="roadbook"] .pulse {
+  background: #ffc46b;
+  box-shadow: 0 0 0 4px rgba(255, 177, 77, .14), 0 0 14px rgba(255, 177, 77, .5);
+}
+
+html[data-skin="roadbook"] h1 {
+  font-family: "Noto Serif SC", "Songti SC", serif;
+  font-size: 27px;
+  font-weight: 700;
+  letter-spacing: .01em;
+  color: #f6f1e6;
+}
+
+html[data-skin="roadbook"] .hero p { color: #8d96a8; }
+
+html[data-skin="roadbook"] .icon-button {
+  border-color: rgba(255, 255, 255, .1);
+  color: #a7b0c0;
+  background: rgba(255, 255, 255, .045);
+  backdrop-filter: blur(10px);
+  transition: border-color .18s ease, color .18s ease, box-shadow .18s ease;
+}
+html[data-skin="roadbook"] .icon-button:active {
+  color: var(--accent);
+  border-color: rgba(255, 177, 77, .5);
+}
+
+/* 皮肤切换按钮：暗夜模式下给出落日色提示 */
+html[data-skin="roadbook"] #skinToggle {
+  color: var(--accent);
+  border-color: rgba(255, 177, 77, .4);
+  box-shadow: 0 0 16px rgba(255, 177, 77, .18);
+}
+
+/* ---------- 玻璃拟态卡片（汇总/出发点/目的地/预览） ---------- */
+html[data-skin="roadbook"] .summary,
+html[data-skin="roadbook"] .start-card,
+html[data-skin="roadbook"] .destination-card,
+html[data-skin="roadbook"] .route-preview {
+  border: 1px solid rgba(255, 255, 255, .08);
+  background: linear-gradient(160deg, rgba(255, 255, 255, .058), rgba(255, 255, 255, .026));
+  box-shadow: 0 18px 44px rgba(0, 0, 0, .45), inset 0 1px 0 rgba(255, 255, 255, .07);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+
+html[data-skin="roadbook"] .summary>div,
+html[data-skin="roadbook"] .preview-summary>div {
+  border-color: var(--line);
+}
+
+html[data-skin="roadbook"] .summary strong,
+html[data-skin="roadbook"] .preview-summary strong {
+  color: var(--ink);
+}
+
+/* 最终抵达：琥珀色 + 呼吸微光 */
+html[data-skin="roadbook"] .summary-arrival { border-top-color: var(--line); }
+html[data-skin="roadbook"] .summary-arrival strong {
+  color: var(--accent);
+  text-shadow: 0 0 22px rgba(255, 177, 77, .4);
+  animation: rb-glow 3.2s ease-in-out infinite;
+}
+@keyframes rb-glow {
+  0%, 100% { text-shadow: 0 0 14px rgba(255, 177, 77, .25); }
+  50% { text-shadow: 0 0 26px rgba(255, 177, 77, .5); }
+}
+
+/* ---------- 站点编号：里程碑路牌 ---------- */
+html[data-skin="roadbook"] .station-number {
+  color: var(--accent);
+  text-shadow: 0 0 12px rgba(255, 177, 77, .35);
+}
+
+/* ---------- 出发/停留等 pill 按钮 ---------- */
+html[data-skin="roadbook"] .quick-starts button,
+html[data-skin="roadbook"] .stay-buttons button {
+  border-color: rgba(255, 255, 255, .06);
+  color: #aeb6c4;
+  background: rgba(255, 255, 255, .055);
+}
+html[data-skin="roadbook"] .quick-starts button.active,
+html[data-skin="roadbook"] .stay-buttons button.active {
+  border-color: transparent;
+  color: #241703;
+  background: linear-gradient(180deg, #ffc46b, #ffa534);
+  box-shadow: 0 4px 18px rgba(255, 177, 77, .35);
+  font-weight: 600;
+}
+
+html[data-skin="roadbook"] .date-field,
+html[data-skin="roadbook"] .time-field { color: #8d96a8; }
+html[data-skin="roadbook"] .date-field input,
+html[data-skin="roadbook"] .time-field input { color: var(--ink); }
+
+/* ---------- 公路时间轴：流动的琥珀虚线 ---------- */
+html[data-skin="roadbook"] .route-connector::before {
+  left: 20px;
+  width: 2px;
+  background: repeating-linear-gradient(180deg,
+      rgba(255, 177, 77, .85) 0 5px,
+      transparent 5px 11px);
+  animation: rb-road-flow 1.6s linear infinite;
+}
+@keyframes rb-road-flow {
+  to { background-position: 0 11px; }
+}
+html[data-skin="roadbook"] .route-connector::after {
+  color: var(--accent);
+  background: transparent;
+  text-shadow: 0 0 10px rgba(255, 177, 77, .55);
+}
+html[data-skin="roadbook"] .connector-route { color: var(--accent); }
+html[data-skin="roadbook"] .skipped-connector { color: #5d6675; }
+html[data-skin="roadbook"] .skipped-connector::before {
+  background: repeating-linear-gradient(180deg, rgba(255, 255, 255, .18) 0 5px, transparent 5px 11px);
+  animation: none;
+}
+
+/* 跨天分割线：日落提示符 */
+html[data-skin="roadbook"] .date-divider {
+  color: #c9a06a;
+  letter-spacing: .08em;
+}
+html[data-skin="roadbook"] .date-divider::before,
+html[data-skin="roadbook"] .date-divider::after {
+  background: linear-gradient(90deg, transparent, rgba(255, 177, 77, .4), transparent);
+}
+
+/* ---------- POI 搜索 ---------- */
+html[data-skin="roadbook"] .place-picker input {
+  color: var(--ink);
+  border-bottom-color: rgba(255, 255, 255, .14);
+  caret-color: var(--accent);
+}
+html[data-skin="roadbook"] .place-picker input::placeholder { color: #5d6675; }
+html[data-skin="roadbook"] .place-picker input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 12px 22px -14px rgba(255, 177, 77, .4);
+}
+html[data-skin="roadbook"] .search-mark { color: #6d7688; }
+html[data-skin="roadbook"] .place-address { color: #8d96a8; }
+html[data-skin="roadbook"] .place-meta { color: #78829a; }
+
+html[data-skin="roadbook"] .poi-results {
+  border-color: rgba(255, 255, 255, .1);
+  background: rgba(18, 22, 30, .96);
+  box-shadow: 0 20px 46px rgba(0, 0, 0, .6);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+html[data-skin="roadbook"] .poi-option {
+  color: var(--ink);
+  background: transparent;
+  border-bottom-color: rgba(255, 255, 255, .06);
+}
+html[data-skin="roadbook"] .poi-option:active,
+html[data-skin="roadbook"] .poi-option:hover {
+  background: rgba(255, 177, 77, .09);
+}
+
+/* ---------- 目的地卡片：到达时间与拍照时刻 ---------- */
+html[data-skin="roadbook"] .time-grid strong {
+  color: var(--accent);
+  text-shadow: 0 0 20px rgba(255, 177, 77, .3);
+}
+html[data-skin="roadbook"] .departure-block strong { color: var(--ink); text-shadow: none; }
+html[data-skin="roadbook"] .stay-section,
+html[data-skin="roadbook"] .departure-block { border-top-color: var(--line); }
+
+html[data-skin="roadbook"] .photo-badge.golden { color: #ffd98c; background: rgba(255, 190, 90, .16); }
+html[data-skin="roadbook"] .photo-badge.sunset { color: #ffb08a; background: rgba(255, 130, 80, .16); }
+html[data-skin="roadbook"] .photo-badge.blue { color: #a9c8ff; background: rgba(90, 140, 255, .18); }
+
+html[data-skin="roadbook"] .destination-card.photo-golden {
+  border-color: rgba(255, 214, 134, .32);
+  background: linear-gradient(135deg, rgba(255, 190, 90, .12), rgba(255, 255, 255, .026));
+  box-shadow: 0 16px 40px rgba(0, 0, 0, .45), 0 0 30px rgba(255, 177, 77, .1);
+}
+html[data-skin="roadbook"] .destination-card.photo-sunset {
+  border-color: rgba(255, 160, 110, .32);
+  background: linear-gradient(135deg, rgba(255, 130, 80, .12), rgba(255, 255, 255, .026));
+  box-shadow: 0 16px 40px rgba(0, 0, 0, .45), 0 0 30px rgba(255, 130, 80, .1);
+}
+html[data-skin="roadbook"] .destination-card.photo-blue {
+  border-color: rgba(140, 175, 255, .3);
+  background: linear-gradient(135deg, rgba(90, 140, 255, .12), rgba(255, 255, 255, .026));
+  box-shadow: 0 16px 40px rgba(0, 0, 0, .45), 0 0 30px rgba(90, 140, 255, .1);
+}
+
+html[data-skin="roadbook"] .route-status {
+  color: #8d96a8;
+  background: rgba(255, 255, 255, .045);
+}
+html[data-skin="roadbook"] .route-status.error {
+  color: #ff98a0;
+  background: rgba(255, 107, 107, .12);
+}
+
+html[data-skin="roadbook"] .card-actions button {
+  color: #98a1b1;
+  background: rgba(255, 255, 255, .06);
+}
+html[data-skin="roadbook"] .card-actions button:last-child { color: #ff858d; }
+
+html[data-skin="roadbook"] .spinner {
+  border-color: rgba(255, 177, 77, .22);
+  border-top-color: var(--accent);
+}
+
+/* 夜间抵达/驾驶提醒 */
+html[data-skin="roadbook"] .night-arrival { color: #9fb0cc; }
+html[data-skin="roadbook"] .drive-warning.is-orange { color: #ffbe7a; background: rgba(255, 160, 60, .14); }
+html[data-skin="roadbook"] .drive-warning.is-red { color: #ff98a0; background: rgba(255, 107, 107, .14); }
+html[data-skin="roadbook"] .altitude-warning { color: #d9a05f; }
+
+html[data-skin="roadbook"] .add-via-point {
+  border-color: rgba(255, 177, 77, .35);
+  color: #e8c795;
+  background: rgba(255, 177, 77, .07);
+}
+
+/* ---------- 行程操作 ---------- */
+html[data-skin="roadbook"] .add-destination {
+  border: 1px dashed rgba(255, 177, 77, .42);
+  color: #e8c795;
+  background: rgba(255, 177, 77, .05);
+  transition: background .18s ease, box-shadow .18s ease;
+}
+html[data-skin="roadbook"] .add-destination:active {
+  background: rgba(255, 177, 77, .12);
+  box-shadow: 0 0 24px rgba(255, 177, 77, .18);
+}
+html[data-skin="roadbook"] .add-destination span { color: var(--accent); }
+html[data-skin="roadbook"] .return-origin {
+  color: #aeb6c4;
+  background: rgba(255, 255, 255, .06);
+}
+
+/* ---------- 路线预览：航拍监视器 ---------- */
+html[data-skin="roadbook"] .refresh-route-preview {
+  border-color: rgba(255, 177, 77, .42);
+  color: var(--accent);
+  background: rgba(255, 177, 77, .08);
+}
+html[data-skin="roadbook"] .route-map {
+  border: 1px solid rgba(255, 255, 255, .07);
+  background: #0e1218;
+  color: #78829a;
+}
+/* 取景框内缘线 */
+html[data-skin="roadbook"] .route-map::before {
+  position: absolute;
+  z-index: 2;
+  inset: 9px;
+  content: "";
+  border: 1px solid rgba(255, 177, 77, .22);
+  border-radius: 8px;
+  pointer-events: none;
+}
+/* 压低亮色地图的突兀感 */
+html[data-skin="roadbook"] .amap-route-canvas,
+html[data-skin="roadbook"] .route-map-svg {
+  filter: saturate(.72) brightness(.86);
+}
+html[data-skin="roadbook"] .map-road { stroke: var(--accent); }
+html[data-skin="roadbook"] .map-marker { fill: #161b24; stroke: var(--accent); }
+html[data-skin="roadbook"] .map-marker-label { fill: var(--ink); }
+html[data-skin="roadbook"] .amap-route-marker {
+  border-color: rgba(255, 177, 77, .85);
+  color: #ffd9a0;
+  background: rgba(16, 20, 27, .94);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, .5);
+}
+html[data-skin="roadbook"] .map-fallback-note {
+  color: #98a1b1;
+  background: rgba(16, 20, 27, .88);
+}
+html[data-skin="roadbook"] .preview-summary { background: rgba(255, 255, 255, .03); }
+
+/* ---------- 行程导航 Dock ---------- */
+html[data-skin="roadbook"] .trip-dock {
+  border-color: rgba(255, 255, 255, .09);
+  background: rgba(16, 20, 27, .84);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, .5);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+html[data-skin="roadbook"] .dock-toggle {
+  color: var(--accent);
+  background: rgba(255, 177, 77, .1);
+}
+html[data-skin="roadbook"] .dock-item {
+  color: var(--ink);
+  background: rgba(255, 255, 255, .05);
+}
+html[data-skin="roadbook"] .dock-item b { color: var(--accent); }
+html[data-skin="roadbook"] .dock-item.is-pressing { background: rgba(255, 177, 77, .12); }
+html[data-skin="roadbook"] .dock-item.is-active {
+  border-color: rgba(255, 177, 77, .5);
+  background: rgba(255, 177, 77, .12);
+}
+html[data-skin="roadbook"] .dock-item.drag-over {
+  outline-color: var(--accent);
+  background: rgba(255, 177, 77, .14);
+  box-shadow: 0 0 0 4px rgba(255, 177, 77, .12);
+}
+html[data-skin="roadbook"] .dock-item.is-skipped,
+html[data-skin="roadbook"] .dock-item.is-skipped b { color: #5d6675; }
+html[data-skin="roadbook"] .trip-dock.is-dragging {
+  border-color: rgba(255, 177, 77, .5);
+  box-shadow: 0 14px 34px rgba(255, 177, 77, .16);
+}
+html[data-skin="roadbook"] .trip-dock.is-dragging .dock-title { color: var(--accent); }
+html[data-skin="roadbook"] .trip-dock.is-dragging .dock-item.is-dragging {
+  background: #1a2029;
+  box-shadow: 0 9px 22px rgba(0, 0, 0, .55);
+}
+html[data-skin="roadbook"] .dock-toast {
+  border-color: rgba(255, 177, 77, .4);
+  color: #ffd9a0;
+  background: rgba(22, 27, 36, .95);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, .5);
+}
+
+/* ---------- 弹窗 ---------- */
+html[data-skin="roadbook"] .modal-backdrop {
+  background: rgba(4, 6, 9, .6);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+html[data-skin="roadbook"] .delete-modal,
+html[data-skin="roadbook"] .share-modal {
+  border: 1px solid rgba(255, 255, 255, .1);
+  color: var(--ink);
+  background: linear-gradient(170deg, #181e28, #12161e);
+  box-shadow: 0 24px 64px rgba(0, 0, 0, .6), inset 0 1px 0 rgba(255, 255, 255, .06);
+}
+html[data-skin="roadbook"] .delete-modal h2 { color: #f6f1e6; font-family: "Noto Serif SC", "Songti SC", serif; }
+html[data-skin="roadbook"] .delete-modal p { color: #98a1b1; }
+html[data-skin="roadbook"] .delete-modal button {
+  color: #c6cdda;
+  background: rgba(255, 255, 255, .08);
+}
+html[data-skin="roadbook"] .delete-modal .danger {
+  color: #fff;
+  background: linear-gradient(180deg, #ff7a7a, #e05252);
+  box-shadow: 0 6px 18px rgba(255, 107, 107, .3);
+}
+html[data-skin="roadbook"] .human-check-status { color: #78829a; }
+
+/* 分享面板 UI 深色化；分享长图本体保持浅色（导出物即所见） */
+html[data-skin="roadbook"] .share-modal-head h2 { color: #f6f1e6; font-family: "Noto Serif SC", "Songti SC", serif; }
+html[data-skin="roadbook"] .share-name-panel {
+  border-color: var(--line);
+  background: rgba(255, 255, 255, .04);
+}
+html[data-skin="roadbook"] .share-name-panel label { color: #c6cdda; }
+html[data-skin="roadbook"] .share-name-panel input {
+  border-color: rgba(255, 255, 255, .12);
+  color: var(--ink);
+  background: rgba(255, 255, 255, .05);
+}
+html[data-skin="roadbook"] .share-name-panel input:focus {
+  border-color: rgba(255, 177, 77, .55);
+  box-shadow: 0 0 0 3px rgba(255, 177, 77, .14);
+}
+html[data-skin="roadbook"] .share-name-shortcuts button {
+  border-color: rgba(255, 255, 255, .1);
+  color: #aeb6c4;
+  background: rgba(255, 255, 255, .05);
+}
+html[data-skin="roadbook"] .share-name-shortcuts button:active {
+  color: var(--accent);
+  border-color: rgba(255, 177, 77, .5);
+  background: rgba(255, 177, 77, .1);
+}
+html[data-skin="roadbook"] .share-preview {
+  border-color: var(--line);
+  background: rgba(255, 255, 255, .04);
+}
+html[data-skin="roadbook"] .share-actions button {
+  border-color: var(--line);
+  color: #c6cdda;
+  background: rgba(255, 255, 255, .06);
+}
+html[data-skin="roadbook"] .share-actions #shareSystem {
+  border-color: transparent;
+  color: #241703;
+  background: linear-gradient(180deg, #ffc46b, #ffa534);
+  box-shadow: 0 6px 20px rgba(255, 177, 77, .3);
+}
+html[data-skin="roadbook"] .share-actions button:disabled {
+  color: #5d6675;
+  background: rgba(255, 255, 255, .04);
+}
+
+/* ---------- AI 行程总评 ---------- */
+html[data-skin="roadbook"] .ai-analysis {
+  border-color: rgba(255, 177, 77, .26);
+  background: linear-gradient(135deg, rgba(255, 177, 77, .08), rgba(255, 255, 255, .02));
+  box-shadow: 0 16px 40px rgba(0, 0, 0, .4), inset 0 1px 0 rgba(255, 255, 255, .06);
+}
+html[data-skin="roadbook"] .ai-analysis-head h2 {
+  color: #f6f1e6;
+  font-family: "Noto Serif SC", "Songti SC", serif;
+}
+html[data-skin="roadbook"] .ai-analysis-head button {
+  color: #241703;
+  background: linear-gradient(180deg, #ffc46b, #ffa534);
+  box-shadow: 0 5px 16px rgba(255, 177, 77, .3);
+}
+html[data-skin="roadbook"] .ai-analysis-head button:disabled {
+  color: #5d6675;
+  background: rgba(255, 255, 255, .06);
+  box-shadow: none;
+}
+html[data-skin="roadbook"] .ai-analysis-hint { color: #8d96a8; }
+html[data-skin="roadbook"] .ai-result-lead {
+  background: rgba(255, 255, 255, .05);
+  box-shadow: none;
+}
+html[data-skin="roadbook"] .ai-result-lead h3 { color: var(--ink); }
+html[data-skin="roadbook"] .ai-result-lead p { color: #a7b0c0; }
+html[data-skin="roadbook"] .ai-result-section { border-top-color: var(--line); }
+html[data-skin="roadbook"] .ai-result-section h3 { color: #8d96a8; }
+html[data-skin="roadbook"] .ai-day,
+html[data-skin="roadbook"] .ai-risk,
+html[data-skin="roadbook"] .ai-suggestion { background: rgba(255, 255, 255, .045); }
+html[data-skin="roadbook"] .ai-day { color: #a7b0c0; }
+html[data-skin="roadbook"] .ai-day b { color: var(--accent); }
+html[data-skin="roadbook"] .ai-day.ai-level-attention { background: rgba(255, 190, 90, .1); }
+html[data-skin="roadbook"] .ai-day.ai-level-high { background: rgba(255, 107, 107, .1); }
+html[data-skin="roadbook"] .ai-risk p,
+html[data-skin="roadbook"] .ai-suggestion p { color: #a7b0c0; }
+html[data-skin="roadbook"] .ai-risk small { color: #78829a; }
+html[data-skin="roadbook"] .ai-suggestion b { color: var(--ink); }
+html[data-skin="roadbook"] .ai-anchor {
+  color: var(--accent);
+  background: rgba(255, 177, 77, .1);
+}
+
+/* ---------- 景区 AI 栏目 ---------- */
+html[data-skin="roadbook"] .scenic-ai { border-top-color: var(--line); }
+html[data-skin="roadbook"] .scenic-ai details { border-bottom-color: var(--line); }
+html[data-skin="roadbook"] .scenic-ai summary { color: #e6e9f0; }
+html[data-skin="roadbook"] .scenic-ai-body small { color: #8d96a8; }
+html[data-skin="roadbook"] .scenic-ai-body p { color: #c6cdda; }
+html[data-skin="roadbook"] .scenic-ai-body button {
+  color: var(--accent);
+  background: rgba(255, 177, 77, .1);
+}
+html[data-skin="roadbook"] .scenic-ai-error { color: #ff98a0; }
+
+/* ---------- 页脚 & 细节 ---------- */
+html[data-skin="roadbook"] .footnote { color: #6d7688; }
+html[data-skin="roadbook"] ::selection {
+  color: #241703;
+  background: rgba(255, 177, 77, .85);
+}
