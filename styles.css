@@ -130,7 +130,13 @@
 
 /* The shared Roadbook title and map labels adapt to dense, long itineraries. */
 .share-header .share-route-title { font-size:var(--route-title-size,27px); line-height:1.32; overflow-wrap:anywhere; }
+.share-custom-title { margin:0 0 15px!important; padding:0 0 14px; border-bottom:1px solid #d9deea; font-size:var(--share-custom-title-size,29px); line-height:1.3; letter-spacing:-.04em; overflow-wrap:anywhere; }
+.share-custom-title[hidden] { display:none!important; }
 .share-route-place-label { fill:#4c566a; font:500 11px "Noto Sans SC",sans-serif; paint-order:stroke; stroke:#fff; stroke-linejoin:round; stroke-width:4px; pointer-events:none; }
+.share-drive-warning { display:inline-block; margin-top:7px; padding:3px 7px; border-radius:999px; font:600 9px "Noto Sans SC",sans-serif; }.share-drive-warning.is-orange { color:#a64b10; background:#fff0df; }.share-drive-warning.is-red { color:#b42332; background:#ffe7e9; }.share-night-arrival { font-size:15px; line-height:1; }.share-altitude-warning { margin-top:7px!important; color:#9b591e; font-size:10px; line-height:1.55; }
+/* Match the share overlay to the live preview; fabricated fallback segments are never drawn. */
+.share-route-line { stroke-width:4; stroke-opacity:.9; }
+.share-route.has-amap-backdrop .share-route-line { opacity:1; }
 
 .drive-warning { display:inline-block; margin:6px 0 0 8px; padding:4px 8px; border-radius:999px; font:500 12px/1.5 sans-serif; vertical-align:middle; white-space:nowrap; }
 .drive-warning.is-orange { color:#a64b10; background:#fff0df; }
@@ -149,7 +155,10 @@
 .turnstile-wrap { display:flex; min-height:66px; align-items:center; justify-content:center; margin-top:17px; overflow:hidden; }
 .human-check-status { display:block; margin-top:4px; color:#7c879a; font-size:11px; text-align:center; }
 .refresh-modal button:disabled { cursor:not-allowed; opacity:.48; }
+.ai-analysis { margin:14px 0 18px; padding:16px; border:1px solid #dce4ff; border-radius:18px; background:linear-gradient(135deg,#f8faff,#fff); box-shadow:0 8px 23px rgba(45,94,251,.06); }
+.ai-analysis-head { display:flex; align-items:center; justify-content:space-between; gap:12px; }.ai-analysis-head h2 { margin:4px 0 0; font-size:18px; letter-spacing:-.03em; }.ai-analysis-head button { flex:0 0 auto; padding:8px 11px; border:0; border-radius:10px; color:#fff; background:var(--accent); font:600 11px "Noto Sans SC",sans-serif; }.ai-analysis-head button:disabled { color:#9aa4bb; background:#e9edf5; }.ai-analysis-hint { margin:10px 0 0; color:#748097; font-size:11px; line-height:1.65; }.ai-analysis-result { display:grid; gap:12px; margin-top:14px; }.ai-result-lead { padding:12px; border-radius:12px; background:#fff; box-shadow:0 5px 14px rgba(34,46,76,.045); }.ai-result-lead h3 { margin:0; font-size:16px; letter-spacing:-.02em; }.ai-result-lead p { margin:7px 0 0; color:#59657a; font-size:12px; line-height:1.7; }.ai-result-section { padding-top:12px; border-top:1px solid #e5e9f2; }.ai-result-section h3 { margin:0 0 8px; color:#647086; font-size:11px; font-weight:600; }.ai-days,.ai-risks,.ai-suggestions { display:grid; gap:7px; }.ai-day,.ai-risk,.ai-suggestion { position:relative; padding:9px 10px; border-radius:10px; background:rgba(255,255,255,.8); }.ai-day { display:grid; grid-template-columns:82px 1fr; gap:8px; color:#566277; font-size:11px; line-height:1.6; }.ai-day b { color:#315efb; font:500 10px "DM Mono",monospace; }.ai-day.ai-level-attention { background:#fff8ed; }.ai-day.ai-level-high { background:#fff0f1; }.ai-risk { padding-right:84px; }.ai-risk p,.ai-suggestion p { margin:0; color:#4e596c; font-size:11px; line-height:1.6; }.ai-risk small { display:block; margin-top:4px; color:#8791a3; font-size:10px; line-height:1.55; }.ai-risk-high { border-left:3px solid #dc4657; }.ai-risk-medium { border-left:3px solid #e89b37; }.ai-risk-info { border-left:3px solid #7f98d8; }.ai-suggestion b { color:#303c52; font-size:11px; }.ai-suggestion p { margin-top:4px; }.ai-anchor { position:absolute; top:9px; right:9px; padding:4px 6px; border:0; border-radius:7px; color:#315efb; background:#edf2ff; font-size:9px; }.ai-modal p { max-width:340px; }
 @media (max-width:440px) {
   .route-connector { gap:6px; padding-right:3px; }
   .add-via-point { padding:5px 7px; font-size:10px; }
+  .ai-analysis { padding:13px; }.ai-day { grid-template-columns:70px 1fr; gap:6px; }.ai-risk { padding-right:72px; }
 }
