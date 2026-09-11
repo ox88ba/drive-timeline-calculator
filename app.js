@@ -310,6 +310,28 @@
   // A deliberate reset should feel immediate after the user has panned or
   // zoomed the map. `immediately=true` disables AMap's easing animation.
   function centerRoutePreview() { if (amapMap && amapOverlays.length) { amapMap.setFitView(amapOverlays, true, [36, 36, 36, 36]); return; } mapCenterAction(); }
+  function nextPaint() { return new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))); }
+  async function captureRouteMap() {
+    const data = mapPreviewData();
+    if (data.message) throw new Error(data.message);
+    if (typeof globalThis.html2canvas !== 'function') throw new Error('地图快照组件未加载。');
+    centerRoutePreview();
+    if (amapMap) {
+      await new Promise((resolve) => {
+        let settled = false; let timer;
+        const finish = () => { if (settled) return; settled = true; clearTimeout(timer); resolve(); };
+        timer = setTimeout(finish, 500);
+        try { amapMap.once('complete', finish); } catch { /* The timeout still protects the capture. */ }
+      });
+    }
+    await nextPaint();
+    const width = Math.max(1, mapNode.clientWidth); const height = Math.max(1, mapNode.clientHeight);
+    const canvas = await globalThis.html2canvas(mapNode, { backgroundColor: '#f5f7fb', useCORS: true, logging: false, scale: Math.min(2, Math.max(1, 1000 / width)), width, height, scrollX: 0, scrollY: 0 });
+    const blob = await new Promise((resolve, reject) => canvas.toBlob((value) => value ? resolve(value) : reject(new Error('地图快照导出失败。')), 'image/png'));
+    if (blob.size < 5000) throw new Error('地图快照内容不完整，请刷新路线预览后重试。');
+    return blob;
+  }
+  globalThis.DriveMapSnapshot = { capture: captureRouteMap };
   function renderLegWarnings(card, wrap, destination) {
     if (destination.isSkipped || !destination.location) return;
     const seconds = destination.route?.durationSeconds;
