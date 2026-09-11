@@ -16,6 +16,7 @@
   const dockShell = document.querySelector('.trip-dock'); const dockToggle = $('#dockToggle'); const dockTitle = document.querySelector('.dock-title');
   let routeCache = readJson(ROUTE_CACHE_KEY, {}); let sunsetCache = readJson(SUNSET_CACHE_KEY, {}); let elevationCache = readJson(ELEVATION_CACHE_KEY, {});
   let searchTimers = new Map(); let pendingDeleteIndex = null; let activeDockId = null; let dockPointer = null; let dockSuppressClickUntil = 0; let dockToastTimer = null; let mapGesture = null; let routeRebuildVersion = 0; let mapRenderVersion = 0; let amapLoadPromise = null; let amapMap = null; let amapOverlays = []; let mapCenterAction = () => {}; let turnstileWidgetId = null; let turnstileToken = ''; let turnstileReadyTimer = null; let aiTurnstileWidgetId = null; let aiTurnstileToken = ''; let aiTurnstileReadyTimer = null; let aiLoading = false; let aiLastError = ''; let aiCache = readJson(AI_ANALYSIS_CACHE_KEY, null);
+  let mapReadyPromise = Promise.resolve();
   const newId = () => (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`);
   const cloneStart = () => ({ ...START_LOCATION });
   function isValidLocation(location) { return Boolean(location && Number.isFinite(Number(location.latitude)) && Number.isFinite(Number(location.longitude))); }
@@ -303,8 +304,8 @@
     }
   }
   function renderMap() {
-    const version = ++mapRenderVersion; disposeAmap(); mapCenterAction = () => {}; const data = mapPreviewData(); if (data.message) { mapNode.replaceChildren(); mapNode.textContent = data.message; return; }
-    renderFallbackMap(data); if (API_BASE_URL) renderAmapMap(data, version);
+    const version = ++mapRenderVersion; disposeAmap(); mapCenterAction = () => {}; const data = mapPreviewData(); if (data.message) { mapReadyPromise = Promise.resolve(); mapNode.replaceChildren(); mapNode.textContent = data.message; return; }
+    renderFallbackMap(data); mapReadyPromise = API_BASE_URL ? renderAmapMap(data, version) : Promise.resolve();
   }
   function bindMapGestures(svg, scene) { let scale = 1; let tx = 0; let ty = 0; const paint = () => scene.setAttribute('transform', `translate(${tx} ${ty}) scale(${scale})`); svg.addEventListener('wheel', (event) => { event.preventDefault(); scale = Math.max(.7, Math.min(4, scale * (event.deltaY < 0 ? 1.12 : .89))); paint(); }, { passive: false }); svg.addEventListener('pointerdown', (event) => { mapGesture = { x: event.clientX, y: event.clientY, tx, ty }; svg.setPointerCapture(event.pointerId); }); svg.addEventListener('pointermove', (event) => { if (!mapGesture) return; tx = mapGesture.tx + (event.clientX - mapGesture.x) * 1.4; ty = mapGesture.ty + (event.clientY - mapGesture.y) * 1.4; paint(); }); svg.addEventListener('pointerup', () => { mapGesture = null; }); return () => { mapGesture = null; scale = 1; tx = 0; ty = 0; paint(); }; }
   // A deliberate reset should feel immediate after the user has panned or
@@ -313,8 +314,9 @@
   function nextPaint() { return new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))); }
   async function captureRouteMap() {
     const data = mapPreviewData();
-    if (data.message) throw new Error(data.message);
+    if (data.message) throw new Error('网页路线预览尚未完成，请先点击“刷新预览”获取道路轨迹后再生成长图。');
     if (typeof globalThis.html2canvas !== 'function') throw new Error('地图快照组件未加载。');
+    await mapReadyPromise;
     centerRoutePreview();
     if (amapMap) {
       await new Promise((resolve) => {
