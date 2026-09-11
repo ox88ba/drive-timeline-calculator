@@ -11,6 +11,8 @@
   let shareState = 'idle';
   let generation = 0;
   let shareCleanup = () => {};
+  let nameCaptureTimer = null;
+  let shareRouteReady = Promise.resolve();
 
   function text(parent, tag, className, value) {
     const node = document.createElement(tag);
@@ -56,6 +58,19 @@
     if (input.value !== next) input.value = next;
     $('#shareNameCount').textContent = `${Array.from(next).length}/${SHARE_NAME_LIMIT}`;
     if (shareBlob && shareModel) shareFilename = buildFilename(shareModel);
+    const posterTitle = document.querySelector('#sharePoster .share-custom-title');
+    if (posterTitle) { posterTitle.textContent = next; posterTitle.hidden = !next; posterTitle.style.setProperty('--share-custom-title-size', `${Math.max(17, routeTitleSize(next) + 2)}px`); scheduleNamedPosterCapture(); }
+  }
+
+  function scheduleNamedPosterCapture() {
+    if (!shareModel || $('#shareModal').hidden) return;
+    clearTimeout(nameCaptureTimer); setActionsEnabled(false); setShareStatus('正在更新长图标题…', 'preparing');
+    const token = ++generation;
+    nameCaptureTimer = setTimeout(async () => {
+      const poster = $('#sharePoster'); if (!poster) return;
+      try { await shareRouteReady; const blob = await capturePoster(poster); if (token !== generation || $('#shareModal').hidden) return; shareBlob = blob; shareFilename = buildFilename(shareModel); setActionsEnabled(true); setShareStatus('长图已更新', 'ready'); }
+      catch (error) { console.error('长图标题更新失败', error); if (token === generation) setShareStatus('长图更新失败，请重试', 'error'); }
+    }, 280);
   }
 
   function appendShareName(part) {
@@ -186,14 +201,14 @@
     svg.classList.add('share-route-svg');
     const stops = [model.start, ...model.destinations];
     const segments = [];
-    let hasFallback = false;
+    let missingGeometry = false;
     model.destinations.forEach((destination, index) => {
       const origin = validPoint(stops[index]?.location); const end = validPoint(destination.location);
       if (!origin || !end) return;
       const raw = Array.isArray(destination.routeFromPrevious?.polyline) ? destination.routeFromPrevious.polyline : [];
       const polyline = raw.map((point) => [Number(point?.[0]), Number(point?.[1])]).filter(([x, y]) => Number.isFinite(x) && Number.isFinite(y));
-      if (polyline.length >= 2) segments.push({ points: polyline, fallback: false });
-      else { segments.push({ points: [origin, end], fallback: true }); hasFallback = true; }
+      if (polyline.length >= 2) segments.push({ points: polyline });
+      else missingGeometry = true;
     });
     const markerPoints = stops.map((stop) => validPoint(stop.location)).filter(Boolean);
     const geometry = [...markerPoints, ...segments.flatMap((segment) => segment.points)];
@@ -201,7 +216,7 @@
     const view = routeMapView(geometry); const project = view.project;
     segments.forEach((segment) => {
       const line = svgNode('polyline', { points: segment.points.map(project).map((point) => point.join(',')).join(' ') });
-      line.classList.add('share-route-line'); if (segment.fallback) line.classList.add('is-fallback'); svg.append(line);
+      line.classList.add('share-route-line'); svg.append(line);
     });
     stops.forEach((stop) => {
       const point = validPoint(stop.location); if (!point) return;
@@ -211,7 +226,7 @@
     });
     placeNameLabels(stops, project, svg);
     const frame = document.createElement('div'); frame.className = 'share-route-map-frame'; frame.append(svg); wrapper.append(frame);
-    if (hasFallback) text(wrapper, 'p', 'share-route-note', '虚线路段为站点位置示意');
+    if (missingGeometry) text(wrapper, 'p', 'share-route-note', '部分道路轨迹尚未加载；请返回页面刷新路线预览后重新生成长图');
     const path = segments.flatMap((segment) => segment.points);
     let cleanup = () => {};
     const ready = setStaticMapBackdrop(frame, wrapper, view, path).then((dispose) => { cleanup = dispose; }).catch((error) => { console.warn('分享地图底图加载失败', error); });
@@ -225,8 +240,10 @@
     const main = document.createElement('p'); main.className = 'share-station-time';
     text(main, 'strong', '', isStart ? `${stop.departure || '—'} 出发` : `${stop.arrival || '等待导航数据'} 到达`);
     if (!isStart && stop.arrivalMoment) { const badge = photoBadge(stop.arrivalMoment); if (badge) main.append(badge); }
+    if (!isStart && stop.nightArrival) text(main, 'span', 'share-night-arrival', '🌙');
     station.append(main);
     if (!isStart && stop.meta) text(station, 'p', 'share-station-meta', stop.meta);
+    if (!isStart && stop.altitudeWarning) text(station, 'p', 'share-altitude-warning', stop.altitudeWarning);
     if (!isStart && stop.stay) text(station, 'p', 'share-station-stay', `停留 ${stop.stay}`);
     if (!isStart && stop.departure) { const departure = document.createElement('p'); departure.className = 'share-station-departure'; text(departure, 'strong', '', `${stop.departure} 出发`); const badge = photoBadge(stop.departureMoment); if (badge) departure.append(badge); station.append(departure); }
     return station;
@@ -236,13 +253,14 @@
     const leg = document.createElement('div'); leg.className = 'share-leg';
     const line = document.createElement('div'); line.className = 'share-leg-line'; leg.append(line);
     text(leg, 'p', 'share-leg-route', `${route?.distance || '待导航'} · ${route?.duration || '待导航'}`);
+    if (route?.warning) text(leg, 'span', `share-drive-warning is-${route.warningLevel || 'orange'}`, route.warning);
     text(leg, 'span', 'share-leg-arrow', '↓');
     return leg;
   }
 
   function buildPoster(model) {
     const poster = document.createElement('article'); poster.id = 'sharePoster'; poster.className = 'share-poster';
-    const header = document.createElement('header'); header.className = 'share-header'; text(header, 'span', 'share-kicker', 'ROADBOOK / SHARE'); const title = text(header, 'h2', 'share-route-title', model.title); title.style.setProperty('--route-title-size', `${routeTitleSize(model.title)}px`); text(header, 'p', 'share-subtitle', `${model.departureText} 出发 · ${model.subtitle}`); poster.append(header);
+    const header = document.createElement('header'); header.className = 'share-header'; const customName = getShareName(); const customTitle = text(header, 'h1', 'share-custom-title', customName); customTitle.hidden = !customName; customTitle.style.setProperty('--share-custom-title-size', `${Math.max(17, routeTitleSize(customName) + 2)}px`); text(header, 'span', 'share-kicker', 'ROADBOOK / SHARE'); const title = text(header, 'h2', 'share-route-title', model.title); title.style.setProperty('--route-title-size', `${routeTitleSize(model.title)}px`); text(header, 'p', 'share-subtitle', `${model.departureText} 出发 · ${model.subtitle}`); poster.append(header);
     const summary = document.createElement('section'); summary.className = 'share-summary';
     [['总里程', model.summary.distance], ['驾驶时间', model.summary.drive], ['停留时间', model.summary.stay], ['总行程', model.summary.duration]].forEach(([label, value]) => { const item = document.createElement('div'); text(item, 'span', '', label); text(item, 'strong', '', value); summary.append(item); });
     const final = document.createElement('div'); final.className = 'share-summary-final'; text(final, 'span', '', '预计最终抵达'); text(final, 'strong', '', model.summary.finalArrival); summary.append(final); const routeOverview = buildRouteOverview(model); poster.append(summary, routeOverview.wrapper);
@@ -304,12 +322,12 @@
   }
 
   function close() {
-    generation += 1; shareCleanup(); shareCleanup = () => {}; shareBlob = null; shareFilename = ''; shareModel = null; shareState = 'idle'; setActionsEnabled(false); $('#sharePosterHost').replaceChildren(); $('#shareModal').hidden = true;
+    generation += 1; clearTimeout(nameCaptureTimer); shareCleanup(); shareCleanup = () => {}; shareRouteReady = Promise.resolve(); shareBlob = null; shareFilename = ''; shareModel = null; shareState = 'idle'; setActionsEnabled(false); $('#sharePosterHost').replaceChildren(); $('#shareModal').hidden = true;
   }
 
   function open(model) {
     if (!model?.start?.location || !model.destinations?.length) return;
-    generation += 1; const token = generation; shareCleanup(); shareCleanup = () => {}; shareBlob = null; shareFilename = ''; shareModel = model; configureShareName(model); setActionsEnabled(false); const built = buildPoster(model); shareCleanup = built.cleanup; $('#sharePosterHost').replaceChildren(built.poster); $('#shareModal').hidden = false; setShareStatus('正在加载地图底图并生成高清长图…', 'preparing'); prepare(model, built.poster, built.routeReady, token);
+    generation += 1; const token = generation; shareCleanup(); shareCleanup = () => {}; shareBlob = null; shareFilename = ''; shareModel = model; configureShareName(model); setActionsEnabled(false); const built = buildPoster(model); shareCleanup = built.cleanup; shareRouteReady = built.routeReady; $('#sharePosterHost').replaceChildren(built.poster); $('#shareModal').hidden = false; setShareStatus('正在加载地图底图并生成高清长图…', 'preparing'); prepare(model, built.poster, built.routeReady, token);
   }
 
   $('#shareClose').addEventListener('click', close);
