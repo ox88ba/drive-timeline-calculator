@@ -330,7 +330,7 @@ export default {
       request = new Request(request.url, {method: 'POST', headers: request.headers, body: new Blob(chunks)});
     }
     if (url.pathname.startsWith('/_AMapService/')) return amapJsProxy(url, request, env);
-    if (url.pathname === '/api/health') return json({ ok: true, mapConfigured: Boolean(env.AMAP_API_KEY), jsMapConfigured: Boolean(env.AMAP_JS_API_KEY && env.AMAP_JS_SECURITY_CODE) });
+    if (url.pathname === '/api/health') return json({ ok: true, mapConfigured: Boolean(env.AMAP_API_KEY), jsMapConfigured: Boolean(env.AMAP_JS_API_KEY && env.AMAP_JS_SECURITY_CODE), kimiConfigured: Boolean(env.MOONSHOT_API_KEY), dotsConfigured: Boolean(env.DOTS_API_KEY), aiProtected: Boolean(env.TURNSTILE_SECRET && env.AI_RATE_LIMITER) });
     if (url.pathname === '/api/map-config') return mapConfig(url, env);
     if (url.pathname === '/api/static-map') return staticMap(url, env);
     if (url.pathname === '/api/elevation') return elevation(url);
