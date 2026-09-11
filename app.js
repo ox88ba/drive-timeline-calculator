@@ -348,6 +348,7 @@
       card.querySelector('.route-status').replaceWith(routeStatus(destination, index)); const buttons = card.querySelector('[data-stay-buttons]'); const relativeButtons = document.createElement('div'); relativeButtons.className = 'stay-relative-buttons'; const untilButtons = document.createElement('div'); untilButtons.className = 'stay-until-buttons'; STAY_OPTIONS.forEach((option) => { const button = document.createElement('button'); button.type = 'button'; button.dataset.action = 'toggle-stay'; button.dataset.minutes = option.minutes; button.textContent = option.label; if (destination.stayMode === 'duration' && destination.selectedStayButtons.includes(option.minutes)) button.classList.add('active'); relativeButtons.append(button); }); ['08:00', '09:00', '10:00'].forEach((time) => { const button = document.createElement('button'); button.type = 'button'; button.dataset.action = 'until-stay'; button.dataset.until = time; button.textContent = `至${time}`; if (destination.stayMode === 'until' && destination.untilTime === time) button.classList.add('active'); untilButtons.append(button); }); buttons.append(relativeButtons, untilButtons); card.querySelector('[data-stay-current]').textContent = `当前停留：${formatStay(destination.stayMinutes)}`;
       const skip = card.querySelector('[data-action="toggle-skip"]'); skip.setAttribute('aria-label', destination.isSkipped ? '恢复目的地' : '暂时跳过目的地'); skip.title = destination.isSkipped ? '恢复目的地' : '暂时跳过目的地'; skip.innerHTML = destination.isSkipped ? '◉' : '◌'; if (destination.isReturnToOrigin) { input.classList.add('return-input'); card.querySelector('[data-action="move-up"]').disabled = true; card.querySelector('[data-action="move-down"]').disabled = true; } if (destination.isSkipped) { card.querySelector('.stay-section').hidden = true; departureBlock.hidden = true; }
       renderLegWarnings(card, wrap, destination);
+      if (AI_ENABLED) globalThis.ScenicAI?.mount(card, destination, requestScenic);
       bindPicker(input, card.querySelector('[data-poi-results]'), destination.id); timelineNode.append(fragment);
     });
     const closed = trip.destinations.at(-1)?.isReturnToOrigin; $('#addDestination').hidden = Boolean(closed); $('#returnOrigin').hidden = Boolean(closed); renderMap();
@@ -432,10 +433,33 @@
     if (aiResultForCurrentTrip()) { showDockToast('当前行程已有 AI 分析；调整行程后会提示重新生成'); return; }
     resetAiChallenge(); $('#aiModal').hidden = false; renderAiTurnstile();
   }
-  function closeAiModal() { $('#aiModal').hidden = true; }
+  let scenicRequest = null;
+  function requestScenic(location) {
+    return new Promise((resolve, reject) => {
+      if (scenicRequest) { reject(new Error('请先完成当前请求')); return; }
+      scenicRequest = {location, resolve, reject};
+      $('#aiModalTitle').textContent = '生成景区参考？';
+      $('#aiModal .section-label').textContent = 'DOTS / 景区参考';
+      $('#aiModal p').textContent = '将向 Dots 发送此地点的名称、地址与坐标，一次生成“景区 AI 建议”和“小红书说”。内容由 AI 生成，并非实时用户评论汇总；门票与运营信息以景区公告为准。';
+      resetAiChallenge(); $('#aiModal').hidden = false; renderAiTurnstile();
+    });
+  }
+  function closeAiModal() {
+    $('#aiModal').hidden = true;
+    if (scenicRequest) { scenicRequest.reject(new Error('已取消生成')); scenicRequest = null; }
+    $('#aiModalTitle').textContent = '生成行程总评？';
+    $('#aiModal .section-label').textContent = 'KIMI / 行程总评';
+    $('#aiModal p').textContent = '将发送当前行程的地点名称、导航数据、时间、停留与海拔信息，用于分析驾驶强度、停留安排、夜间抵达及高原节点。AI 不会修改你的行程。';
+  }
   async function confirmAiAnalysis() {
     const token = aiTurnstileToken || (globalThis.turnstile && aiTurnstileWidgetId ? globalThis.turnstile.getResponse(aiTurnstileWidgetId) : ''); const tripPayload = buildAiTrip();
-    if (!token || !tripPayload) return;
+    if (!token) return;
+    if (scenicRequest) {
+      const job = scenicRequest; scenicRequest = null; closeAiModal(); aiTurnstileToken = '';
+      try { job.resolve(await postJson('/api/scenic-analysis', {location: job.location, turnstileToken: token})); } catch (error) { job.reject(error); }
+      return;
+    }
+    if (!tripPayload) return;
     const source = aiTripSource(tripPayload); const confirm = $('#aiConfirm'); confirm.disabled = true; $('#aiHumanStatus').textContent = '正在提交行程事实…';
     aiLoading = true; aiLastError = ''; closeAiModal(); renderAiAnalysis();
     try {

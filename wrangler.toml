@@ -1,0 +1,17 @@
+name = "drive-timeline-api"
+main = "worker/index.js"
+compatibility_date = "2026-09-08"
+
+[[ratelimits]]
+name = "AI_RATE_LIMITER"
+namespace_id = "2026091101"
+simple = { limit = 6, period = 60 }
+
+# Configure secrets locally or in the Cloudflare dashboard:
+#   npx wrangler secret put AMAP_API_KEY
+#   npx wrangler secret put AMAP_JS_API_KEY
+#   npx wrangler secret put AMAP_JS_SECURITY_CODE
+#   npx wrangler secret put MOONSHOT_API_KEY
+#   npx wrangler secret put DOTS_API_KEY
+# Optional non-secret model selector: KIMI_MODEL=kimi-k2.6
+# Never put secret values in this file or in GitHub.

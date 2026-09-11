@@ -162,3 +162,12 @@
   .add-via-point { padding:5px 7px; font-size:10px; }
   .ai-analysis { padding:13px; }.ai-day { grid-template-columns:70px 1fr; gap:6px; }.ai-risk { padding-right:72px; }
 }
+/* AI references remain secondary to the itinerary and never block editing. */
+.scenic-ai { margin: 20px 0; border-top: 1px solid #e6e8ef; }
+.scenic-ai details { padding: 14px 0; border-bottom: 1px solid #e6e8ef; }
+.scenic-ai summary { cursor: pointer; font-size: 15px; font-weight: 600; color: #293044; }
+.scenic-ai-body { display: grid; gap: 12px; margin-top: 12px; }
+.scenic-ai-body small { color: #727b8e; font-size: 13px; line-height: 1.6; }
+.scenic-ai-body p { font-size: 15px; line-height: 1.8; white-space: pre-wrap; overflow-wrap: anywhere; margin: 0; }
+.scenic-ai-body button { justify-self: start; padding: 9px 16px; border: 0; border-radius: 20px; color: #315bff; background: #eef1ff; }
+.scenic-ai-error { color: #a94343; }
