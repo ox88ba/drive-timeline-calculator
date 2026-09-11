@@ -218,6 +218,8 @@ async function aiAnalysis(request, env) {
   } catch { return error(504, 'AI_TIMEOUT', 'AI 分析响应超时，请稍后重试。'); }
   const data = await response.json().catch(() => ({}));
   if (!response.ok) {
+    const providerMessage = String(data?.message || data?.error?.message || '').toLowerCase();
+    if (response.status === 429 && /insufficient balance|recharge|suspended/.test(providerMessage)) return error(503, 'AI_BILLING_REQUIRED', 'Kimi 行程总评暂不可用：服务额度不足，请联系网站管理员。');
     if (response.status === 429) return error(429, 'AI_RATE_LIMITED', 'AI 分析请求较多，请稍后再试。');
     if (response.status === 401) return error(503, 'AI_AUTH_FAILED', 'AI 服务凭据未正确配置。');
     return error(502, 'AI_PROVIDER_FAILED', 'AI 分析服务暂时不可用，请稍后重试。');
