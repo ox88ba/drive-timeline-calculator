@@ -282,46 +282,20 @@ html[data-skin="roadbook"] .return-origin {
   background: rgba(255, 255, 255, .06);
 }
 
-/* ---------- 路线预览：航拍监视器 ---------- */
+/* ---------- 路线预览 ----------
+   底图瓦片为浅色，地图区域（容器、轨迹线、站点标记）保持原浅色样式，
+   仅外层卡片与操作按钮沿用暗夜玻璃风。
+   原样式中引用 CSS 变量的地图元素需显式锁回原值，隔绝暗夜变量。 */
 html[data-skin="roadbook"] .refresh-route-preview {
   border-color: rgba(255, 177, 77, .42);
   color: var(--accent);
   background: rgba(255, 177, 77, .08);
 }
-html[data-skin="roadbook"] .route-map {
-  border: 1px solid rgba(255, 255, 255, .07);
-  background: #0e1218;
-  color: #78829a;
-}
-/* 取景框内缘线 */
-html[data-skin="roadbook"] .route-map::before {
-  position: absolute;
-  z-index: 2;
-  inset: 9px;
-  content: "";
-  border: 1px solid rgba(255, 177, 77, .22);
-  border-radius: 8px;
-  pointer-events: none;
-}
-/* 压低亮色地图的突兀感 */
-html[data-skin="roadbook"] .amap-route-canvas,
-html[data-skin="roadbook"] .route-map-svg {
-  filter: saturate(.72) brightness(.86);
-}
-html[data-skin="roadbook"] .map-road { stroke: var(--accent); }
-html[data-skin="roadbook"] .map-marker { fill: #161b24; stroke: var(--accent); }
-html[data-skin="roadbook"] .map-marker-label { fill: var(--ink); }
-html[data-skin="roadbook"] .amap-route-marker {
-  border-color: rgba(255, 177, 77, .85);
-  color: #ffd9a0;
-  background: rgba(16, 20, 27, .94);
-  box-shadow: 0 2px 10px rgba(0, 0, 0, .5);
-}
-html[data-skin="roadbook"] .map-fallback-note {
-  color: #98a1b1;
-  background: rgba(16, 20, 27, .88);
-}
 html[data-skin="roadbook"] .preview-summary { background: rgba(255, 255, 255, .03); }
+html[data-skin="roadbook"] .route-map { color: #717989; background: #f5f7fb; }
+html[data-skin="roadbook"] .map-road { stroke: #2d5dff; }
+html[data-skin="roadbook"] .map-marker { fill: #fff; stroke: #1c2230; }
+html[data-skin="roadbook"] .map-marker-label { fill: #1c2230; }
 
 /* ---------- 行程导航 Dock ---------- */
 html[data-skin="roadbook"] .trip-dock {
@@ -394,7 +368,19 @@ html[data-skin="roadbook"] .delete-modal .danger {
 }
 html[data-skin="roadbook"] .human-check-status { color: #78829a; }
 
-/* 分享面板 UI 深色化；分享长图本体保持浅色（导出物即所见） */
+/* 分享面板 UI 深色化；分享长图本体完全保持原浅色样式。
+   长图在自身作用域内锁死原浅色变量，隔绝暗夜变量继承，
+   确保 html2canvas 导出物与经典主题下逐像素一致。 */
+html[data-skin="roadbook"] .share-poster {
+  --ink: #1c2230;
+  --muted: #717989;
+  --line: #e8eaf0;
+  --paper: #fff;
+  --ground: #f4f5f8;
+  --accent: #2d5dff;
+  --danger: #d94a55;
+  --shadow: 0 10px 30px rgba(30, 37, 54, .06);
+}
 html[data-skin="roadbook"] .share-modal-head h2 { color: #f6f1e6; font-family: "Noto Serif SC", "Songti SC", serif; }
 html[data-skin="roadbook"] .share-name-panel {
   border-color: var(--line);
