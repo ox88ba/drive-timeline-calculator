@@ -1,0 +1,513 @@
+/* ============================================================
+   VOYAGE · 国际化高级皮肤（Dribbble 2026 方向）
+   作用域：html[data-skin="voyage"]（叠加 data-engine="timeflow"）
+   设计语言：near-black 底色 + 双极光环境光 / 编辑级大衬线标题 /
+   Bento 指标宫格 / Glassmorphism 2.0（克制：发丝边 + 低填充 +
+   12-20px 模糊）/ 琥珀金 × 月色蓝双强调 / DM Mono 表格数字
+   ============================================================ */
+
+html[data-skin="voyage"] {
+  color-scheme: dark;
+  --ink: #eef1f7;
+  --muted: #8b93a5;
+  --line: rgba(255, 255, 255, .08);
+  --paper: rgba(255, 255, 255, .045);
+  --ground: #07090d;
+  --accent: #f0b35e;
+  --accent-2: #8ea7ff;
+  --danger: #ff6b6b;
+  --shadow: 0 20px 50px rgba(0, 0, 0, .55);
+}
+
+/* ---------- 背景：深夜近黑 + 双极光 + 胶片颗粒 ---------- */
+html[data-skin="voyage"] body {
+  background:
+    radial-gradient(ellipse 90% 42% at 50% -14%, rgba(240, 179, 94, .13), transparent 60%),
+    radial-gradient(ellipse 60% 38% at 88% 106%, rgba(142, 167, 255, .09), transparent 62%),
+    linear-gradient(180deg, #0a0d13 0%, #07090d 100%);
+  background-attachment: fixed;
+}
+html[data-skin="voyage"] body::after {
+  position: fixed;
+  z-index: 999;
+  inset: 0;
+  content: "";
+  pointer-events: none;
+  opacity: .03;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* ---------- Hero：编辑级排版 ---------- */
+html[data-skin="voyage"] .eyebrow,
+html[data-skin="voyage"] .section-label {
+  color: #77809a;
+  letter-spacing: .18em;
+}
+html[data-skin="voyage"] .pulse {
+  background: var(--accent);
+  box-shadow: 0 0 0 4px rgba(240, 179, 94, .14), 0 0 14px rgba(240, 179, 94, .55);
+}
+html[data-skin="voyage"] h1 {
+  font-family: "Sora", "Noto Serif SC", "Songti SC", serif;
+  font-size: clamp(30px, 7.6vw, 42px);
+  font-weight: 700;
+  letter-spacing: -.02em;
+  line-height: 1.16;
+  color: #f7f3ea;
+}
+html[data-skin="voyage"] .hero p {
+  margin-top: 8px;
+  color: #77809a;
+  font-size: 12px;
+  letter-spacing: .02em;
+}
+/* 航线面包屑（voyage.js 注入） */
+html[data-skin="voyage"] .vg-route {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 14px;
+  margin: 16px 2px 0;
+  padding: 11px 14px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, .035);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+html[data-skin="voyage"] .vg-route-names {
+  min-width: 0;
+  overflow: hidden;
+  color: #d9deea;
+  font: 600 12px/1.4 "Noto Sans SC", sans-serif;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  letter-spacing: .01em;
+}
+html[data-skin="voyage"] .vg-route-names em {
+  margin: 0 7px;
+  color: var(--accent);
+  font: 400 11px "DM Mono", monospace;
+  font-style: normal;
+}
+html[data-skin="voyage"] .vg-route-meta {
+  flex: 0 0 auto;
+  color: var(--accent);
+  font: 500 10px/1.4 "DM Mono", monospace;
+  letter-spacing: .1em;
+  text-shadow: 0 0 14px rgba(240, 179, 94, .35);
+}
+
+/* 圆形玻璃图标按钮 */
+html[data-skin="voyage"] .icon-button {
+  width: 40px;
+  height: 40px;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  color: #a3abc0;
+  background: rgba(255, 255, 255, .04);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  transition: transform .18s ease, border-color .18s ease, color .18s ease, box-shadow .18s ease;
+}
+html[data-skin="voyage"] .icon-button:hover {
+  transform: translateY(-1px);
+  border-color: rgba(240, 179, 94, .4);
+  color: var(--accent);
+}
+html[data-skin="voyage"] .icon-button:active {
+  transform: translateY(0);
+  color: var(--accent);
+  border-color: rgba(240, 179, 94, .55);
+  box-shadow: 0 0 18px rgba(240, 179, 94, .22);
+}
+html[data-skin="voyage"] #skinToggle {
+  color: var(--accent);
+  border-color: rgba(240, 179, 94, .38);
+  box-shadow: 0 0 16px rgba(240, 179, 94, .16);
+}
+
+/* ---------- 玻璃卡片通用（汇总/出发点/目的地/预览） ---------- */
+html[data-skin="voyage"] .summary,
+html[data-skin="voyage"] .start-card,
+html[data-skin="voyage"] .destination-card,
+html[data-skin="voyage"] .route-preview,
+html[data-skin="voyage"] .tf-rhythm,
+html[data-skin="voyage"] .ai-analysis {
+  border: 1px solid var(--line);
+  background: linear-gradient(165deg, rgba(255, 255, 255, .05), rgba(255, 255, 255, .02));
+  box-shadow: var(--shadow), inset 0 1px 0 rgba(255, 255, 255, .06);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+
+/* ---------- Bento 指标宫格：mono 序号 + 大数字 ---------- */
+html[data-skin="voyage"] .summary {
+  counter-reset: vg;
+  border-radius: 20px;
+}
+html[data-skin="voyage"] .summary > div {
+  position: relative;
+  padding: 17px 12px 14px;
+  border-color: var(--line);
+}
+html[data-skin="voyage"] .summary > div::before {
+  position: absolute;
+  top: 10px;
+  right: 11px;
+  counter-increment: vg;
+  content: "0" counter(vg);
+  color: rgba(255, 255, 255, .22);
+  font: 500 9px "DM Mono", monospace;
+  letter-spacing: .08em;
+}
+html[data-skin="voyage"] .summary > div span,
+html[data-skin="voyage"] .preview-summary > div span {
+  color: #6d7590;
+  letter-spacing: .06em;
+}
+html[data-skin="voyage"] .summary strong,
+html[data-skin="voyage"] .preview-summary strong {
+  color: var(--ink);
+  font-size: 15px;
+  font-weight: 500;
+  letter-spacing: -.02em;
+}
+/* 最终抵达：通栏高亮，琥珀渐变文字 + 呼吸微光 */
+html[data-skin="voyage"] .summary-arrival {
+  border-top-color: var(--line);
+  background: linear-gradient(90deg, rgba(240, 179, 94, .1), transparent 65%);
+}
+html[data-skin="voyage"] .summary-arrival::before { content: none; }
+html[data-skin="voyage"] .summary-arrival strong {
+  background: linear-gradient(90deg, #ffd9a0, #f0b35e);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: vg-glow 3.4s ease-in-out infinite;
+}
+@keyframes vg-glow {
+  0%, 100% { filter: drop-shadow(0 0 6px rgba(240, 179, 94, .25)); }
+  50% { filter: drop-shadow(0 0 14px rgba(240, 179, 94, .45)); }
+}
+
+/* ---------- 站点编号：描边幽灵数字 ---------- */
+html[data-skin="voyage"] .station-number,
+html[data-skin="voyage"] .start-number {
+  color: transparent;
+  -webkit-text-stroke: 1px rgba(240, 179, 94, .65);
+  font: 700 15px "Sora", "DM Mono", monospace;
+  letter-spacing: .04em;
+  text-shadow: none;
+}
+html[data-skin="voyage"] .destination-card[data-sky-a] .station-number {
+  color: transparent;
+  -webkit-text-stroke: 1px color-mix(in srgb, var(--tf-a-ink) 75%, transparent);
+}
+
+/* ---------- pill 按钮组 ---------- */
+html[data-skin="voyage"] .quick-starts button,
+html[data-skin="voyage"] .stay-buttons button {
+  border-color: rgba(255, 255, 255, .07);
+  color: #a9b1c4;
+  background: rgba(255, 255, 255, .05);
+  transition: transform .15s ease, box-shadow .15s ease;
+}
+html[data-skin="voyage"] .quick-starts button:hover,
+html[data-skin="voyage"] .stay-buttons button:hover { transform: translateY(-1px); }
+html[data-skin="voyage"] .quick-starts button.active,
+html[data-skin="voyage"] .stay-buttons button.active {
+  border-color: transparent;
+  color: #2a1a04;
+  background: linear-gradient(180deg, #ffd08a, #f0a945);
+  box-shadow: 0 4px 18px rgba(240, 179, 94, .32);
+  font-weight: 600;
+}
+html[data-skin="voyage"] .date-field,
+html[data-skin="voyage"] .time-field { color: #77809a; }
+html[data-skin="voyage"] .date-field input,
+html[data-skin="voyage"] .time-field input { color: var(--ink); }
+
+/* ---------- 公路连接线：更细的流光虚线 ---------- */
+html[data-skin="voyage"] .route-connector::before {
+  left: 20px;
+  width: 1px;
+  background: repeating-linear-gradient(180deg,
+      rgba(240, 179, 94, .75) 0 4px,
+      transparent 4px 10px);
+  animation: vg-road-flow 1.8s linear infinite;
+}
+@keyframes vg-road-flow { to { background-position: 0 10px; } }
+html[data-skin="voyage"] .route-connector::after {
+  color: var(--accent);
+  background: transparent;
+  text-shadow: 0 0 10px rgba(240, 179, 94, .5);
+}
+html[data-skin="voyage"] .route-connector { color: #6d7590; }
+html[data-skin="voyage"] .connector-route { color: var(--accent); }
+html[data-skin="voyage"] .skipped-connector { color: #565e70; }
+html[data-skin="voyage"] .skipped-connector::before {
+  background: repeating-linear-gradient(180deg, rgba(255, 255, 255, .16) 0 4px, transparent 4px 10px);
+  animation: none;
+}
+html[data-skin="voyage"] .date-divider { color: #c9a06a; letter-spacing: .1em; }
+html[data-skin="voyage"] .date-divider::before,
+html[data-skin="voyage"] .date-divider::after {
+  background: linear-gradient(90deg, transparent, rgba(240, 179, 94, .38), transparent);
+}
+html[data-skin="voyage"] .add-via-point {
+  border-color: rgba(240, 179, 94, .32);
+  color: #eacb9a;
+  background: rgba(240, 179, 94, .07);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+/* ---------- POI 搜索 ---------- */
+html[data-skin="voyage"] .place-picker input {
+  color: var(--ink);
+  border-bottom-color: rgba(255, 255, 255, .13);
+  caret-color: var(--accent);
+  font-family: "Sora", "Noto Sans SC", sans-serif;
+}
+html[data-skin="voyage"] .place-picker input::placeholder { color: #565e70; }
+html[data-skin="voyage"] .place-picker input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 14px 24px -16px rgba(240, 179, 94, .4);
+}
+html[data-skin="voyage"] .search-mark { color: #626b7e; }
+html[data-skin="voyage"] .place-address { color: #77809a; }
+html[data-skin="voyage"] .place-meta { color: #6d7790; }
+html[data-skin="voyage"] .poi-results {
+  border-color: rgba(255, 255, 255, .1);
+  border-radius: 16px;
+  background: rgba(13, 16, 23, .96);
+  box-shadow: 0 22px 50px rgba(0, 0, 0, .62);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+html[data-skin="voyage"] .poi-option { color: var(--ink); border-bottom-color: rgba(255, 255, 255, .06); }
+html[data-skin="voyage"] .poi-option:active,
+html[data-skin="voyage"] .poi-option:hover { background: rgba(240, 179, 94, .09); }
+
+/* ---------- 卡片数据与状态 ---------- */
+html[data-skin="voyage"] .time-grid strong { color: var(--ink); }
+html[data-skin="voyage"] .stay-section,
+html[data-skin="voyage"] .departure-block { border-top-color: var(--line); }
+html[data-skin="voyage"] .route-status { color: #77809a; background: rgba(255, 255, 255, .04); }
+html[data-skin="voyage"] .route-status.error { color: #ff98a0; background: rgba(255, 107, 107, .12); }
+html[data-skin="voyage"] .card-actions button {
+  color: #98a1b6;
+  background: rgba(255, 255, 255, .055);
+  transition: transform .15s ease;
+}
+html[data-skin="voyage"] .card-actions button:hover { transform: translateY(-1px); }
+html[data-skin="voyage"] .card-actions button:last-child { color: #ff858d; }
+html[data-skin="voyage"] .photo-badge.golden { color: #ffd98c; background: rgba(255, 190, 90, .15); }
+html[data-skin="voyage"] .photo-badge.sunset { color: #ffb08a; background: rgba(255, 130, 80, .15); }
+html[data-skin="voyage"] .photo-badge.blue { color: #a9c8ff; background: rgba(142, 167, 255, .16); }
+html[data-skin="voyage"] .spinner { border-color: rgba(240, 179, 94, .22); border-top-color: var(--accent); }
+html[data-skin="voyage"] .night-arrival { color: var(--accent-2); }
+html[data-skin="voyage"] .drive-warning.is-orange { color: #ffbe7a; background: rgba(255, 160, 60, .13); }
+html[data-skin="voyage"] .drive-warning.is-red { color: #ff98a0; background: rgba(255, 107, 107, .13); }
+html[data-skin="voyage"] .altitude-warning { color: #d9a05f; }
+/* 摄影时刻卡的金/橙/蓝勾边 */
+html[data-skin="voyage"] .destination-card.photo-golden { border-color: rgba(255, 214, 134, .3); box-shadow: var(--shadow), 0 0 28px rgba(240, 179, 94, .08); }
+html[data-skin="voyage"] .destination-card.photo-sunset { border-color: rgba(255, 160, 110, .3); box-shadow: var(--shadow), 0 0 28px rgba(255, 130, 80, .08); }
+html[data-skin="voyage"] .destination-card.photo-blue { border-color: rgba(142, 167, 255, .28); box-shadow: var(--shadow), 0 0 28px rgba(142, 167, 255, .08); }
+
+/* ---------- 行程操作 ---------- */
+html[data-skin="voyage"] .add-destination {
+  border: 1px dashed rgba(240, 179, 94, .4);
+  border-radius: 999px;
+  color: #eacb9a;
+  background: rgba(240, 179, 94, .045);
+  transition: background .18s ease, box-shadow .18s ease, transform .18s ease;
+}
+html[data-skin="voyage"] .add-destination:hover { transform: translateY(-1px); }
+html[data-skin="voyage"] .add-destination:active {
+  background: rgba(240, 179, 94, .11);
+  box-shadow: 0 0 24px rgba(240, 179, 94, .18);
+}
+html[data-skin="voyage"] .add-destination span { color: var(--accent); }
+html[data-skin="voyage"] .return-origin {
+  border-radius: 999px;
+  color: #a9b1c4;
+  background: rgba(255, 255, 255, .05);
+}
+
+/* ---------- 路线预览（地图区锁浅色，外层玻璃） ---------- */
+html[data-skin="voyage"] .route-preview { border-radius: 20px; }
+html[data-skin="voyage"] .route-preview h2 { color: #f4f0e6; font-family: "Noto Serif SC", "Songti SC", serif; }
+html[data-skin="voyage"] .refresh-route-preview {
+  border-color: rgba(240, 179, 94, .38);
+  border-radius: 999px;
+  color: var(--accent);
+  background: rgba(240, 179, 94, .07);
+}
+html[data-skin="voyage"] .preview-summary { background: rgba(255, 255, 255, .03); }
+html[data-skin="voyage"] .preview-summary > div { border-color: var(--line); }
+html[data-skin="voyage"] .route-map { color: #717989; background: #f5f7fb; }
+html[data-skin="voyage"] .map-road { stroke: #2d5dff; }
+html[data-skin="voyage"] .map-marker { fill: #fff; stroke: #1c2230; }
+html[data-skin="voyage"] .map-marker-label { fill: #1c2230; }
+
+/* ---------- 行程导航 Dock：悬浮玻璃 ---------- */
+html[data-skin="voyage"] .trip-dock {
+  border-color: rgba(255, 255, 255, .09);
+  border-radius: 20px;
+  background: rgba(11, 14, 20, .82);
+  box-shadow: 0 18px 44px rgba(0, 0, 0, .52);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+html[data-skin="voyage"] .dock-toggle { color: var(--accent); background: rgba(240, 179, 94, .1); }
+html[data-skin="voyage"] .dock-item { color: var(--ink); background: rgba(255, 255, 255, .045); }
+html[data-skin="voyage"] .dock-item b { color: var(--accent); }
+html[data-skin="voyage"] .dock-item.is-pressing { background: rgba(240, 179, 94, .12); }
+html[data-skin="voyage"] .dock-item.is-active { border-color: rgba(240, 179, 94, .5); background: rgba(240, 179, 94, .11); }
+html[data-skin="voyage"] .dock-item.drag-over {
+  outline-color: var(--accent);
+  background: rgba(240, 179, 94, .13);
+  box-shadow: 0 0 0 4px rgba(240, 179, 94, .1);
+}
+html[data-skin="voyage"] .dock-item.is-skipped,
+html[data-skin="voyage"] .dock-item.is-skipped b { color: #565e70; }
+html[data-skin="voyage"] .trip-dock.is-dragging { border-color: rgba(240, 179, 94, .48); box-shadow: 0 14px 34px rgba(240, 179, 94, .15); }
+html[data-skin="voyage"] .trip-dock.is-dragging .dock-title { color: var(--accent); }
+html[data-skin="voyage"] .trip-dock.is-dragging .dock-item.is-dragging { background: #141a24; box-shadow: 0 9px 22px rgba(0, 0, 0, .55); }
+html[data-skin="voyage"] .dock-toast {
+  border-color: rgba(240, 179, 94, .38);
+  color: #ffd9a0;
+  background: rgba(17, 21, 29, .95);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, .5);
+}
+
+/* ---------- 弹窗：深色玻璃 + 衬线标题 ---------- */
+html[data-skin="voyage"] .modal-backdrop {
+  background: rgba(3, 5, 8, .62);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+html[data-skin="voyage"] .delete-modal,
+html[data-skin="voyage"] .share-modal {
+  border: 1px solid rgba(255, 255, 255, .1);
+  border-radius: 22px;
+  color: var(--ink);
+  background: linear-gradient(170deg, #151a24, #0e1219);
+  box-shadow: 0 26px 68px rgba(0, 0, 0, .62), inset 0 1px 0 rgba(255, 255, 255, .06);
+}
+html[data-skin="voyage"] .delete-modal h2,
+html[data-skin="voyage"] .share-modal-head h2 {
+  color: #f7f3ea;
+  font-family: "Noto Serif SC", "Songti SC", serif;
+}
+html[data-skin="voyage"] .delete-modal p { color: #8b93a5; }
+html[data-skin="voyage"] .delete-modal button { color: #c2c9d8; background: rgba(255, 255, 255, .08); border-radius: 999px; }
+html[data-skin="voyage"] .delete-modal .danger {
+  color: #fff;
+  background: linear-gradient(180deg, #ff7a7a, #e05252);
+  box-shadow: 0 6px 18px rgba(255, 107, 107, .3);
+}
+html[data-skin="voyage"] .human-check-status { color: #6d7590; }
+
+/* 分享长图本体锁回浅色变量（与 roadbook 一致的导出契约） */
+html[data-skin="voyage"] .share-poster {
+  --ink: #1c2230;
+  --muted: #717989;
+  --line: #e8eaf0;
+  --paper: #fff;
+  --ground: #f4f5f8;
+  --accent: #2d5dff;
+  --danger: #d94a55;
+  --shadow: 0 10px 30px rgba(30, 37, 54, .06);
+}
+html[data-skin="voyage"] .share-name-panel { border-color: var(--line); background: rgba(255, 255, 255, .04); }
+html[data-skin="voyage"] .share-name-panel label { color: #c2c9d8; }
+html[data-skin="voyage"] .share-name-panel input {
+  border-color: rgba(255, 255, 255, .12);
+  color: var(--ink);
+  background: rgba(255, 255, 255, .05);
+}
+html[data-skin="voyage"] .share-name-panel input:focus {
+  border-color: rgba(240, 179, 94, .55);
+  box-shadow: 0 0 0 3px rgba(240, 179, 94, .14);
+}
+html[data-skin="voyage"] .share-name-shortcuts button { border-color: rgba(255, 255, 255, .1); color: #a9b1c4; background: rgba(255, 255, 255, .05); }
+html[data-skin="voyage"] .share-name-shortcuts button:active { color: var(--accent); border-color: rgba(240, 179, 94, .5); background: rgba(240, 179, 94, .1); }
+html[data-skin="voyage"] .share-preview { border-color: var(--line); background: rgba(255, 255, 255, .04); }
+html[data-skin="voyage"] .share-actions button { border-color: var(--line); border-radius: 999px; color: #c2c9d8; background: rgba(255, 255, 255, .06); }
+html[data-skin="voyage"] .share-actions #shareSystem {
+  border-color: transparent;
+  color: #2a1a04;
+  background: linear-gradient(180deg, #ffd08a, #f0a945);
+  box-shadow: 0 6px 20px rgba(240, 179, 94, .3);
+}
+html[data-skin="voyage"] .share-actions button:disabled { color: #565e70; background: rgba(255, 255, 255, .04); }
+
+/* ---------- AI 行程总评 ---------- */
+html[data-skin="voyage"] .ai-analysis {
+  border-color: rgba(142, 167, 255, .22);
+  border-radius: 20px;
+  background: linear-gradient(135deg, rgba(142, 167, 255, .07), rgba(255, 255, 255, .02));
+}
+html[data-skin="voyage"] .ai-analysis-head h2 { color: #f7f3ea; font-family: "Noto Serif SC", "Songti SC", serif; }
+html[data-skin="voyage"] .ai-analysis-head button {
+  border-radius: 999px;
+  color: #2a1a04;
+  background: linear-gradient(180deg, #ffd08a, #f0a945);
+  box-shadow: 0 5px 16px rgba(240, 179, 94, .3);
+}
+html[data-skin="voyage"] .ai-analysis-head button:disabled { color: #565e70; background: rgba(255, 255, 255, .06); box-shadow: none; }
+html[data-skin="voyage"] .ai-analysis-hint { color: #77809a; }
+html[data-skin="voyage"] .ai-result-lead { background: rgba(255, 255, 255, .05); box-shadow: none; }
+html[data-skin="voyage"] .ai-result-lead h3 { color: var(--ink); }
+html[data-skin="voyage"] .ai-result-lead p { color: #a3abc0; }
+html[data-skin="voyage"] .ai-result-section { border-top-color: var(--line); }
+html[data-skin="voyage"] .ai-result-section h3 { color: #77809a; }
+html[data-skin="voyage"] .ai-day,
+html[data-skin="voyage"] .ai-risk,
+html[data-skin="voyage"] .ai-suggestion { background: rgba(255, 255, 255, .04); }
+html[data-skin="voyage"] .ai-day { color: #a3abc0; }
+html[data-skin="voyage"] .ai-day b { color: var(--accent); }
+html[data-skin="voyage"] .ai-day.ai-level-attention { background: rgba(255, 190, 90, .09); }
+html[data-skin="voyage"] .ai-day.ai-level-high { background: rgba(255, 107, 107, .09); }
+html[data-skin="voyage"] .ai-risk p,
+html[data-skin="voyage"] .ai-suggestion p { color: #a3abc0; }
+html[data-skin="voyage"] .ai-risk small { color: #6d7790; }
+html[data-skin="voyage"] .ai-suggestion b { color: var(--ink); }
+html[data-skin="voyage"] .ai-anchor { color: var(--accent); background: rgba(240, 179, 94, .1); }
+
+/* ---------- 景区 AI 栏目 ---------- */
+html[data-skin="voyage"] .scenic-ai { border-top-color: var(--line); }
+html[data-skin="voyage"] .scenic-ai details { border-bottom-color: var(--line); }
+html[data-skin="voyage"] .scenic-ai summary { color: #e4e8f2; }
+html[data-skin="voyage"] .scenic-ai-body small { color: #77809a; }
+html[data-skin="voyage"] .scenic-ai-body p { color: #c2c9d8; }
+html[data-skin="voyage"] .scenic-ai-body button { color: var(--accent); background: rgba(240, 179, 94, .1); }
+html[data-skin="voyage"] .scenic-ai-error { color: #ff98a0; }
+
+/* ---------- 节律带 / What-if 细节适配 ---------- */
+html[data-skin="voyage"] .tf-rhythm { border-radius: 20px; }
+html[data-skin="voyage"] .tf-rhythm-legend { color: #77809a; }
+html[data-skin="voyage"] .tf-rhythm-day b { color: #e8ecf4; }
+html[data-skin="voyage"] .tf-rhythm-day span { color: #626b80; }
+
+/* ---------- 页脚 / 选中 / 焦点 ---------- */
+html[data-skin="voyage"] .footnote { color: #626b7e; }
+html[data-skin="voyage"] ::selection { color: #2a1a04; background: rgba(240, 179, 94, .85); }
+html[data-skin="voyage"] :focus-visible {
+  outline: 2px solid rgba(240, 179, 94, .6);
+  outline-offset: 2px;
+}
+
+/* ---------- 减少动态偏好 ---------- */
+@media (prefers-reduced-motion: reduce) {
+  html[data-skin="voyage"] .route-connector::before { animation: none; }
+  html[data-skin="voyage"] .summary-arrival strong { animation: none; }
+  html[data-skin="voyage"] .icon-button:hover,
+  html[data-skin="voyage"] .add-destination:hover,
+  html[data-skin="voyage"] .quick-starts button:hover,
+  html[data-skin="voyage"] .stay-buttons button:hover,
+  html[data-skin="voyage"] .card-actions button:hover { transform: none; }
+}

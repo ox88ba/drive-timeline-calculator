@@ -1,0 +1,646 @@
+/* ============================================================
+   LEDGER · 编辑路单风皮肤（20260913-ab1）
+   作用域：html[data-skin="ledger"]（本模式无 data-engine，
+   无天空引擎/天空卡片——纸感纯净，不出现任何天空元素）
+   设计语言：一份设计精良的跨国路单/账本，不是 App。
+   编辑排版 × 瑞士网格 × 表格化数据：
+   - 纸底 #F4F2EE / 墨色 #1F1F1F / 次级 #656E77 / 三级 #A8A39A
+   - 发丝线 1px rgba(31,31,31,.10)（与墨色同族）
+   - 单强调色赤褐 #C0563B，配给制：仅当前时刻 / 主按钮 / 时间线当前节点
+   - 极淡沙金 rgba(230,193,122,.15) 只做标注底色
+   - 三声部字体：Source Serif 4 + Noto Serif SC（标题/站名）、
+     Inter + PingFang SC（正文/UI）、JetBrains Mono + tabular-nums
+     （时刻/里程/序号——等宽对齐是灵魂）
+   契约遵守：
+   - 不改写任何时刻文本（MM/DD HH:MM 解析契约）
+   - .share-poster 锁回浅色变量，导出契约 backgroundColor #f4f5f8 不动
+   - 产品钩子（.undo-snackbar / .persist-warning / .overnight-badge /
+     .fatigue-banner / .value-flash / .is-derived / .derived-tag）
+     结构归 app.js，本文件只做路单化视觉重绘
+   ============================================================ */
+
+html[data-skin="ledger"] {
+  color-scheme: light;
+  --ink: #1F1F1F;
+  --muted: #656E77;
+  --faint: #A8A39A;
+  --line: rgba(31, 31, 31, .10);
+  --line-strong: rgba(31, 31, 31, .30);
+  --paper: #F4F2EE;
+  --ground: #F4F2EE;
+  --float: #FBFAF6;
+  --accent: #C0563B;
+  --accent-deep: #A6442E;
+  --danger: #B03A24;
+  --sand: rgba(230, 193, 122, .15);
+  --shadow: none;
+  --lg-float-shadow: 0 8px 24px rgba(0, 0, 0, .08), inset 0 1px 0 rgba(255, 255, 255, .72);
+  --serif: "Source Serif 4", "Noto Serif SC", "Songti SC", serif;
+  --sans: "Inter", "PingFang SC", "Noto Sans SC", -apple-system, sans-serif;
+  --mono: "JetBrains Mono", "DM Mono", monospace;
+}
+
+/* ---------- 纸面底座 ---------- */
+html[data-skin="ledger"] body {
+  background: var(--ground);
+  color: var(--ink);
+  font: 400 15px/1.6 var(--sans);
+  -webkit-font-smoothing: antialiased;
+}
+html[data-skin="ledger"] ::selection { color: var(--ink); background: rgba(230, 193, 122, .45); }
+html[data-skin="ledger"] :focus-visible { outline: 1.5px solid rgba(192, 86, 59, .65); outline-offset: 2px; }
+html[data-skin="ledger"] button, html[data-skin="ledger"] input { font-family: var(--sans); }
+
+/* ---------- 统一动效：仅 fade-up 入场 200–300ms / hover 100–150ms ---------- */
+@keyframes lgFadeUp {
+  from { opacity: 0; transform: translateY(7px); }
+  to { opacity: 1; transform: none; }
+}
+html[data-skin="ledger"] .hero,
+html[data-skin="ledger"] .summary,
+html[data-skin="ledger"] .ai-analysis,
+html[data-skin="ledger"] .start-card,
+html[data-skin="ledger"] .trip-actions,
+html[data-skin="ledger"] .route-preview {
+  animation: lgFadeUp .28s ease-out both;
+}
+html[data-skin="ledger"] .destination-wrap.lg-enter { animation: lgFadeUp .24s ease-out both; }
+
+/* ---------- Hero：路单眉批 ---------- */
+html[data-skin="ledger"] .hero { padding: 6px 2px 0; }
+html[data-skin="ledger"] .eyebrow,
+html[data-skin="ledger"] .section-label {
+  color: var(--faint);
+  font: 500 10.5px/1 var(--mono);
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+html[data-skin="ledger"] .pulse {
+  width: 6px; height: 6px; margin-right: 8px;
+  border-radius: 0; background: var(--accent); box-shadow: none;
+}
+html[data-skin="ledger"] .hero-row { margin-top: 14px; align-items: flex-end; }
+html[data-skin="ledger"] h1 {
+  color: var(--ink);
+  font: 600 clamp(34px, 8.6vw, 42px)/1.12 var(--serif);
+  letter-spacing: -.02em;
+}
+html[data-skin="ledger"] .hero p { margin-top: 8px; color: var(--muted); font-size: 13px; letter-spacing: .01em; }
+html[data-skin="ledger"] .icon-button {
+  width: 34px; height: 34px;
+  border: 1px solid var(--line); border-radius: 3px;
+  color: var(--muted); background: transparent; font-size: 15px;
+  transition: color .12s ease, border-color .12s ease, background .12s ease;
+}
+html[data-skin="ledger"] .icon-button:hover { color: var(--ink); border-color: var(--line-strong); background: rgba(31, 31, 31, .035); }
+html[data-skin="ledger"] #skinToggle[aria-pressed="true"] { color: var(--ink); border-color: var(--line-strong); }
+
+/* 路单编号条（ledger.js 注入 .lg-strip） */
+html[data-skin="ledger"] .lg-strip {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 14px;
+  margin-top: 20px; padding: 11px 0 10px;
+  border-top: 1px solid var(--line-strong);
+  border-bottom: 1px solid var(--line);
+}
+html[data-skin="ledger"] .lg-strip-names {
+  min-width: 0; overflow: hidden;
+  color: var(--ink); font: italic 400 14px/1.5 var(--serif);
+  text-overflow: ellipsis; white-space: nowrap;
+}
+html[data-skin="ledger"] .lg-strip-names em { margin: 0 7px; color: var(--faint); font: 400 11px var(--mono); font-style: normal; }
+html[data-skin="ledger"] .lg-strip-meta {
+  flex: 0 0 auto; color: var(--muted);
+  font: 500 10px/1.6 var(--mono); letter-spacing: .12em; text-transform: uppercase;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 大写微标签（ledger.js 注入 .lg-micro） */
+html[data-skin="ledger"] .lg-micro {
+  display: block; color: var(--faint);
+  font: 500 10px/1.5 var(--mono); letter-spacing: .14em; text-transform: uppercase;
+}
+
+/* ---------- Summary：四列表格，无卡片无底色，靠留白与发丝线分区 ---------- */
+html[data-skin="ledger"] .summary {
+  margin-top: 22px;
+  border: 0; border-top: 1px solid var(--line-strong); border-bottom: 1px solid var(--line);
+  border-radius: 0; background: transparent; box-shadow: none;
+}
+html[data-skin="ledger"] .summary > div { padding: 13px 12px 13px 0; border-right: 1px solid var(--line); }
+html[data-skin="ledger"] .summary > div:nth-child(4) { border-right: 0; }
+html[data-skin="ledger"] .summary span {
+  display: block; margin-top: 3px; color: var(--muted);
+  font: 400 11px/1.4 var(--sans); white-space: nowrap;
+}
+html[data-skin="ledger"] .summary strong {
+  display: block; overflow: hidden; margin-top: 5px;
+  color: var(--ink); font: 500 14px/1.3 var(--mono);
+  font-variant-numeric: tabular-nums; letter-spacing: -.01em;
+  text-overflow: ellipsis; white-space: nowrap;
+}
+/* 最终抵达：通栏批注——墨色等宽 + 沙金荧光笔，不动用赤褐 */
+html[data-skin="ledger"] .summary-arrival {
+  flex-wrap: wrap; padding: 12px 0 13px !important;
+  border-top: 1px solid var(--line); background: transparent;
+}
+html[data-skin="ledger"] .summary-arrival .lg-micro { flex: 0 0 100%; }
+html[data-skin="ledger"] .summary-arrival span { margin-top: 4px; }
+html[data-skin="ledger"] .summary-arrival strong {
+  margin: 4px 0 0; color: var(--ink); font-size: 15px;
+  box-shadow: inset 0 -.62em var(--sand);
+}
+
+/* ---------- AI 总评：路单批注段 ---------- */
+html[data-skin="ledger"] .ai-analysis {
+  margin: 0; padding: 18px 0 19px;
+  border: 0; border-bottom: 1px solid var(--line);
+  border-radius: 0; background: transparent; box-shadow: none;
+}
+html[data-skin="ledger"] .ai-analysis-head h2 { margin-top: 5px; color: var(--ink); font: 600 20px/1.25 var(--serif); letter-spacing: -.02em; }
+html[data-skin="ledger"] .ai-analysis-head button {
+  padding: 9px 13px; border: 0; border-radius: 3px;
+  color: #FBFAF6; background: var(--accent);
+  font: 600 11px var(--sans); letter-spacing: .04em;
+  transition: background .12s ease;
+}
+html[data-skin="ledger"] .ai-analysis-head button:hover { background: var(--accent-deep); }
+html[data-skin="ledger"] .ai-analysis-head button:disabled { color: var(--faint); background: rgba(31, 31, 31, .06); }
+html[data-skin="ledger"] .ai-analysis-hint { margin-top: 10px; color: var(--muted); font-size: 13px; line-height: 1.7; }
+html[data-skin="ledger"] .ai-analysis-result { gap: 14px; margin-top: 15px; }
+html[data-skin="ledger"] .ai-result-lead { padding: 0 0 0 12px; border-left: 2px solid var(--sand); border-radius: 0; background: transparent; box-shadow: none; }
+html[data-skin="ledger"] .ai-result-lead h3 { color: var(--ink); font: 600 16px var(--serif); letter-spacing: -.01em; }
+html[data-skin="ledger"] .ai-result-lead p { color: var(--muted); font-size: 13px; line-height: 1.75; }
+html[data-skin="ledger"] .ai-result-section { border-top: 1px solid var(--line); }
+html[data-skin="ledger"] .ai-result-section h3 { color: var(--faint); font: 500 10px var(--mono); letter-spacing: .12em; text-transform: uppercase; }
+html[data-skin="ledger"] .ai-day, html[data-skin="ledger"] .ai-risk, html[data-skin="ledger"] .ai-suggestion { border-radius: 2px; background: rgba(31, 31, 31, .03); }
+html[data-skin="ledger"] .ai-day { color: var(--muted); font-size: 12px; }
+html[data-skin="ledger"] .ai-day b { color: var(--ink); font: 500 10px var(--mono); font-variant-numeric: tabular-nums; }
+html[data-skin="ledger"] .ai-day.ai-level-attention { background: var(--sand); }
+html[data-skin="ledger"] .ai-day.ai-level-high { background: rgba(176, 58, 36, .08); }
+html[data-skin="ledger"] .ai-risk p, html[data-skin="ledger"] .ai-suggestion p { color: var(--muted); font-size: 12px; }
+html[data-skin="ledger"] .ai-risk small { color: var(--faint); }
+html[data-skin="ledger"] .ai-risk-high { border-left: 2px solid var(--danger); }
+html[data-skin="ledger"] .ai-risk-medium { border-left: 2px solid #C99B45; }
+html[data-skin="ledger"] .ai-risk-info { border-left: 2px solid var(--faint); }
+html[data-skin="ledger"] .ai-suggestion b { color: var(--ink); }
+html[data-skin="ledger"] .ai-anchor {
+  border: 1px solid var(--line); border-radius: 2px;
+  color: var(--muted); background: transparent; font: 500 10px var(--mono);
+}
+
+/* ---------- 出发点：路单首行 ---------- */
+html[data-skin="ledger"] .start-card {
+  margin: 0; padding: 17px 0 18px;
+  border: 0; border-bottom: 1px solid var(--line);
+  border-radius: 0; background: transparent; box-shadow: none;
+  grid-template-columns: auto 1fr 118px 76px; gap: 12px;
+}
+html[data-skin="ledger"] .station-number,
+html[data-skin="ledger"] .start-number {
+  color: var(--faint); font: 500 11px var(--mono);
+  font-variant-numeric: tabular-nums; letter-spacing: .08em;
+}
+html[data-skin="ledger"] .date-field, html[data-skin="ledger"] .time-field {
+  gap: 4px; color: var(--faint);
+  font: 500 10px var(--mono); letter-spacing: .1em; text-transform: uppercase;
+}
+html[data-skin="ledger"] .date-field input, html[data-skin="ledger"] .time-field input {
+  color: var(--ink); font: 500 12px var(--mono); font-variant-numeric: tabular-nums;
+  border-bottom: 1px solid var(--line); padding-bottom: 3px;
+}
+html[data-skin="ledger"] .quick-starts { margin-top: 6px; }
+html[data-skin="ledger"] .quick-starts > span { color: var(--faint); font-size: 11px; }
+html[data-skin="ledger"] .quick-starts button, html[data-skin="ledger"] .stay-buttons button {
+  padding: 6px 10px; border: 1px solid var(--line); border-radius: 2px;
+  color: var(--muted); background: transparent;
+  font: 500 10.5px var(--mono); font-variant-numeric: tabular-nums;
+  transition: color .12s ease, border-color .12s ease, background .12s ease;
+}
+html[data-skin="ledger"] .quick-starts button:hover, html[data-skin="ledger"] .stay-buttons button:hover { color: var(--ink); border-color: var(--line-strong); }
+html[data-skin="ledger"] .quick-starts button.active, html[data-skin="ledger"] .stay-buttons button.active {
+  border-color: var(--ink); color: var(--paper); background: var(--ink);
+}
+
+/* ---------- 时间线：一张路单，站点为发丝线分隔的行，左对齐一根轴 ---------- */
+html[data-skin="ledger"] .timeline { margin-top: 0; }
+html[data-skin="ledger"] .destination-wrap { border-top: 1px solid var(--line); }
+html[data-skin="ledger"] .destination-wrap:first-child { border-top: 0; }
+
+/* 站间连接：1px 虚线竖轨 + mono 里程/时长标注 */
+html[data-skin="ledger"] .route-connector {
+  flex-wrap: wrap; min-height: 66px; padding: 10px 4px 10px 26px;
+  color: var(--muted); font: 400 11px/1.7 var(--mono); font-variant-numeric: tabular-nums;
+}
+html[data-skin="ledger"] .route-connector::before {
+  left: 2px; width: 1px;
+  background: repeating-linear-gradient(180deg, rgba(31, 31, 31, .38) 0 3px, transparent 3px 8px);
+}
+/* 时间线当前节点：虚线轨尽头一枚赤褐小三角（配给制内） */
+html[data-skin="ledger"] .route-connector::after {
+  left: -2px; bottom: 7px; content: "▾";
+  color: var(--accent); background: transparent; font-size: 11px; line-height: 1;
+}
+html[data-skin="ledger"] .skipped-connector::after { color: var(--faint); }
+html[data-skin="ledger"] .lg-leg { flex: 0 0 100%; margin-bottom: 1px; }
+html[data-skin="ledger"] .connector-route { color: var(--ink); font-size: 11px; font-weight: 500; }
+html[data-skin="ledger"] .skipped-connector { color: var(--faint); }
+html[data-skin="ledger"] .add-via-point {
+  padding: 4px 9px; border: 1px solid var(--line); border-radius: 2px;
+  color: var(--muted); background: transparent; font: 500 10px var(--sans);
+  transition: color .12s ease, border-color .12s ease;
+}
+html[data-skin="ledger"] .add-via-point:hover { color: var(--ink); border-color: var(--line-strong); }
+html[data-skin="ledger"] .route-loading { color: var(--muted); }
+html[data-skin="ledger"] .spinner { border-color: rgba(31, 31, 31, .14); border-top-color: var(--accent); }
+html[data-skin="ledger"] .date-divider {
+  margin: 0 0 12px; color: var(--faint);
+  font: 500 10px var(--mono); letter-spacing: .14em; text-transform: uppercase;
+  font-variant-numeric: tabular-nums;
+}
+html[data-skin="ledger"] .date-divider::before, html[data-skin="ledger"] .date-divider::after { background: var(--line); }
+
+/* 站点行：去卡片化 */
+html[data-skin="ledger"] .destination-card {
+  padding: 2px 0 22px;
+  border: 0; border-radius: 0; background: transparent; box-shadow: none;
+}
+html[data-skin="ledger"] .destination-card.photo-golden,
+html[data-skin="ledger"] .destination-card.photo-sunset,
+html[data-skin="ledger"] .destination-card.photo-blue {
+  border: 0; background: transparent; box-shadow: none;
+}
+html[data-skin="ledger"] .destination-card.is-skipped { filter: none; opacity: .48; }
+html[data-skin="ledger"] .card-topline { gap: 10px; }
+html[data-skin="ledger"] .card-actions button {
+  width: 24px; height: 24px; border: 1px solid transparent; border-radius: 2px;
+  color: var(--faint); background: transparent;
+  transition: color .12s ease, border-color .12s ease;
+}
+html[data-skin="ledger"] .card-actions button:hover { color: var(--ink); border-color: var(--line); }
+html[data-skin="ledger"] .card-actions button:last-child { color: var(--faint); }
+html[data-skin="ledger"] .card-actions button:last-child:hover { color: var(--danger); border-color: rgba(176, 58, 36, .35); }
+
+/* 站名：衬线 20px，负字距 */
+html[data-skin="ledger"] .place-picker { margin-top: 8px; }
+html[data-skin="ledger"] .place-picker input {
+  padding: 4px 28px 7px 0; border-bottom: 1px solid var(--line-strong);
+  color: var(--ink); font: 600 20px/1.3 var(--serif); letter-spacing: -.02em;
+  caret-color: var(--accent);
+}
+html[data-skin="ledger"] .place-picker input::placeholder { color: var(--faint); font-weight: 400; }
+html[data-skin="ledger"] .place-picker input:focus { border-color: var(--ink); box-shadow: none; }
+html[data-skin="ledger"] .place-picker input:disabled { color: var(--muted); }
+html[data-skin="ledger"] .search-mark { top: 5px; color: var(--faint); font-size: 17px; }
+html[data-skin="ledger"] .place-address { margin-top: 7px; color: var(--muted); font-size: 11px; }
+html[data-skin="ledger"] .place-meta { margin-top: 4px; color: var(--faint); font: 400 10px/1.6 var(--mono); font-variant-numeric: tabular-nums; letter-spacing: .02em; }
+
+/* 大时刻：JetBrains Mono 32px / 400——细重让尺寸说话 */
+html[data-skin="ledger"] .time-grid { margin-top: 15px; }
+html[data-skin="ledger"] .time-grid span, html[data-skin="ledger"] .departure-block > span {
+  margin-top: 2px; color: var(--muted); font-size: 11px;
+}
+html[data-skin="ledger"] .time-grid strong {
+  margin-top: 4px; color: var(--ink);
+  font: 400 32px/1.2 var(--mono); letter-spacing: -.03em;
+  font-variant-numeric: tabular-nums;
+}
+html[data-skin="ledger"] .departure-block { margin-top: 14px; padding-top: 13px; border-top: 1px solid var(--line); }
+html[data-skin="ledger"] .departure-block strong {
+  margin-top: 4px; color: var(--ink);
+  font: 400 21px/1.25 var(--mono); letter-spacing: -.02em;
+  font-variant-numeric: tabular-nums;
+}
+/* 自动推算：点状下划线提示，不改写文本 */
+html[data-skin="ledger"] .is-derived {
+  text-decoration: underline dotted rgba(31, 31, 31, .32);
+  text-decoration-thickness: 1px; text-underline-offset: 7px;
+}
+html[data-skin="ledger"] .photo-badge {
+  padding: 2px 6px; border-radius: 2px;
+  color: var(--ink); background: var(--sand);
+  font: 500 9px var(--sans); letter-spacing: .04em;
+}
+html[data-skin="ledger"] .photo-badge.golden,
+html[data-skin="ledger"] .photo-badge.sunset,
+html[data-skin="ledger"] .photo-badge.blue { color: var(--ink); background: var(--sand); }
+html[data-skin="ledger"] .night-arrival { color: var(--muted); }
+
+/* flags 行：账本批注区 */
+html[data-skin="ledger"] .card-flags {
+  align-items: baseline; gap: 16px; margin-top: 12px; padding-top: 9px;
+  border-top: 1px dashed var(--line);
+}
+/* 过夜徽章 = mono/衬线 italic 的「NIGHT 01 · 🌙」标注行 */
+html[data-skin="ledger"] .overnight-badge {
+  padding: 0; border-radius: 0; background: transparent;
+  color: var(--muted); font: italic 400 12px/1.5 var(--serif);
+}
+html[data-skin="ledger"] .overnight-badge::before {
+  content: "NIGHT " attr(data-overnight) "  ·  ";
+  color: var(--faint); font: 500 9.5px var(--mono);
+  letter-spacing: .12em; font-style: normal;
+}
+html[data-skin="ledger"] .derived-tag {
+  padding: 0 0 1px; border-radius: 0; border-bottom: 1px dotted var(--faint);
+  color: var(--faint); background: transparent;
+  font: 400 9.5px/1.5 var(--mono); letter-spacing: .08em;
+}
+
+/* 路线状态：无底色 mono 行 */
+html[data-skin="ledger"] .route-status {
+  min-height: 22px; margin-top: 11px; padding: 0;
+  border-radius: 0; color: var(--faint); background: transparent;
+  font: 400 10px/1.7 var(--mono); letter-spacing: .01em;
+}
+html[data-skin="ledger"] .route-status.error { color: var(--danger); background: transparent; }
+html[data-skin="ledger"] .route-status .retry { color: var(--muted); text-decoration: underline dotted; text-underline-offset: 3px; }
+
+/* 停留区 */
+html[data-skin="ledger"] .stay-section { margin-top: 15px; padding-top: 13px; border-top: 1px solid var(--line); }
+html[data-skin="ledger"] .stay-section > span { color: var(--muted); font-size: 11px; }
+html[data-skin="ledger"] .stay-section p { color: var(--faint); font: 400 10.5px/1.6 var(--mono); font-variant-numeric: tabular-nums; }
+
+/* 疲劳驾驶 = 沙金底账本批注行（左侧 2px 赤褐竖条） */
+html[data-skin="ledger"] .fatigue-banner {
+  margin: 2px 0 14px 26px; padding: 9px 12px 9px 13px;
+  border: 0; border-left: 2px solid var(--accent); border-radius: 2px;
+  color: var(--ink); background: var(--sand);
+  font: 400 12px/1.6 var(--sans);
+}
+html[data-skin="ledger"] .fatigue-banner button {
+  padding: 5px 10px; border: 1px solid rgba(192, 86, 59, .45); border-radius: 2px;
+  color: var(--accent); background: transparent;
+  font: 500 10px var(--sans); letter-spacing: .04em;
+  transition: color .12s ease, background .12s ease;
+}
+html[data-skin="ledger"] .fatigue-banner button:hover { color: #FBFAF6; background: var(--accent); }
+
+/* 级联重算高亮：赤褐淡底渐隐（ledger 专用 keyframes，不动全局 valueFlash） */
+@keyframes lgFlash {
+  0% { background: rgba(192, 86, 59, .15); box-shadow: 0 0 0 4px rgba(192, 86, 59, .09); }
+  100% { background: transparent; box-shadow: none; }
+}
+html[data-skin="ledger"] .value-flash { border-radius: 2px; animation: lgFlash 1.2s ease-out; }
+
+/* 其余行内警告 */
+html[data-skin="ledger"] .drive-warning { padding: 3px 7px; border-radius: 2px; font: 500 9px/1.6 var(--sans); letter-spacing: .04em; }
+html[data-skin="ledger"] .drive-warning.is-orange { color: #8A5A12; background: var(--sand); }
+html[data-skin="ledger"] .drive-warning.is-red { color: var(--danger); background: rgba(176, 58, 36, .09); }
+html[data-skin="ledger"] .altitude-warning { color: #8A5A12; font-size: 11px; }
+
+/* ---------- 行程操作区 ---------- */
+html[data-skin="ledger"] .trip-actions { margin-top: 20px; }
+html[data-skin="ledger"] .add-destination {
+  padding: 15px; border: 1px dashed var(--line-strong); border-radius: 3px;
+  color: var(--ink); background: transparent; font: 500 14px var(--sans);
+  transition: border-color .12s ease, background .12s ease;
+}
+html[data-skin="ledger"] .add-destination:hover { border-color: var(--ink); background: rgba(31, 31, 31, .025); }
+html[data-skin="ledger"] .add-destination span { color: var(--accent); font-size: 18px; }
+html[data-skin="ledger"] .return-origin {
+  padding: 11px; border: 0; border-radius: 3px;
+  color: var(--muted); background: transparent; font: 500 12px var(--sans);
+  transition: color .12s ease;
+}
+html[data-skin="ledger"] .return-origin:hover { color: var(--ink); }
+html[data-skin="ledger"] .tk-action-btn {
+  padding: 12px 16px; border: 1px solid var(--line); border-radius: 3px;
+  color: var(--ink); background: transparent; font: 500 12px var(--sans);
+  transition: border-color .12s ease, color .12s ease;
+}
+html[data-skin="ledger"] .tk-action-btn:hover { border-color: var(--line-strong); box-shadow: none; transform: none; }
+
+/* ---------- 路线预览：发丝线分区，地图压进纸面 ---------- */
+html[data-skin="ledger"] .route-preview {
+  margin-top: 24px; padding: 18px 0 0;
+  border: 0; border-top: 1px solid var(--line-strong);
+  border-radius: 0; background: transparent; box-shadow: none;
+}
+html[data-skin="ledger"] .route-preview h2 { margin-top: 5px; color: var(--ink); font: 600 20px/1.25 var(--serif); letter-spacing: -.02em; }
+html[data-skin="ledger"] .refresh-route-preview {
+  padding: 6px 10px; border: 1px solid var(--line); border-radius: 2px;
+  color: var(--muted); background: transparent; font: 500 10.5px var(--sans);
+  transition: color .12s ease, border-color .12s ease;
+}
+html[data-skin="ledger"] .refresh-route-preview:hover { color: var(--ink); border-color: var(--line-strong); }
+html[data-skin="ledger"] .route-map {
+  margin-top: 13px; border: 1px solid var(--line); border-radius: 2px;
+  color: var(--faint); background: #EDECE6; font: 400 11px var(--mono);
+}
+html[data-skin="ledger"] .amap-route-marker {
+  border-color: var(--ink); color: var(--ink); background: rgba(244, 242, 238, .96);
+  box-shadow: none; font: 600 10px var(--mono);
+}
+html[data-skin="ledger"] .map-road { stroke: var(--accent); stroke-width: 3.5; }
+html[data-skin="ledger"] .map-marker { fill: #F4F2EE; stroke: var(--ink); }
+html[data-skin="ledger"] .map-marker-label { fill: var(--ink); font-family: var(--mono); }
+/* 预览统计：与 summary 同一张表 */
+html[data-skin="ledger"] .preview-summary {
+  margin-top: 14px; border: 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line);
+  border-radius: 0; background: transparent;
+}
+html[data-skin="ledger"] .preview-summary > div { padding: 11px 10px 11px 0; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+html[data-skin="ledger"] .preview-summary > div:nth-child(4), html[data-skin="ledger"] .preview-summary > div:nth-child(6) { border-right: 0; }
+html[data-skin="ledger"] .preview-summary > div:nth-child(5), html[data-skin="ledger"] .preview-summary > div:nth-child(6) { border-bottom: 0; }
+html[data-skin="ledger"] .preview-summary span { display: block; margin-top: 3px; color: var(--muted); font-size: 11px; }
+html[data-skin="ledger"] .preview-summary strong {
+  display: block; margin-top: 4px; color: var(--ink);
+  font: 500 12px/1.4 var(--mono); font-variant-numeric: tabular-nums;
+}
+html[data-skin="ledger"] .preview-departure, html[data-skin="ledger"] .preview-arrival { border-bottom: 0 !important; }
+
+/* ---------- 页脚：colophon ---------- */
+html[data-skin="ledger"] .footnote {
+  margin-top: 26px; padding-top: 13px; border-top: 1px solid var(--line);
+  color: var(--faint); font-size: 11px; line-height: 1.75;
+}
+
+/* ---------- 行程导航 Dock：纸面索引 ---------- */
+html[data-skin="ledger"] .trip-dock {
+  border: 1px solid var(--line); border-radius: 4px;
+  background: rgba(244, 242, 238, .94); box-shadow: var(--lg-float-shadow);
+  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+}
+html[data-skin="ledger"] .dock-title { color: var(--faint); font: 500 9.5px var(--mono); letter-spacing: .12em; }
+html[data-skin="ledger"] .dock-toggle { border-radius: 2px; color: var(--ink); background: rgba(31, 31, 31, .05); }
+html[data-skin="ledger"] .dock-item {
+  border: 1px solid var(--line); border-radius: 2px;
+  color: var(--ink); background: transparent;
+}
+html[data-skin="ledger"] .dock-item b { color: var(--faint); font: 500 9.5px var(--mono); font-variant-numeric: tabular-nums; }
+html[data-skin="ledger"] .dock-item.is-pressing { background: rgba(31, 31, 31, .04); }
+html[data-skin="ledger"] .dock-item.is-active { border-color: rgba(192, 86, 59, .55); background: rgba(192, 86, 59, .05); }
+html[data-skin="ledger"] .dock-item.is-active b { color: var(--accent); }
+html[data-skin="ledger"] .dock-item.is-skipped, html[data-skin="ledger"] .dock-item.is-skipped b { color: var(--faint); }
+html[data-skin="ledger"] .dock-item.drag-over { outline-color: var(--accent); background: var(--sand); }
+html[data-skin="ledger"] .trip-dock.is-dragging { border-color: var(--line-strong); }
+html[data-skin="ledger"] .trip-dock.is-dragging .dock-title { color: var(--ink); }
+html[data-skin="ledger"] .trip-dock.is-dragging .dock-item.is-dragging { background: var(--float); box-shadow: var(--lg-float-shadow); }
+html[data-skin="ledger"] .dock-toast {
+  border: 1px solid var(--line); border-radius: 3px;
+  color: var(--ink); background: var(--float); box-shadow: var(--lg-float-shadow);
+}
+
+/* ---------- 浮层：唯一允许投影的地方 ---------- */
+html[data-skin="ledger"] .modal-backdrop { background: rgba(31, 29, 25, .30); backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px); }
+html[data-skin="ledger"] .delete-modal,
+html[data-skin="ledger"] .tk-modal,
+html[data-skin="ledger"] .share-modal {
+  border: 1px solid var(--line); border-radius: 4px;
+  color: var(--ink); background: var(--float);
+  box-shadow: var(--lg-float-shadow);
+}
+html[data-skin="ledger"] .delete-modal h2,
+html[data-skin="ledger"] .tk-modal-head h2,
+html[data-skin="ledger"] .share-modal-head h2 {
+  color: var(--ink); font: 600 20px/1.3 var(--serif); letter-spacing: -.02em;
+}
+html[data-skin="ledger"] .delete-modal p { color: var(--muted); font-size: 13px; }
+html[data-skin="ledger"] .delete-modal button {
+  border: 1px solid var(--line-strong); border-radius: 3px;
+  color: var(--ink); background: transparent; font-size: 12px;
+  transition: border-color .12s ease, color .12s ease;
+}
+html[data-skin="ledger"] .delete-modal button:hover { border-color: var(--ink); }
+html[data-skin="ledger"] .delete-modal .danger { border-color: transparent; color: #FBFAF6; background: var(--danger); }
+html[data-skin="ledger"] .human-check-status { color: var(--faint); font: 400 10px var(--mono); letter-spacing: .06em; }
+
+/* 撤销 Snackbar：纸感浮条 + 赤褐「撤销」动作词 */
+html[data-skin="ledger"] .undo-snackbar {
+  padding: 11px 6px 11px 16px; border: 1px solid var(--line); border-radius: 3px;
+  color: var(--ink); background: var(--float); box-shadow: var(--lg-float-shadow);
+  font-size: 13px;
+}
+html[data-skin="ledger"] .undo-snackbar-action {
+  padding: 6px 10px; border: 0; border-left: 1px solid var(--line); border-radius: 0;
+  color: var(--accent); background: transparent;
+  font: 600 11px var(--sans); letter-spacing: .08em;
+  transition: color .12s ease;
+}
+html[data-skin="ledger"] .undo-snackbar-action:hover { color: var(--accent-deep); }
+
+/* persist 失败：账本红字批注 */
+html[data-skin="ledger"] .persist-warning {
+  margin: 0 0 14px; padding: 9px 12px 9px 13px;
+  border: 0; border-left: 2px solid var(--danger); border-radius: 2px;
+  color: var(--danger); background: rgba(176, 58, 36, .06); font-size: 12px;
+}
+
+/* ---------- POI 下拉：纸感浮层 ---------- */
+html[data-skin="ledger"] .poi-results {
+  top: 44px; border: 1px solid var(--line); border-radius: 3px;
+  background: var(--float); box-shadow: var(--lg-float-shadow);
+}
+html[data-skin="ledger"] .poi-option { color: var(--ink); border-bottom-color: var(--line); font-size: 13px; }
+html[data-skin="ledger"] .poi-option small { color: var(--faint); font-family: var(--mono); }
+html[data-skin="ledger"] .poi-option:hover, html[data-skin="ledger"] .poi-option:active { background: var(--sand); }
+
+/* ---------- 工具箱（模板 / 快照弹窗、toast） ---------- */
+html[data-skin="ledger"] .tk-note { color: var(--muted); font-size: 12px; }
+html[data-skin="ledger"] .tk-tpl-card, html[data-skin="ledger"] .tk-snap-card {
+  border: 1px solid var(--line); border-radius: 3px; background: transparent;
+  transition: border-color .12s ease, background .12s ease;
+}
+html[data-skin="ledger"] .tk-tpl-card:hover { border-color: var(--ink); background: rgba(31, 31, 31, .025); box-shadow: none; transform: none; }
+html[data-skin="ledger"] .tk-tpl-top b, html[data-skin="ledger"] .tk-snap-head b { font: 600 14px var(--serif); letter-spacing: -.01em; }
+html[data-skin="ledger"] .tk-tpl-top span, html[data-skin="ledger"] .tk-snap-head span { color: var(--faint); font: 500 9.5px var(--mono); letter-spacing: .06em; }
+html[data-skin="ledger"] .tk-tpl-desc, html[data-skin="ledger"] .tk-snap-meta { color: var(--muted); font-size: 11px; }
+html[data-skin="ledger"] .tk-tpl-route { color: var(--accent-deep); font: 500 10px/1.6 var(--mono); letter-spacing: .02em; }
+html[data-skin="ledger"] .tk-save-row input {
+  border: 1px solid var(--line); border-radius: 3px;
+  color: var(--ink); background: var(--float); font-size: 13px;
+}
+html[data-skin="ledger"] .tk-primary { border-radius: 3px; color: #FBFAF6; background: var(--accent); font-size: 12px; }
+html[data-skin="ledger"] .tk-snap-actions button {
+  border: 1px solid var(--line); border-radius: 2px;
+  color: var(--muted); background: transparent; font-size: 11px;
+}
+html[data-skin="ledger"] .tk-snap-actions button:hover { border-color: var(--line-strong); color: var(--ink); }
+html[data-skin="ledger"] .tk-snap-actions .tk-danger:hover { border-color: rgba(176, 58, 36, .4); color: var(--danger); }
+html[data-skin="ledger"] .tk-table th, html[data-skin="ledger"] .tk-table td { border-top-color: var(--line); }
+html[data-skin="ledger"] .tk-table thead th { color: var(--faint); font-family: var(--mono); letter-spacing: .08em; }
+html[data-skin="ledger"] .tk-table td { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+html[data-skin="ledger"] .tk-toast {
+  border-radius: 3px; color: var(--paper); background: var(--ink);
+  font: 500 12px/1.5 var(--sans); box-shadow: var(--lg-float-shadow);
+}
+
+/* ---------- 分享弹窗 ---------- */
+html[data-skin="ledger"] .share-name-panel { border: 1px solid var(--line); border-radius: 3px; background: transparent; }
+html[data-skin="ledger"] .share-name-panel label { color: var(--ink); font-size: 12px; }
+html[data-skin="ledger"] .share-name-panel label span { color: var(--faint); font-family: var(--mono); }
+html[data-skin="ledger"] .share-name-panel input {
+  border: 1px solid var(--line); border-radius: 3px;
+  color: var(--ink); background: var(--float);
+}
+html[data-skin="ledger"] .share-name-panel input:focus { border-color: var(--ink); box-shadow: none; }
+html[data-skin="ledger"] .share-name-panel small { color: var(--faint); }
+html[data-skin="ledger"] .share-name-shortcuts button {
+  border: 1px solid var(--line); border-radius: 2px;
+  color: var(--muted); background: transparent; font-size: 10px;
+}
+html[data-skin="ledger"] .share-name-shortcuts button:active { color: var(--ink); border-color: var(--line-strong); background: rgba(31, 31, 31, .04); }
+html[data-skin="ledger"] .share-preview { border: 1px solid var(--line); border-radius: 3px; background: #ECEAE4; }
+html[data-skin="ledger"] .share-actions button {
+  border: 1px solid var(--line-strong); border-radius: 3px;
+  color: var(--ink); background: transparent; font-size: 12px;
+}
+html[data-skin="ledger"] .share-actions #shareSystem { border-color: transparent; color: #FBFAF6; background: var(--accent); }
+html[data-skin="ledger"] .share-actions button:disabled { color: var(--faint); border-color: var(--line); background: transparent; }
+html[data-skin="ledger"] .share-status { color: var(--faint); font: 400 10px var(--mono); letter-spacing: .05em; }
+
+/* 分享长图本体锁回浅色变量（导出契约，与 roadbook/voyage 一致） */
+html[data-skin="ledger"] .share-poster {
+  --ink: #1c2230;
+  --muted: #717989;
+  --line: #e8eaf0;
+  --paper: #fff;
+  --ground: #f4f5f8;
+  --accent: #2d5dff;
+  --danger: #d94a55;
+  --shadow: 0 10px 30px rgba(30, 37, 54, .06);
+}
+
+/* ---------- 景区 AI 栏目 ---------- */
+html[data-skin="ledger"] .scenic-ai { border-top-color: var(--line); }
+html[data-skin="ledger"] .scenic-ai details { border-bottom-color: var(--line); }
+html[data-skin="ledger"] .scenic-ai summary { color: var(--ink); font: 600 15px var(--serif); letter-spacing: -.01em; }
+html[data-skin="ledger"] .scenic-ai-body small { color: var(--faint); font-size: 12px; }
+html[data-skin="ledger"] .scenic-ai-body p { color: var(--ink); font-size: 14px; line-height: 1.8; }
+html[data-skin="ledger"] .scenic-ai-body button {
+  padding: 8px 14px; border: 1px solid var(--line); border-radius: 2px;
+  color: var(--muted); background: transparent; font-size: 11px;
+}
+html[data-skin="ledger"] .scenic-ai-error { color: var(--danger); }
+
+/* ---------- 窄屏收敛（≤440px） ---------- */
+@media (max-width: 440px) {
+  html[data-skin="ledger"] h1 { font-size: 31px; }
+  html[data-skin="ledger"] .time-grid strong { font-size: 27px; }
+  html[data-skin="ledger"] .departure-block strong { font-size: 18px; }
+  html[data-skin="ledger"] .summary strong { font-size: 12.5px; }
+  html[data-skin="ledger"] .start-card { grid-template-columns: auto 1fr 102px 66px; gap: 8px; }
+  html[data-skin="ledger"] .lg-strip-names { font-size: 13px; }
+  html[data-skin="ledger"] .fatigue-banner { margin-left: 22px; }
+  html[data-skin="ledger"] .route-connector { padding-left: 22px; }
+}
+
+/* ---------- 减少动态偏好：全部降级为静态 ---------- */
+@media (prefers-reduced-motion: reduce) {
+  html[data-skin="ledger"] .hero,
+  html[data-skin="ledger"] .summary,
+  html[data-skin="ledger"] .ai-analysis,
+  html[data-skin="ledger"] .start-card,
+  html[data-skin="ledger"] .trip-actions,
+  html[data-skin="ledger"] .route-preview,
+  html[data-skin="ledger"] .destination-wrap.lg-enter { animation: none; }
+  html[data-skin="ledger"] .value-flash { animation: none; }
+  html[data-skin="ledger"] .icon-button,
+  html[data-skin="ledger"] .add-destination,
+  html[data-skin="ledger"] .quick-starts button,
+  html[data-skin="ledger"] .stay-buttons button,
+  html[data-skin="ledger"] .card-actions button,
+  html[data-skin="ledger"] .fatigue-banner button,
+  html[data-skin="ledger"] .tk-action-btn,
+  html[data-skin="ledger"] .tk-tpl-card { transition: none; }
+}

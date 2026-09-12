@@ -15,26 +15,36 @@
   const timelineNode = $('#timeline'); const dockNode = $('#tripDock'); const mapNode = $('#routeMap'); const template = $('#destinationTemplate');
   const dockShell = document.querySelector('.trip-dock'); const dockToggle = $('#dockToggle'); const dockTitle = document.querySelector('.dock-title');
   let routeCache = readJson(ROUTE_CACHE_KEY, {}); let sunsetCache = readJson(SUNSET_CACHE_KEY, {}); let elevationCache = readJson(ELEVATION_CACHE_KEY, {});
-  let searchTimers = new Map(); let pendingDeleteIndex = null; let activeDockId = null; let dockPointer = null; let dockSuppressClickUntil = 0; let dockToastTimer = null; let mapGesture = null; let routeRebuildVersion = 0; let mapRenderVersion = 0; let amapLoadPromise = null; let amapMap = null; let amapOverlays = []; let mapCenterAction = () => {}; let turnstileWidgetId = null; let turnstileToken = ''; let turnstileReadyTimer = null; let aiTurnstileWidgetId = null; let aiTurnstileToken = ''; let aiTurnstileReadyTimer = null; let aiLoading = false; let aiLastError = ''; let aiCache = readJson(AI_ANALYSIS_CACHE_KEY, null);
+  let searchTimers = new Map(); let activeDockId = null; let dockPointer = null; let dockSuppressClickUntil = 0; let dockToastTimer = null; let mapGesture = null; let routeRebuildVersion = 0; let mapRenderVersion = 0; let amapLoadPromise = null; let amapMap = null; let amapOverlays = []; let mapCenterAction = () => {}; let turnstileWidgetId = null; let turnstileToken = ''; let turnstileReadyTimer = null; let aiTurnstileWidgetId = null; let aiTurnstileToken = ''; let aiTurnstileReadyTimer = null; let aiLoading = false; let aiLastError = ''; let aiCache = readJson(AI_ANALYSIS_CACHE_KEY, null);
   let mapReadyPromise = Promise.resolve();
+  let lastTimeSnapshot = new Map(); /* destination.id -> { arrival, departure } 上一次 render 的时刻文本 */
+  const flashSuppress = new Set();  /* 用户刚直接操作过的卡片 id：本次重算不 flash */
   const newId = () => (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`);
   const cloneStart = () => ({ ...START_LOCATION });
   function isValidLocation(location) { return Boolean(location && Number.isFinite(Number(location.latitude)) && Number.isFinite(Number(location.longitude))); }
 
   function readJson(key, fallback) { try { return JSON.parse(localStorage.getItem(key)) || fallback; } catch { return fallback; } }
   function defaultDeparture() { const now = SolarPhotography.chinaParts(new Date()); return SolarPhotography.chinaDateTimeToDate(`${now.year}-${String(now.month).padStart(2, '0')}-${String(now.day).padStart(2, '0')}T${String(now.hour).padStart(2, '0')}:${String(Math.ceil(now.minute / 15) * 15).padStart(2, '0')}`).toISOString(); }
-  function createTrip() { const startLocation = cloneStart(); return { startLocation, startSearchText: startLocation.name, initialDepartureTime: defaultDeparture(), destinations: [] }; }
+  function createTrip() { const startLocation = cloneStart(); return { schemaVersion: 2, startLocation, startSearchText: startLocation.name, initialDepartureTime: defaultDeparture(), destinations: [] }; }
   function validTrip(raw) {
+    /* schemaVersion 纯增量：缺省按 1 读取，不迁移旧字段，写回时统一标记 2 */
     if (!raw || !raw.initialDepartureTime || !Array.isArray(raw.destinations)) return createTrip();
     const storedStart = Object.prototype.hasOwnProperty.call(raw, 'startLocation') ? raw.startLocation : cloneStart();
     const startLocation = isValidLocation(storedStart) ? storedStart : null;
-    return { startLocation, startSearchText: raw.startSearchText || startLocation?.name || '', initialDepartureTime: raw.initialDepartureTime, destinations: raw.destinations.map((item) => ({
+    return { schemaVersion: 2, startLocation, startSearchText: raw.startSearchText || startLocation?.name || '', initialDepartureTime: raw.initialDepartureTime, destinations: raw.destinations.map((item) => ({
       id: item.id || newId(), location: item.location || null, searchText: item.searchText || '', route: item.route || null, elevationMeters: Number.isFinite(item.elevationMeters) ? item.elevationMeters : null,
       selectedStayButtons: TripTimeline.normaliseStayButtons(item.selectedStayButtons || []), stayMode: item.stayMode === 'until' ? 'until' : 'duration', untilTime: /^(08|09|10):00$/.test(item.untilTime || '') ? item.untilTime : null,
       isSkipped: Boolean(item.isSkipped), isReturnToOrigin: Boolean(item.isReturnToOrigin)
     })) };
   }
+  /* Template-first：首次访问（本地无任何行程记录）时载入第一套模板作为可编辑草稿。
+     已有记录（哪怕是清空后的空行程）不再触发，persist 照旧走原有路径。 */
+  const hasStoredTrip = (() => { try { return localStorage.getItem(STORAGE_KEY) !== null; } catch { return true; } })();
   let trip = validTrip(readJson(STORAGE_KEY, null));
+  if (!hasStoredTrip && !trip.destinations.length && typeof globalThis.TripkitFirstTemplate === 'function') {
+    const draft = globalThis.TripkitFirstTemplate();
+    if (draft) trip = validTrip(draft);
+  }
   function syncReturnOrigins() {
     trip.destinations.forEach((destination) => {
       if (!destination.isReturnToOrigin) return;
@@ -62,17 +72,33 @@
   function cacheForStorage() {
     return Object.fromEntries(Object.entries(routeCache).map(([key, route]) => [key, routeForStorage(route)]));
   }
+  function setPersistWarningVisible(visible) {
+    let node = document.getElementById('persistWarning');
+    if (!node) {
+      node = document.createElement('p');
+      node.id = 'persistWarning';
+      node.className = 'persist-warning';
+      node.setAttribute('role', 'alert');
+      node.textContent = '本次修改未能保存，请检查浏览器存储空间';
+      const shell = document.querySelector('.shell');
+      const hero = document.querySelector('.hero');
+      if (shell && hero) hero.after(node); else if (shell) shell.prepend(node); else document.body.prepend(node);
+    }
+    node.hidden = !visible;
+  }
   function persist() {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(tripForStorage()));
       localStorage.setItem(ROUTE_CACHE_KEY, JSON.stringify(cacheForStorage()));
       localStorage.setItem(SUNSET_CACHE_KEY, JSON.stringify(sunsetCache));
       localStorage.setItem(ELEVATION_CACHE_KEY, JSON.stringify(elevationCache));
+      setPersistWarningVisible(false);
     } catch (error) {
       // Navigation and timeline calculation must remain usable even when the
       // user has old, oversized browser data. The next successful save replaces
       // the former payload with the compact representation above.
       console.warn('行程本地保存失败，将在下次操作重试。', error);
+      setPersistWarningVisible(true);
     }
   }
 
@@ -127,7 +153,7 @@
     localStorage.setItem(SUNSET_CACHE_KEY, JSON.stringify(sunsetCache));
   }
   function apiUrl(path) { return `${API_BASE_URL}${path}`; }
-  async function requestJson(url) { const response = await fetch(apiUrl(url), { signal: AbortSignal.timeout(20000) }); const data = await response.json().catch(() => ({})); if (!response.ok) throw new Error(data.error?.message || '服务请求失败，请稍后再试。'); return data; }
+  async function requestJson(url) { const response = await fetch(apiUrl(url)); const data = await response.json().catch(() => ({})); if (!response.ok) throw new Error(data.error?.message || '服务请求失败，请稍后再试。'); return data; }
   async function postJson(url, body) { const response = await fetch(apiUrl(url), { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) }); const data = await response.json().catch(() => ({})); if (!response.ok) throw new Error(data.error?.message || '服务请求失败，请稍后再试。'); return data; }
   async function requestPublicElevation(location) { const url = new URL('https://api.open-elevation.com/api/v1/lookup'); url.searchParams.set('locations', `${location.latitude},${location.longitude}`); const res = await fetch(url); const data = await res.json().catch(() => ({})); const elevationMeters = Number(data.results?.[0]?.elevation); if (!res.ok || !Number.isFinite(elevationMeters)) throw new Error('海拔数据暂不可用。'); return { elevationMeters }; }
   async function loadElevation(id) {
@@ -334,6 +360,52 @@
     return blob;
   }
   globalThis.DriveMapSnapshot = { capture: captureRouteMap };
+  /* 停留时段与北京时间 23:00–06:00 夜间窗口有交集即视为过夜站（跨午夜必然命中） */
+  function stayNightOverlapMs(fromMs, toMs) {
+    const SHIFT = 8 * 3600000; const a = fromMs + SHIFT; const b = toMs + SHIFT;
+    let ms = 0; let day = Math.floor(a / 86400000);
+    for (; day * 86400000 < b; day++) {
+      const d0 = day * 86400000;
+      ms += Math.max(0, Math.min(b, d0 + 360 * 60000) - Math.max(a, d0));             /* 00:00–06:00 */
+      ms += Math.max(0, Math.min(b, d0 + 86400000) - Math.max(a, d0 + 1380 * 60000)); /* 23:00–24:00 */
+    }
+    return ms;
+  }
+  function overnightStays() {
+    const marks = new Map(); let count = 0;
+    trip.destinations.forEach((destination) => {
+      if (destination.isSkipped || !destination.arrivalTime || !destination.hasDepartureDisplay || !destination.departureTime) return;
+      const from = Date.parse(destination.arrivalTime); const to = Date.parse(destination.departureTime);
+      if (!Number.isFinite(from) || !Number.isFinite(to) || to <= from) return;
+      if (stayNightOverlapMs(from, to) > 0) { count += 1; marks.set(destination.id, count); }
+    });
+    return marks;
+  }
+  /* 单段驾驶超 2 小时：在连接条与下一站卡片之间挂内联提醒，可一键多休 20 分钟 */
+  function renderFatigueBanner(wrap, destination) {
+    if (destination.isSkipped || !destination.location || destination.routeLoading) return;
+    const seconds = destination.route?.durationSeconds;
+    if (!Number.isFinite(seconds) || seconds <= 2 * 3600) return;
+    const card = wrap.querySelector('.destination-card');
+    const banner = document.createElement('div');
+    banner.className = 'fatigue-banner'; banner.dataset.legSeconds = String(seconds);
+    const copy = document.createElement('span');
+    copy.textContent = `连续驾驶 ${formatDuration(seconds)}，建议休息 20 分钟`;
+    const action = document.createElement('button');
+    action.type = 'button'; action.dataset.action = 'fatigue-rest'; action.dataset.index = card.dataset.index;
+    action.textContent = '到站多休 20 分钟';
+    banner.append(copy, action);
+    wrap.querySelector('.route-connector').after(banner);
+  }
+  function addFatigueRest(index) {
+    const destination = trip.destinations[index]; if (!destination || destination.isSkipped) return;
+    if (destination.stayMode === 'until') { showDockToast('本站使用「睡到几点」模式，请直接调整出发时刻'); return; }
+    if (destination.selectedStayButtons.includes(20)) { showDockToast('本站已加过 20 分钟休息'); return; }
+    flashSuppress.add(destination.id); /* 用户主动加的休息：本站时刻变化不 flash */
+    destination.selectedStayButtons = [...destination.selectedStayButtons, 20];
+    calculate(); persist(); render();
+  }
+  function flashValue(node) { node.classList.add('value-flash'); setTimeout(() => node.classList.remove('value-flash'), 1300); }
   function renderLegWarnings(card, wrap, destination) {
     if (destination.isSkipped || !destination.location) return;
     const seconds = destination.route?.durationSeconds;
@@ -363,18 +435,38 @@
     }
   }
   function render() {
-    calculate(); const departure = new Date(trip.initialDepartureTime); $('#departureDate').value = dateInputValue(departure); $('#departureTime').value = timeInputValue(departure); const startInput = $('#startPlaceInput'); startInput.value = trip.startLocation?.name || trip.startSearchText || ''; $('#startPlaceAddress').textContent = trip.startLocation ? (trip.startLocation.address || '已选择具体地点') : '请搜索并选择具体 POI'; $('#startPoiResults').hidden = true; $('#startPoiResults').replaceChildren(); document.querySelectorAll('[data-quick-start]').forEach((button) => { const date = SolarPhotography.chinaDateTimeToDate(button.dataset.quickStart); button.classList.toggle('active', date?.getTime() === departure.getTime()); }); updateSummary(); renderAiAnalysis(); renderDock(); timelineNode.replaceChildren(); let priorDay = dayKey(trip.initialDepartureTime);
+    calculate(); const departure = new Date(trip.initialDepartureTime); $('#departureDate').value = dateInputValue(departure); $('#departureTime').value = timeInputValue(departure); const startInput = $('#startPlaceInput'); startInput.value = trip.startLocation?.name || trip.startSearchText || ''; $('#startPlaceAddress').textContent = trip.startLocation ? (trip.startLocation.address || '已选择具体地点') : '请搜索并选择具体 POI'; $('#startPoiResults').hidden = true; $('#startPoiResults').replaceChildren(); document.querySelectorAll('[data-quick-start]').forEach((button) => { const date = SolarPhotography.chinaDateTimeToDate(button.dataset.quickStart); button.classList.toggle('active', date?.getTime() === departure.getTime()); }); updateSummary(); renderAiAnalysis(); renderDock(); timelineNode.replaceChildren(); let priorDay = dayKey(trip.initialDepartureTime); const overnights = overnightStays(); const nextTimeSnapshot = new Map();
     trip.destinations.forEach((destination, index) => {
       const fragment = template.content.cloneNode(true); const wrap = fragment.querySelector('.destination-wrap'); const card = wrap.querySelector('.destination-card'); card.id = `destination-${destination.id}`; card.dataset.id = destination.id; card.dataset.index = index; if (destination.isSkipped) card.classList.add('is-skipped'); const cardMoment = destination.arrivalPhoto?.moment || destination.departurePhoto?.moment; if (cardMoment) card.classList.add(`photo-${cardMoment.kind}`);
       wrap.replaceChild(routeConnector(destination, index), wrap.querySelector('[data-route-connector]')); const divider = wrap.querySelector('.date-divider'); if (!destination.isSkipped && destination.arrivalTime && dayKey(destination.arrivalTime) !== priorDay) { divider.hidden = false; divider.textContent = formatDay(destination.arrivalTime); priorDay = dayKey(destination.arrivalTime); }
       card.querySelector('[data-station-number]').textContent = String(index + 2).padStart(2, '0'); const input = card.querySelector('[data-place-input]'); input.value = destination.location ? destination.location.name : destination.searchText || ''; input.disabled = destination.isReturnToOrigin; card.querySelector('[data-place-address]').textContent = destination.location ? (destination.location.address || '已选择具体地点') : '请搜索并选择具体 POI'; const detail = card.querySelector('[data-place-meta]'); const sunrise = destination.arrivalPhoto ? formatTime(destination.arrivalPhoto.sunriseAt) : '—'; const sunset = destination.arrivalPhoto ? formatTime(destination.arrivalPhoto.sunsetAt) : '—'; const elevation = Number.isFinite(destination.elevationMeters) ? `${destination.elevationMeters}m` : (destination.elevationLoading ? '获取中' : (destination.elevationError ? '暂不可用' : '待获取')); detail.textContent = `日出 ${sunrise} · 日落 ${sunset} · 海拔 ${elevation}`;
-      const arrival = card.querySelector('[data-arrival]'); if (destination.arrivalTime) attachTime(arrival, destination.arrivalTime, destination.arrivalPhoto); else arrival.textContent = destination.isSkipped ? '已跳过' : '等待导航数据'; const departureBlock = card.querySelector('[data-departure-block]'); departureBlock.hidden = !destination.hasDepartureDisplay; if (destination.hasDepartureDisplay) attachTime(card.querySelector('[data-departure]'), destination.departureTime, destination.departurePhoto);
+      const arrival = card.querySelector('[data-arrival]'); if (destination.arrivalTime) attachTime(arrival, destination.arrivalTime, destination.arrivalPhoto); else arrival.textContent = destination.isSkipped ? '已跳过' : '等待导航数据'; const departureBlock = card.querySelector('[data-departure-block]'); departureBlock.hidden = !destination.hasDepartureDisplay; const departureStrong = card.querySelector('[data-departure]'); if (destination.hasDepartureDisplay) attachTime(departureStrong, destination.departureTime, destination.departurePhoto);
+      /* Derived 标记 + meta 微标签 + 过夜徽章：结构归产品层，皮肤层只做视觉 */
+      if (destination.arrivalTime && !destination.isSkipped) {
+        arrival.classList.add('is-derived'); arrival.dataset.derived = '1';
+        const flags = document.createElement('div'); flags.className = 'card-flags';
+        const nightIndex = overnights.get(destination.id);
+        if (nightIndex) { const badge = document.createElement('span'); badge.className = 'overnight-badge'; badge.dataset.overnight = String(nightIndex); badge.textContent = `🌙 第 ${nightIndex} 晚`; flags.append(badge); card.dataset.overnight = String(nightIndex); }
+        const tag = document.createElement('span'); tag.className = 'derived-tag'; tag.textContent = '自动推算'; flags.append(tag);
+        card.querySelector('[data-place-meta]').after(flags);
+      }
+      if (destination.hasDepartureDisplay && !destination.isSkipped) { departureStrong.classList.add('is-derived'); departureStrong.dataset.derived = '1'; }
       card.querySelector('.route-status').replaceWith(routeStatus(destination, index)); const buttons = card.querySelector('[data-stay-buttons]'); const relativeButtons = document.createElement('div'); relativeButtons.className = 'stay-relative-buttons'; const untilButtons = document.createElement('div'); untilButtons.className = 'stay-until-buttons'; STAY_OPTIONS.forEach((option) => { const button = document.createElement('button'); button.type = 'button'; button.dataset.action = 'toggle-stay'; button.dataset.minutes = option.minutes; button.textContent = option.label; if (destination.stayMode === 'duration' && destination.selectedStayButtons.includes(option.minutes)) button.classList.add('active'); relativeButtons.append(button); }); ['08:00', '09:00', '10:00'].forEach((time) => { const button = document.createElement('button'); button.type = 'button'; button.dataset.action = 'until-stay'; button.dataset.until = time; button.textContent = `至${time}`; if (destination.stayMode === 'until' && destination.untilTime === time) button.classList.add('active'); untilButtons.append(button); }); buttons.append(relativeButtons, untilButtons); card.querySelector('[data-stay-current]').textContent = `当前停留：${formatStay(destination.stayMinutes)}`;
       const skip = card.querySelector('[data-action="toggle-skip"]'); skip.setAttribute('aria-label', destination.isSkipped ? '恢复目的地' : '暂时跳过目的地'); skip.title = destination.isSkipped ? '恢复目的地' : '暂时跳过目的地'; skip.innerHTML = destination.isSkipped ? '◉' : '◌'; if (destination.isReturnToOrigin) { input.classList.add('return-input'); card.querySelector('[data-action="move-up"]').disabled = true; card.querySelector('[data-action="move-down"]').disabled = true; } if (destination.isSkipped) { card.querySelector('.stay-section').hidden = true; departureBlock.hidden = true; }
       renderLegWarnings(card, wrap, destination);
+      renderFatigueBanner(wrap, destination);
+      /* 级联重算感知：与上一次 render 的时刻文本对比，变化且非本站直接操作的加 flash */
+      const departureText = destination.hasDepartureDisplay ? departureStrong.textContent : '';
+      nextTimeSnapshot.set(destination.id, { arrival: arrival.textContent, departure: departureText });
+      const prevTimes = lastTimeSnapshot.get(destination.id);
+      if (prevTimes && !flashSuppress.has(destination.id)) {
+        if (prevTimes.arrival !== arrival.textContent) flashValue(arrival);
+        if (prevTimes.departure !== departureText && destination.hasDepartureDisplay) flashValue(departureStrong);
+      }
       if (AI_ENABLED) globalThis.ScenicAI?.mount(card, destination, requestScenic);
       bindPicker(input, card.querySelector('[data-poi-results]'), destination.id); timelineNode.append(fragment);
     });
+    lastTimeSnapshot = nextTimeSnapshot; flashSuppress.clear();
     const closed = trip.destinations.at(-1)?.isReturnToOrigin; $('#addDestination').hidden = Boolean(closed); $('#returnOrigin').hidden = Boolean(closed); renderMap();
   }
   function showSearchStatus(results, text) { results.hidden = false; results.replaceChildren(); const row = document.createElement('div'); row.className = 'poi-option'; row.textContent = text; results.append(row); }
@@ -394,7 +486,7 @@
       results = $('#startPoiResults');
       const prior = searchTimers.get('start'); if (prior) clearTimeout(prior);
       const query = input.value.trim();
-      if (query.length < 2) { if (query.length === 1) showSearchStatus(results, '再输入一个字，满 2 个字开始搜索'); else results.hidden = true; return; }
+      if (query.length < 2) { results.hidden = true; return; }
       showSearchStatus(results, '正在搜索地点…');
       searchTimers.set('start', setTimeout(() => searchStartPoi(query, results), 350));
     });
@@ -413,7 +505,7 @@
   function selectStartPoi(poi) {
     trip.startLocation = poi; trip.startSearchText = poi.name; syncReturnOrigins(); rebuildRouteGraph(); refreshElevations();
   }
-  function bindPicker(input, results, id) { if (input.disabled) return; input.addEventListener('input', () => { const destination = trip.destinations.find((item) => item.id === id); if (!destination) return; destination.searchText = input.value; destination.location = null; destination.route = null; calculate(); persist(); const prior = searchTimers.get(id); if (prior) clearTimeout(prior); const query = input.value.trim(); if (query.length < 2) { if (query.length === 1) showSearchStatus(results, '再输入一个字，满 2 个字开始搜索'); else results.hidden = true; return; } showSearchStatus(results, '正在搜索地点…'); searchTimers.set(id, setTimeout(() => searchPoi(id, query, results), 350)); }); }
+  function bindPicker(input, results, id) { if (input.disabled) return; input.addEventListener('input', () => { const destination = trip.destinations.find((item) => item.id === id); if (!destination) return; destination.searchText = input.value; destination.location = null; destination.route = null; calculate(); persist(); const prior = searchTimers.get(id); if (prior) clearTimeout(prior); const query = input.value.trim(); if (query.length < 2) { results.hidden = true; return; } showSearchStatus(results, '正在搜索地点…'); searchTimers.set(id, setTimeout(() => searchPoi(id, query, results), 350)); }); }
   async function searchPoi(id, query, results) { try { const data = await requestJson(`/api/poi?keywords=${encodeURIComponent(query)}`); const destination = trip.destinations.find((item) => item.id === id); if (!destination || destination.searchText.trim() !== query) return; results.replaceChildren(); results.hidden = false; if (!data.pois?.length) return showSearchStatus(results, '没有找到带坐标的候选地点，请换一个关键词。'); data.pois.forEach((poi) => { const button = document.createElement('button'); button.type = 'button'; button.className = 'poi-option'; button.innerHTML = `<b></b><small></small>`; button.querySelector('b').textContent = poi.name; button.querySelector('small').textContent = poi.address || '高德地图 POI'; button.addEventListener('click', () => selectPoi(id, poi)); results.append(button); }); } catch (error) { showSearchStatus(results, `地点搜索失败：${error.message}`); } }
   function selectPoi(id, poi) { const destination = trip.destinations.find((item) => item.id === id); if (!destination) return; destination.location = poi; destination.searchText = poi.name; destination.elevationMeters = null; delete destination.elevationError; rebuildRouteGraph(); loadElevation(id); }
   function addDestination() { trip.destinations.push({ id: newId(), location: null, searchText: '', route: null, elevationMeters: null, selectedStayButtons: [], stayMode: 'duration', untilTime: null, isSkipped: false, isReturnToOrigin: false }); calculate(); persist(); render(); timelineNode.querySelector('.destination-wrap:last-child [data-place-input]')?.focus(); }
@@ -421,12 +513,68 @@
   function addReturnOrigin() { if (trip.destinations.at(-1)?.isReturnToOrigin || !isValidLocation(trip.startLocation)) return; trip.destinations.push({ id: newId(), location: { ...trip.startLocation }, searchText: trip.startLocation.name, route: null, elevationMeters: null, selectedStayButtons: [], stayMode: 'duration', untilTime: null, isSkipped: false, isReturnToOrigin: true }); rebuildRouteGraph(); loadElevation(trip.destinations.at(-1).id); }
   function moveDestination(index, direction) { const target = index + direction; const current = trip.destinations[index]; if (!current || current.isReturnToOrigin || target < 0 || target >= trip.destinations.length || trip.destinations[target].isReturnToOrigin) return; [trip.destinations[index], trip.destinations[target]] = [trip.destinations[target], trip.destinations[index]]; rebuildRouteGraph(); }
   function reorderByIds(fromId, toId) { const from = trip.destinations.findIndex((item) => item.id === fromId); const to = trip.destinations.findIndex((item) => item.id === toId); if (from < 0 || to < 0 || from === to || trip.destinations[from].isReturnToOrigin || trip.destinations[to].isReturnToOrigin) return; const [item] = trip.destinations.splice(from, 1); trip.destinations.splice(to, 0, item); rebuildRouteGraph(); }
-  function requestRemove(index) { const destination = trip.destinations[index]; if (!destination) return; pendingDeleteIndex = index; $('#deleteName').textContent = destination.location?.name || destination.searchText || '该目的地'; $('#deleteModal').hidden = false; }
-  function removePending() { if (!Number.isInteger(pendingDeleteIndex)) return; trip.destinations.splice(pendingDeleteIndex, 1); pendingDeleteIndex = null; $('#deleteModal').hidden = true; rebuildRouteGraph(); }
+  /* ---- Undo Snackbar（共享实现由 tripkit.js 提供，此处兜底） ---- */
+  const showUndoSnackbar = (message, onUndo) => {
+    if (typeof globalThis.DriveUndoSnackbar === 'function') { globalThis.DriveUndoSnackbar(message, onUndo); return; }
+    showDockToast(message); /* 极端降级：snackbar 不可用时至少给出反馈 */
+  };
+  let lastDelete = null; /* { destination, index } 最近一次删除的完整快照与原位置 */
+  function requestRemove(index) {
+    const destination = trip.destinations[index]; if (!destination) return;
+    const name = destination.location?.name || destination.searchText || '该目的地';
+    lastDelete = { destination: JSON.parse(JSON.stringify(destination)), index };
+    trip.destinations.splice(index, 1);
+    rebuildRouteGraph();
+    showUndoSnackbar(`已删除 · ${name}`, () => {
+      if (!lastDelete) return;
+      const at = Math.min(lastDelete.index, trip.destinations.length);
+      trip.destinations.splice(at, 0, lastDelete.destination);
+      lastDelete = null;
+      rebuildRouteGraph();
+    });
+  }
+  let lastClear = null; /* { trip, routeCache, aiCache } 清空前快照 */
+  function clearTripWithUndo() {
+    lastClear = { trip, routeCache, aiCache };
+    trip = createTrip(); routeCache = {}; aiCache = null;
+    localStorage.removeItem(AI_ANALYSIS_CACHE_KEY);
+    persist(); render();
+    showUndoSnackbar('已清空行程', () => {
+      if (!lastClear) return;
+      trip = lastClear.trip; routeCache = lastClear.routeCache; aiCache = lastClear.aiCache;
+      if (aiCache) { try { localStorage.setItem(AI_ANALYSIS_CACHE_KEY, JSON.stringify(aiCache)); } catch { /* noop */ } }
+      lastClear = null;
+      calculate(); persist(); render(); rebuildRouteGraph();
+    });
+  }
   function setDeparture() { const date = $('#departureDate').value; const time = $('#departureTime').value; const next = SolarPhotography.chinaDateTimeToDate(`${date}T${time}`); if (!next || Number.isNaN(next.getTime())) return; trip.initialDepartureTime = next.toISOString(); calculate(); persist(); render(); }
   function setQuickDeparture(value) { const next = SolarPhotography.chinaDateTimeToDate(value); if (!next) return; trip.initialDepartureTime = next.toISOString(); calculate(); persist(); render(); }
-  function toggleStay(destination, minutes) { if (destination.stayMode === 'until') { destination.stayMode = 'duration'; destination.untilTime = null; destination.selectedStayButtons = []; } destination.selectedStayButtons = destination.selectedStayButtons.includes(minutes) ? destination.selectedStayButtons.filter((item) => item !== minutes) : [...destination.selectedStayButtons, minutes]; calculate(); persist(); render(); }
-  function toggleUntil(destination, time) { if (destination.stayMode === 'until' && destination.untilTime === time) { destination.stayMode = 'duration'; destination.untilTime = null; } else { destination.stayMode = 'until'; destination.untilTime = time; destination.selectedStayButtons = []; } calculate(); persist(); render(); }
+  /* 快捷出发档位相对当前时间生成：今天傍晚（过时自动滚到明晚）+ 明早两档 */
+  function buildQuickStarts() {
+    const host = document.querySelector('.quick-starts'); if (!host) return;
+    host.querySelectorAll('[data-quick-start]').forEach((node) => node.remove());
+    const pad = (n) => String(n).padStart(2, '0');
+    const chinaLocal = (daysAhead, hour, minute) => {
+      const now = SolarPhotography.chinaParts(new Date());
+      const day = new Date(Date.UTC(now.year, now.month - 1, now.day) + daysAhead * 86400000);
+      return `${day.getUTCFullYear()}-${pad(day.getUTCMonth() + 1)}-${pad(day.getUTCDate())}T${pad(hour)}:${pad(minute)}:00`;
+    };
+    const nowMs = Date.now();
+    const evening = SolarPhotography.chinaDateTimeToDate(chinaLocal(0, 18, 0));
+    const slots = [];
+    if (evening && evening.getTime() > nowMs + 15 * 60000) slots.push({ value: chinaLocal(0, 18, 0), label: '今天 18:00' });
+    else slots.push({ value: chinaLocal(1, 18, 0), label: '明晚 18:00' });
+    slots.push({ value: chinaLocal(1, 5, 30), label: '明早 05:30' });
+    slots.push({ value: chinaLocal(1, 8, 0), label: '明早 08:00' });
+    slots.forEach((slot) => {
+      const button = document.createElement('button');
+      button.type = 'button'; button.dataset.quickStart = slot.value; button.textContent = slot.label;
+      button.addEventListener('click', () => setQuickDeparture(slot.value));
+      host.append(button);
+    });
+  }
+  function toggleStay(destination, minutes) { flashSuppress.add(destination.id); if (destination.stayMode === 'until') { destination.stayMode = 'duration'; destination.untilTime = null; destination.selectedStayButtons = []; } destination.selectedStayButtons = destination.selectedStayButtons.includes(minutes) ? destination.selectedStayButtons.filter((item) => item !== minutes) : [...destination.selectedStayButtons, minutes]; calculate(); persist(); render(); }
+  function toggleUntil(destination, time) { flashSuppress.add(destination.id); if (destination.stayMode === 'until' && destination.untilTime === time) { destination.stayMode = 'duration'; destination.untilTime = null; } else { destination.stayMode = 'until'; destination.untilTime = time; destination.selectedStayButtons = []; } calculate(); persist(); render(); }
   function resetRefreshChallenge() { turnstileToken = ''; const confirm = $('#refreshConfirm'); const status = $('#refreshHumanStatus'); if (confirm) confirm.disabled = true; if (status) status.textContent = '请完成 Cloudflare 人机验证'; if (globalThis.turnstile && turnstileWidgetId) globalThis.turnstile.reset(turnstileWidgetId); }
   function renderRefreshTurnstile() {
     const container = $('#refreshTurnstile'); const sitekey = String(globalThis.DRIVE_TURNSTILE_SITE_KEY || '').trim();
@@ -494,7 +642,7 @@
     } catch (error) { aiLastError = error.message || '服务请求失败，请稍后再试。'; showDockToast(`AI 分析失败：${aiLastError}`); }
     finally { aiLoading = false; aiTurnstileToken = ''; renderAiAnalysis(); }
   }
-  timelineNode.addEventListener('click', (event) => { const action = event.target.closest('[data-action]'); if (!action) return; if (action.dataset.action === 'add-via-point') { addViaPoint(Number(action.dataset.index)); return; } const card = action.closest('.destination-card'); const index = Number(card?.dataset.index); const destination = trip.destinations[index]; if (!destination) return; if (action.dataset.action === 'toggle-stay') toggleStay(destination, Number(action.dataset.minutes)); if (action.dataset.action === 'until-stay') toggleUntil(destination, action.dataset.until); if (action.dataset.action === 'toggle-skip') { destination.isSkipped = !destination.isSkipped; rebuildRouteGraph(); } if (action.dataset.action === 'move-up') moveDestination(index, -1); if (action.dataset.action === 'move-down') moveDestination(index, 1); if (action.dataset.action === 'remove') requestRemove(index); if (action.dataset.action === 'retry-route') rebuildRouteGraph(true); });
+  timelineNode.addEventListener('click', (event) => { const action = event.target.closest('[data-action]'); if (!action) return; if (action.dataset.action === 'add-via-point') { addViaPoint(Number(action.dataset.index)); return; } if (action.dataset.action === 'fatigue-rest') { addFatigueRest(Number(action.dataset.index)); return; } const card = action.closest('.destination-card'); const index = Number(card?.dataset.index); const destination = trip.destinations[index]; if (!destination) return; if (action.dataset.action === 'toggle-stay') toggleStay(destination, Number(action.dataset.minutes)); if (action.dataset.action === 'until-stay') toggleUntil(destination, action.dataset.until); if (action.dataset.action === 'toggle-skip') { flashSuppress.add(destination.id); destination.isSkipped = !destination.isSkipped; rebuildRouteGraph(); } if (action.dataset.action === 'move-up') moveDestination(index, -1); if (action.dataset.action === 'move-down') moveDestination(index, 1); if (action.dataset.action === 'remove') requestRemove(index); if (action.dataset.action === 'retry-route') rebuildRouteGraph(true); });
   dockNode.addEventListener('click', (event) => { const item = event.target.closest('.dock-item'); if (!item) return; if (Date.now() < dockSuppressClickUntil) { event.preventDefault(); event.stopPropagation(); return; } const anchor = item.dataset.anchor || `destination-${item.dataset.id}`; activeDockId = item.dataset.id || null; renderDock(); document.getElementById(anchor)?.scrollIntoView({ behavior: 'smooth', block: 'center' }); });
   dockNode.addEventListener('pointerdown', (event) => { const item = event.target.closest('.dock-item[data-id]'); if (!item) return; event.preventDefault(); item.setPointerCapture?.(event.pointerId); const pointer = { id: item.dataset.id, source: item, startX: event.clientX, startY: event.clientY, moved: false, armed: false, pointerId: event.pointerId, pressTimer: setTimeout(() => armDockDrag(pointer), 180) }; item.classList.add('is-pressing'); dockPointer = pointer; });
   dockNode.addEventListener('pointermove', (event) => { const pointer = dockPointer; if (!pointer || event.pointerId !== pointer.pointerId) return; const movedX = Math.abs(event.clientX - pointer.startX); const movedY = Math.abs(event.clientY - pointer.startY); if (Math.max(movedX, movedY) > 8) { pointer.moved = true; armDockDrag(pointer); } if (!pointer.armed) return; event.preventDefault(); const over = document.elementFromPoint(event.clientX, event.clientY)?.closest('.dock-item[data-id]'); dockNode.querySelectorAll('.dock-item.drag-over').forEach((node) => node.classList.remove('drag-over')); if (over && over.dataset.id !== pointer.id) { over.classList.add('drag-over'); pointer.overId = over.dataset.id; } else { pointer.overId = null; } });
@@ -502,20 +650,8 @@
   dockNode.addEventListener('pointercancel', () => { clearDockDragFeedback(); dockPointer = null; });
   dockNode.addEventListener('lostpointercapture', () => { if (dockPointer) { clearDockDragFeedback(); dockPointer = null; } });
   dockToggle.addEventListener('click', () => setDockCollapsed(!dockShell.classList.contains('is-collapsed')));
-  document.addEventListener('click', (event) => {
-    const modalControl = event.target.closest('#deleteCancel, #deleteConfirm');
-    if (!modalControl) return;
-    event.preventDefault();
-    if (modalControl.id === 'deleteCancel') { pendingDeleteIndex = null; $('#deleteModal').hidden = true; }
-    else removePending();
-  });
-  // Keep the dialog controls usable even if an embedding browser stops bubbling
-  // clicks through an inert backdrop; the delegated listener above remains a fallback.
-  $('#deleteCancel').addEventListener('click', () => { pendingDeleteIndex = null; $('#deleteModal').hidden = true; });
-  $('#deleteConfirm').addEventListener('click', removePending);
-  $('#deleteModal').addEventListener('click', (event) => { if (event.target === event.currentTarget) { pendingDeleteIndex = null; event.currentTarget.hidden = true; } });
-  document.addEventListener('keydown', (event) => { if (event.key === 'Escape' && !$('#deleteModal').hidden) { pendingDeleteIndex = null; $('#deleteModal').hidden = true; } });
+  /* 删除确认弹窗已退役：撤销逻辑全部走 .undo-snackbar 自身按钮回调，无需全局代理 */
   $('#aiAnalysisResult').addEventListener('click', (event) => { const anchor = event.target.closest('[data-ai-anchor]'); if (!anchor) return; document.getElementById(`destination-${anchor.dataset.aiAnchor}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }); });
-  bindStartPicker($('#startPlaceInput'), $('#startPoiResults')); $('#addDestination').addEventListener('click', addDestination); $('#returnOrigin').addEventListener('click', addReturnOrigin); $('#refreshRoutePreview').addEventListener('click', openRefreshModal); $('#centerRoutePreview').addEventListener('click', centerRoutePreview); $('#refreshConfirm').addEventListener('click', confirmRefresh); $('#refreshCancel').addEventListener('click', closeRefreshModal); $('#refreshModal').addEventListener('click', (event) => { if (event.target === event.currentTarget) closeRefreshModal(); }); $('#openAiAnalysis').addEventListener('click', openAiModal); $('#aiConfirm').addEventListener('click', confirmAiAnalysis); $('#aiCancel').addEventListener('click', closeAiModal); $('#aiModal').addEventListener('click', (event) => { if (event.target === event.currentTarget) closeAiModal(); }); $('#openShare').addEventListener('click', () => { const model = buildShareModel(); if (!model) { showDockToast('至少添加一个有效目的地后再分享'); return; } if (!globalThis.DriveShare) { showDockToast('分享功能暂不可用，请稍后重试'); return; } globalThis.DriveShare.open(model); }); $('#clearTrip').addEventListener('click', () => { if (!trip.destinations.length || window.confirm('确定清空所有目的地和已保存的路线吗？')) { trip = createTrip(); routeCache = {}; aiCache = null; localStorage.removeItem(AI_ANALYSIS_CACHE_KEY); persist(); render(); } }); $('#departureDate').addEventListener('change', setDeparture); $('#departureTime').addEventListener('change', setDeparture); document.querySelectorAll('[data-quick-start]').forEach((button) => button.addEventListener('click', () => setQuickDeparture(button.dataset.quickStart)));
-  calculate(); render(); if (activeLegs().some((leg) => !leg.destination.route)) rebuildRouteGraph(); refreshElevations();
+  bindStartPicker($('#startPlaceInput'), $('#startPoiResults')); $('#addDestination').addEventListener('click', addDestination); $('#returnOrigin').addEventListener('click', addReturnOrigin); $('#refreshRoutePreview').addEventListener('click', openRefreshModal); $('#centerRoutePreview').addEventListener('click', centerRoutePreview); $('#refreshConfirm').addEventListener('click', confirmRefresh); $('#refreshCancel').addEventListener('click', closeRefreshModal); $('#refreshModal').addEventListener('click', (event) => { if (event.target === event.currentTarget) closeRefreshModal(); }); $('#openAiAnalysis').addEventListener('click', openAiModal); $('#aiConfirm').addEventListener('click', confirmAiAnalysis); $('#aiCancel').addEventListener('click', closeAiModal); $('#aiModal').addEventListener('click', (event) => { if (event.target === event.currentTarget) closeAiModal(); }); $('#openShare').addEventListener('click', () => { const model = buildShareModel(); if (!model) { showDockToast('至少添加一个有效目的地后再分享'); return; } if (!globalThis.DriveShare) { showDockToast('分享功能暂不可用，请稍后重试'); return; } globalThis.DriveShare.open(model); }); $('#clearTrip').addEventListener('click', clearTripWithUndo); $('#departureDate').addEventListener('change', setDeparture); $('#departureTime').addEventListener('change', setDeparture); /* 快捷出发按钮由 buildQuickStarts() 生成并各自绑定 */
+  buildQuickStarts(); calculate(); persist(); render(); if (activeLegs().some((leg) => !leg.destination.route)) rebuildRouteGraph(); refreshElevations();
 })();

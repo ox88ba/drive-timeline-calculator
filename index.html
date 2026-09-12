@@ -4,14 +4,17 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="theme-color" content="#f5f6f8" />
-    <script src="./skin.js?v=20260912-default1"></script>
+    <script src="./skin.js?v=20260913-voyage1"></script>
     <title>自驾时间计算器</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Noto+Sans+SC:wght@400;500;600;700&family=Noto+Serif+SC:wght@600;700&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;600&family=Sora:wght@400;600;700&family=Noto+Sans+SC:wght@400;500;600;700&family=Noto+Serif+SC:wght@600;700&family=Source+Serif+4:opsz,wght@8..60,300;8..60,400;8..60,600&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="./styles.css?v=20260911-mapsnapshot2" />
     <link rel="stylesheet" href="./roadbook.css?v=20260912-roadbook2" />
-    <link rel="stylesheet" href="./timeflow.css?v=20260912-timeflow6" />
+    <link rel="stylesheet" href="./timeflow.css?v=20260912-skyfx4" />
+    <link rel="stylesheet" href="./voyage.css?v=20260913-voyage1" />
+    <link rel="stylesheet" href="./ledger.css?v=20260913-ab1" />
+    <link rel="stylesheet" href="./gallery.css?v=20260913-ab1" />
     <link rel="stylesheet" href="./tripkit.css?v=20260912-tripkit1" />
   </head>
   <body>
@@ -64,9 +67,7 @@
         <label class="time-field">时间<input id="departureTime" type="time" /></label>
         <div class="quick-starts" aria-label="快捷出发时间">
           <span>快捷出发</span>
-          <button type="button" data-quick-start="2026-09-30T18:00:00">9/30 18:00</button>
-          <button type="button" data-quick-start="2026-09-30T19:00:00">9/30 19:00</button>
-          <button type="button" data-quick-start="2026-09-30T20:00:00">9/30 20:00</button>
+          <!-- 档位由 app.js buildQuickStarts() 相对当前时间动态注入，勿再硬编码日期 -->
         </div>
       </section>
 
@@ -107,9 +108,7 @@
       </article>
     </template>
 
-    <div id="deleteModal" class="modal-backdrop" hidden role="dialog" aria-modal="true" aria-labelledby="deleteTitle">
-      <section class="delete-modal"><span class="section-label">删除确认</span><h2 id="deleteTitle">删除目的地？</h2><p>确定要删除「<b id="deleteName"></b>」吗？删除后将重新计算后续路线。</p><div><button id="deleteCancel" type="button">取消</button><button id="deleteConfirm" class="danger" type="button">删除</button></div></section>
-    </div>
+    <!-- 删除/清空均为可逆操作：Undo Snackbar 取代确认弹窗（见 app.js requestRemove / clearTrip） -->
 
     <div id="refreshModal" class="modal-backdrop" hidden role="dialog" aria-modal="true" aria-labelledby="refreshTitle">
       <section class="delete-modal refresh-modal"><span class="section-label">高德路线刷新</span><h2 id="refreshTitle">重新计算整条路线？</h2><p>这会逐段重新请求高德驾车导航，可能需要等待较长时间，并会消耗地图服务配额。</p><div id="refreshTurnstile" class="turnstile-wrap" aria-label="Cloudflare 人机验证"></div><small id="refreshHumanStatus" class="human-check-status">请完成 Cloudflare 人机验证</small><div><button id="refreshCancel" type="button">取消</button><button id="refreshConfirm" class="danger" type="button" disabled>确认并刷新</button></div></section>
@@ -146,7 +145,10 @@
     <script src="./share.js?v=20260911-mapsnapshot2"></script>
     <script src="./scenic-ai.js?v=20260911-guides2"></script>
     <script src="./tripkit.js?v=20260912-tripkit1"></script>
-    <script src="./app.js?v=20260913-poi1"></script>
-    <script src="./timeflow.js?v=20260912-timeflow6"></script>
+    <script src="./app.js?v=20260911-mapsnapshot2"></script>
+    <script src="./timeflow.js?v=20260912-skyfx4"></script>
+    <script src="./voyage.js?v=20260913-voyage1"></script>
+    <script src="./ledger.js?v=20260913-ab1"></script>
+    <script src="./gallery.js?v=20260913-ab1"></script>
   </body>
 </html>

@@ -13,7 +13,40 @@
 
   var STORAGE_KEY = 'drive-timeline-trip-v1';
   var SNAPSHOT_KEY = 'drive-timeline-snapshots-v1';
+  var LOAD_UNDO_KEY = 'drive-timeline-load-undo-v1'; /* 临时键：模板/快照载入前的旧行程，撤销后即删 */
   var HASH_PREFIX = '#trip=';
+
+  /* ---------- 共享 Undo Snackbar（app.js 复用，皮肤层负责重绘 .undo-snackbar） ---------- */
+  var snackTimer = null;
+  function showUndoSnackbar(message, onUndo, onDismiss) {
+    var node = document.getElementById('undoSnackbar');
+    if (!node) {
+      node = document.createElement('div');
+      node.id = 'undoSnackbar';
+      node.className = 'undo-snackbar';
+      node.setAttribute('role', 'status');
+      node.setAttribute('aria-live', 'polite');
+      node.innerHTML = '<span class="undo-snackbar-text"></span>' +
+        '<button type="button" class="undo-snackbar-action">撤销</button>';
+      document.body.append(node);
+    }
+    var text = node.querySelector('.undo-snackbar-text');
+    var btn = node.querySelector('.undo-snackbar-action');
+    text.textContent = message;
+    node.hidden = false;
+    clearTimeout(snackTimer);
+    btn.onclick = function () {
+      clearTimeout(snackTimer);
+      node.hidden = true;
+      if (typeof onUndo === 'function') onUndo();
+    };
+    snackTimer = setTimeout(function () {
+      node.hidden = true;
+      if (typeof onDismiss === 'function') onDismiss();
+    }, 6000);
+    return node;
+  }
+  globalThis.DriveUndoSnackbar = showUndoSnackbar;
 
   /* ---------- 编解码（同步实现，保证 hash 恢复早于 app.js 启动） ---------- */
   function b64encode(text) {
@@ -230,17 +263,43 @@
     };
   }
 
-  function applyTrip(trip, message) {
+  /* 载入前把当前行程原始串暂存临时键；reload 后由 checkLoadUndo 提供撤销 */
+  function stashLoadUndo(label) {
+    try {
+      var raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) localStorage.setItem(LOAD_UNDO_KEY, JSON.stringify({ trip: raw, label: label || '模板/快照', at: Date.now() }));
+    } catch (e) { /* 存储满时放弃撤销能力，不影响载入 */ }
+  }
+
+  function applyTrip(trip, message, undoLabel) {
+    stashLoadUndo(undoLabel);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(trip));
     toast(message || '行程已更新，正在载入…');
     setTimeout(function () { location.reload(); }, 450);
   }
 
   function loadTemplate(tpl) {
-    var current = readTrip();
-    if (current && current.destinations && current.destinations.length &&
-        !window.confirm('载入「' + tpl.name + '」将覆盖当前行程，继续吗？')) return;
-    applyTrip(templateTrip(tpl), '正在载入「' + tpl.name + '」…');
+    applyTrip(templateTrip(tpl), '正在载入「' + tpl.name + '」…', '模板「' + tpl.name + '」');
+  }
+
+  /* reload 后检测暂存的旧行程：显示「已载入模板/快照 · 撤销」 */
+  function checkLoadUndo() {
+    var rec = null;
+    try { rec = JSON.parse(localStorage.getItem(LOAD_UNDO_KEY)); } catch (e) { /* noop */ }
+    if (!rec || !rec.trip) return;
+    if (Date.now() - Number(rec.at || 0) > 10 * 60 * 1000) {
+      try { localStorage.removeItem(LOAD_UNDO_KEY); } catch (e) { /* noop */ }
+      return; /* 暂存过期，避免陈旧的撤销提示长期滞留 */
+    }
+    showUndoSnackbar('已载入' + (rec.label || '模板/快照'), function () {
+      try {
+        localStorage.setItem(STORAGE_KEY, rec.trip);
+        localStorage.removeItem(LOAD_UNDO_KEY);
+      } catch (e) { /* noop */ }
+      location.reload();
+    }, function () {
+      try { localStorage.removeItem(LOAD_UNDO_KEY); } catch (e) { /* noop */ }
+    });
   }
 
   /* ---------- 方案快照 ---------- */
@@ -427,10 +486,7 @@
         renderSnapshots();
       });
       card.querySelector('[data-x="load"]').addEventListener('click', function () {
-        var current = readTrip();
-        if (current && current.destinations && current.destinations.length &&
-            !window.confirm('载入「' + snap.name + '」将覆盖当前行程，继续吗？')) return;
-        applyTrip(expandTrip(snap.trip), '正在载入「' + snap.name + '」…');
+        applyTrip(expandTrip(snap.trip), '正在载入「' + snap.name + '」…', '快照「' + snap.name + '」');
       });
       card.querySelector('[data-x="compare"]').addEventListener('click', function () {
         var panel = card.querySelector('.tk-compare');
@@ -451,8 +507,12 @@
     snapModal.hidden = false;
   }
 
+  /* 首访 template-first 钩子：app.js 在无历史行程时取第一套模板作为草稿 */
+  globalThis.TripkitFirstTemplate = function () { return templateTrip(TEMPLATES[0]); };
+
   /* ---------- 挂载入口 ---------- */
   function mount() {
+    checkLoadUndo();
     /* 分享弹窗里加「复制链接」 */
     var shareActions = document.querySelector('.share-actions');
     if (shareActions && !document.getElementById('tkCopyLink')) {

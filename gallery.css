@@ -1,0 +1,809 @@
+/* ============================================================
+   GALLERY · 米白画廊风（data-skin="gallery" + data-engine="timeflow"）
+   概念：安静的画廊墙——界面退成灰阶，天空卡/地图/数字是唯一展品。
+   色板：画布 #FAFAFA / 卡 #FFFFFF / 分组底 #F5F5F4 / 墨 #1C1C1E /
+        次级 #6E6E73 / 三级 #AEAEB2 / 发丝线 rgba(28,28,30,.08) /
+        单强调珊瑚 #FF385C（配给制：当前时刻 · 主按钮 · 时间线当前节点）
+   字体：全站 Inter(ss03) + PingFang SC，无衬线（与 Ledger 的性格分野）
+   布局：卡 14 / 控件 8 / 标签 pill；卡零投影，明度差分层；
+        仅浮层 0 8px 24px rgba(0,0,0,.08) + inset 1px 白高光
+   契约：不改时刻文本；天空引擎产物（tf-sky-canvas/tf-chip/tfRhythm/
+        tfWhatif）只排版留白；.share-poster 锁回浅色变量。
+   ============================================================ */
+
+html[data-skin="gallery"] {
+  color-scheme: light;
+  --ink: #1C1C1E;
+  --muted: #6E6E73;
+  --gl-3: #AEAEB2;
+  --line: rgba(28, 28, 30, .08);
+  --paper: #FFFFFF;
+  --ground: #FAFAFA;
+  --gl-group: #F5F5F4;
+  --accent: #FF385C;
+  --danger: #E23A52;
+  --shadow: none; /* 卡片零投影：层级全靠明度差 */
+  --gl-float: 0 8px 24px rgba(0, 0, 0, .08), inset 0 1px 0 rgba(255, 255, 255, .85);
+  --gl-ease: cubic-bezier(.25, .46, .45, .94);
+  --gl-font: "Inter", "PingFang SC", "Noto Sans SC", -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+html[data-skin="gallery"] body {
+  background: var(--ground);
+  color: var(--ink);
+  font-family: var(--gl-font);
+  font-size: 15px;
+  font-weight: 500;
+  font-feature-settings: "ss03";
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ---------- 全局按钮：150–200ms 缓动 + 按压 scale(.97) ---------- */
+html[data-skin="gallery"] button:not(.dock-item) {
+  transition: transform .16s var(--gl-ease), background-color .16s var(--gl-ease),
+              color .16s var(--gl-ease), border-color .16s var(--gl-ease), box-shadow .16s var(--gl-ease);
+}
+html[data-skin="gallery"] button:not(.dock-item):not(:disabled):active { transform: scale(.97); }
+
+/* ---------- 等宽数字（表格数字用 tabular-nums，不用等宽字体） ---------- */
+html[data-skin="gallery"] .summary strong,
+html[data-skin="gallery"] .preview-summary strong,
+html[data-skin="gallery"] .time-grid strong,
+html[data-skin="gallery"] .departure-block strong,
+html[data-skin="gallery"] .date-field input,
+html[data-skin="gallery"] .time-field input,
+html[data-skin="gallery"] .tf-rhythm-day b,
+html[data-skin="gallery"] .dock-item b {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- 大写微标签：10.5–11px +0.08em，弃用 DM Mono ---------- */
+html[data-skin="gallery"] .eyebrow,
+html[data-skin="gallery"] .section-label {
+  color: var(--gl-3);
+  font: 600 10.5px/1 var(--gl-font);
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+html[data-skin="gallery"] .pulse {
+  width: 6px;
+  height: 6px;
+  background: var(--accent);
+  box-shadow: 0 0 0 4px rgba(255, 56, 92, .12);
+}
+
+/* ---------- Hero：编辑级 sans 标题 ---------- */
+html[data-skin="gallery"] .hero { padding-bottom: 24px; }
+html[data-skin="gallery"] .hero-row { margin-top: 14px; }
+html[data-skin="gallery"] h1 {
+  font-family: var(--gl-font);
+  font-size: 24px;
+  font-weight: 600;
+  letter-spacing: -.02em;
+  color: var(--ink);
+}
+html[data-skin="gallery"] .hero p { margin-top: 6px; color: var(--muted); font-size: 13px; font-weight: 400; }
+html[data-skin="gallery"] .icon-button {
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 10px;
+  color: var(--muted);
+  background: var(--gl-group);
+  font-size: 18px;
+}
+html[data-skin="gallery"] .icon-button:hover { color: var(--ink); background: #EEEEED; }
+
+/* 画廊墙签（gallery.js 注入）：路线链 + 元信息，无描边无底色 */
+html[data-skin="gallery"] .gl-route {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 14px;
+  margin: 18px 2px 0;
+  animation: gl-fade-up .18s var(--gl-ease) both;
+}
+html[data-skin="gallery"] .gl-route-names {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--ink);
+  font: 500 12px/1.5 var(--gl-font);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+html[data-skin="gallery"] .gl-route-names em { margin: 0 6px; color: var(--gl-3); font-style: normal; font-weight: 400; }
+html[data-skin="gallery"] .gl-route-meta {
+  flex: 0 0 auto;
+  color: var(--gl-3);
+  font: 600 10.5px/1.5 var(--gl-font);
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 展签式分组小标题（gallery.js 注入） */
+html[data-skin="gallery"] .gl-caption {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 0 2px 12px;
+  animation: gl-fade-up .18s var(--gl-ease) both;
+}
+html[data-skin="gallery"] .gl-caption b {
+  color: var(--gl-3);
+  font: 600 10.5px/1 var(--gl-font);
+  letter-spacing: .08em;
+  font-variant-numeric: tabular-nums;
+}
+html[data-skin="gallery"] .gl-caption span {
+  color: var(--muted);
+  font: 500 11px/1 var(--gl-font);
+  letter-spacing: .08em;
+}
+@keyframes gl-fade-up {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}
+
+/* ---------- 汇总：白卡零投影，发丝分隔 ---------- */
+html[data-skin="gallery"] .summary {
+  margin-top: 20px;
+  border: 0;
+  border-radius: 14px;
+  background: var(--paper);
+  box-shadow: none;
+}
+html[data-skin="gallery"] .summary > div { padding: 14px 12px 12px; border-right-color: var(--line); }
+html[data-skin="gallery"] .summary span,
+html[data-skin="gallery"] .time-grid span,
+html[data-skin="gallery"] .stay-section > span,
+html[data-skin="gallery"] .departure-block > span {
+  color: var(--gl-3);
+  font: 500 11px/1 var(--gl-font);
+  letter-spacing: .02em;
+}
+html[data-skin="gallery"] .summary strong {
+  margin-top: 7px;
+  color: var(--ink);
+  font: 600 15px/1.2 var(--gl-font);
+  letter-spacing: 0;
+}
+html[data-skin="gallery"] .summary-arrival { border-top-color: var(--line); padding: 13px 14px !important; }
+/* 珊瑚配给 ①：当前推算的最终抵达时刻 */
+html[data-skin="gallery"] .summary-arrival strong { color: var(--accent); font-size: 15px; }
+
+/* ---------- 行程节律带：白卡 + 灰底轨道 + 低饱和三段 ---------- */
+html[data-skin="gallery"] .tf-rhythm {
+  margin-top: 24px;
+  padding: 16px 16px 15px;
+  border: 0;
+  border-radius: 14px;
+  background: var(--paper);
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+html[data-skin="gallery"] .tf-rhythm-head .section-label { color: var(--gl-3); }
+html[data-skin="gallery"] .tf-rhythm-legend { color: var(--muted); font-size: 11px; font-family: var(--gl-font); }
+html[data-skin="gallery"] .tf-rhythm-legend i { border-radius: 3px; }
+html[data-skin="gallery"] .tf-rhythm-row { grid-template-columns: 70px 1fr; margin-top: 12px; }
+html[data-skin="gallery"] .tf-rhythm-day b { color: var(--ink); font: 600 12px/1.3 var(--gl-font); }
+html[data-skin="gallery"] .tf-rhythm-day span { color: var(--gl-3); font: 500 10px/1.3 var(--gl-font); }
+html[data-skin="gallery"] .tf-rhythm-bar {
+  height: 16px;
+  border-radius: 8px;
+  background: #F0F0EE;
+  box-shadow: none;
+}
+html[data-skin="gallery"] .tf-rhythm-bar::before {
+  background: linear-gradient(90deg,
+    transparent calc(25% - .5px), rgba(28, 28, 30, .09) calc(25% - .5px) 25%, transparent 25%,
+    transparent calc(50% - .5px), rgba(28, 28, 30, .09) calc(50% - .5px) 50%, transparent 50%,
+    transparent calc(75% - .5px), rgba(28, 28, 30, .09) calc(75% - .5px) 75%, transparent 75%);
+}
+/* 低饱和色段：彩色面积小，灰底轨道为主 */
+html[data-skin="gallery"] .tf-rb-drive { background: #D8BE97; }
+html[data-skin="gallery"] .tf-rb-stay { background: #A7C4D2; }
+html[data-skin="gallery"] .tf-rb-overnight { background: #9BA1B2; }
+html[data-skin="gallery"] .tf-rb-latenight { background: var(--accent); animation: none; }
+html[data-skin="gallery"] .tf-rhythm-warn { color: #D9385E; font-size: 12px; }
+
+/* ---------- AI 总评：分组灰底，无描边 ---------- */
+html[data-skin="gallery"] .ai-analysis {
+  margin: 24px 0 32px;
+  padding: 18px;
+  border: 0;
+  border-radius: 14px;
+  background: var(--gl-group);
+  box-shadow: none;
+}
+html[data-skin="gallery"] .ai-analysis-head h2 {
+  margin-top: 6px;
+  font-family: var(--gl-font);
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: -.02em;
+}
+/* 分析按钮做成墨钮（珊瑚配给留给主操作） */
+html[data-skin="gallery"] .ai-analysis-head button {
+  padding: 9px 14px;
+  border-radius: 8px;
+  color: #fff;
+  background: var(--ink);
+  font: 600 12px var(--gl-font);
+}
+html[data-skin="gallery"] .ai-analysis-head button:disabled { color: var(--gl-3); background: rgba(28, 28, 30, .07); }
+html[data-skin="gallery"] .ai-analysis-hint { color: var(--muted); font-size: 13px; font-weight: 400; line-height: 1.6; }
+html[data-skin="gallery"] .ai-result-lead { border-radius: 10px; background: #fff; box-shadow: none; }
+html[data-skin="gallery"] .ai-result-lead h3 { font-size: 15px; font-weight: 600; letter-spacing: -.01em; }
+html[data-skin="gallery"] .ai-result-lead p { color: var(--muted); font-size: 13px; }
+html[data-skin="gallery"] .ai-result-section { border-top-color: var(--line); }
+html[data-skin="gallery"] .ai-result-section h3 { color: var(--gl-3); font-size: 11px; letter-spacing: .06em; }
+html[data-skin="gallery"] .ai-day,
+html[data-skin="gallery"] .ai-risk,
+html[data-skin="gallery"] .ai-suggestion { border-radius: 10px; background: #fff; }
+html[data-skin="gallery"] .ai-day { color: var(--muted); font-size: 12px; }
+html[data-skin="gallery"] .ai-day b { color: var(--ink); font: 600 11px var(--gl-font); font-variant-numeric: tabular-nums; }
+html[data-skin="gallery"] .ai-day.ai-level-attention { background: #FBF4E8; }
+html[data-skin="gallery"] .ai-day.ai-level-high { background: #FCEFF2; }
+html[data-skin="gallery"] .ai-risk p,
+html[data-skin="gallery"] .ai-suggestion p { color: var(--muted); font-size: 12px; }
+html[data-skin="gallery"] .ai-risk small { color: var(--gl-3); }
+html[data-skin="gallery"] .ai-suggestion b { color: var(--ink); }
+html[data-skin="gallery"] .ai-risk-high { border-left-color: #E23A52; }
+html[data-skin="gallery"] .ai-risk-medium { border-left-color: #DFA65A; }
+html[data-skin="gallery"] .ai-risk-info { border-left-color: #AEAEB2; }
+html[data-skin="gallery"] .ai-anchor { border-radius: 999px; color: var(--ink); background: var(--gl-group); }
+
+/* ---------- 出发点卡：天空展品（保留天空引擎，仅去暗投影） ---------- */
+html[data-skin="gallery"] .start-card {
+  margin: 24px 0 0;
+  padding: 16px;
+  border: 0;
+  border-radius: 14px;
+  background: var(--paper);
+  box-shadow: none;
+}
+html[data-skin="gallery"] .start-card[data-sky-a] {
+  border: 0;
+  box-shadow: none; /* 天空卡=展品：零投影，靠留白呼吸 */
+}
+html[data-skin="gallery"] .start-card:not([data-sky-a]) .section-label { color: var(--gl-3); }
+html[data-skin="gallery"] .station-number,
+html[data-skin="gallery"] .start-number {
+  font: 600 11px var(--gl-font);
+  letter-spacing: .06em;
+  font-variant-numeric: tabular-nums;
+}
+html[data-skin="gallery"] .start-card:not([data-sky-a]) .start-number { color: var(--gl-3); }
+html[data-skin="gallery"] .date-field,
+html[data-skin="gallery"] .time-field { color: var(--gl-3); font-size: 11px; gap: 4px; }
+html[data-skin="gallery"] .date-field input,
+html[data-skin="gallery"] .time-field input { font: 500 13px var(--gl-font); }
+html[data-skin="gallery"] .start-card:not([data-sky-a]) .date-field input,
+html[data-skin="gallery"] .start-card:not([data-sky-a]) .time-field input { color: var(--ink); }
+html[data-skin="gallery"] .start-card:not([data-sky-a]) .quick-starts > span { color: var(--gl-3); }
+
+/* What-if 滑块：天空轨道保留（引擎产物），文字去辉光 */
+html[data-skin="gallery"] .tf-whatif { border-top: 1px dashed rgba(28, 28, 30, .14); }
+html[data-skin="gallery"] .tf-whatif-head > span { font-family: var(--gl-font); letter-spacing: .08em; }
+html[data-skin="gallery"] .tf-whatif-head output {
+  color: var(--accent);
+  text-shadow: none;
+  font: 600 12px var(--gl-font);
+  font-variant-numeric: tabular-nums;
+}
+html[data-skin="gallery"] .tf-whatif input[type="range"]::-webkit-slider-thumb {
+  box-shadow: 0 1px 6px rgba(0, 0, 0, .28);
+}
+html[data-skin="gallery"] .tf-whatif input[type="range"]::-moz-range-thumb { background: var(--accent); }
+
+/* ---------- 公路连接线：灰阶，少描边 ---------- */
+html[data-skin="gallery"] .route-connector {
+  color: var(--muted);
+  font: 500 12px/1.6 var(--gl-font);
+}
+html[data-skin="gallery"] .route-connector::before { background: rgba(28, 28, 30, .12); }
+html[data-skin="gallery"] .route-connector::after { color: var(--gl-3); background: var(--ground); }
+html[data-skin="gallery"] .connector-route { color: var(--ink); font-weight: 600; }
+html[data-skin="gallery"] .skipped-connector { color: var(--gl-3); }
+html[data-skin="gallery"] .spinner { border-color: rgba(28, 28, 30, .1); border-top-color: var(--muted); }
+html[data-skin="gallery"] .date-divider {
+  color: var(--gl-3);
+  text-shadow: none;
+  font: 500 11px var(--gl-font);
+  letter-spacing: .06em;
+}
+html[data-skin="gallery"] .date-divider::before,
+html[data-skin="gallery"] .date-divider::after { background: var(--line); }
+html[data-skin="gallery"] .add-via-point {
+  border: 0;
+  border-radius: 999px;
+  color: var(--muted);
+  background: rgba(28, 28, 30, .05);
+  font: 500 11px var(--gl-font);
+}
+html[data-skin="gallery"] .drive-warning { font: 500 11px/1.5 var(--gl-font); padding: 3px 9px; }
+html[data-skin="gallery"] .drive-warning.is-orange { color: #9A6A1B; background: #FBF3E4; }
+html[data-skin="gallery"] .drive-warning.is-red { color: #C22744; background: #FCEFF2; }
+
+/* ---------- 目的地卡：天空展品 + 白卡停留带 ---------- */
+html[data-skin="gallery"] .destination-card,
+html[data-skin="gallery"] .destination-card.photo-golden,
+html[data-skin="gallery"] .destination-card.photo-sunset,
+html[data-skin="gallery"] .destination-card.photo-blue {
+  padding: 18px 18px 0;
+  border: 0;
+  border-radius: 14px;
+  box-shadow: none;
+}
+/* 跳过态：熄灯退成灰阶分组底 */
+html[data-skin="gallery"] .destination-card.is-skipped {
+  padding-bottom: 18px;
+  background: var(--gl-group);
+  filter: grayscale(1);
+  opacity: .6;
+}
+html[data-skin="gallery"] .destination-card:not([data-sky-a]) .station-number { color: var(--gl-3); text-shadow: none; }
+html[data-skin="gallery"] .card-actions button { border-radius: 8px; font-size: 13px; }
+html[data-skin="gallery"] .destination-card:not([data-sky-a]) .card-actions button { color: var(--muted); background: rgba(28, 28, 30, .05); }
+html[data-skin="gallery"] .destination-card:not([data-sky-a]) .card-actions button:last-child { color: var(--danger); }
+
+/* 地点输入：17px/600 负字距（保留天空自适应墨色） */
+html[data-skin="gallery"] .place-picker input { font-family: var(--gl-font); }
+html[data-skin="gallery"] .destination-card:not([data-sky-a]) .place-picker input { color: var(--ink); caret-color: var(--accent); }
+html[data-skin="gallery"] .destination-card:not([data-sky-a]) .place-address { color: var(--muted); }
+html[data-skin="gallery"] .destination-card:not([data-sky-a]) .place-meta,
+html[data-skin="gallery"] .place-meta { font: 400 11px/1.5 var(--gl-font); }
+html[data-skin="gallery"] .destination-card:not([data-sky-a]) .place-meta { color: var(--gl-3); }
+html[data-skin="gallery"] .destination-card:not([data-sky-a]) .search-mark { color: var(--gl-3); }
+
+/* 时刻数字：Inter 22px/600 tabular-nums；日期降级 13px（gallery.js 分组，文本不变） */
+html[data-skin="gallery"] .time-grid strong,
+html[data-skin="gallery"] .departure-block strong {
+  gap: 8px;
+  font: 600 22px/1.25 var(--gl-font);
+  letter-spacing: -.01em;
+  font-variant-numeric: tabular-nums;
+}
+html[data-skin="gallery"] .gl-t-date { font-size: 13px; font-weight: 500; letter-spacing: 0; }
+html[data-skin="gallery"] .time-grid .gl-t-date { color: color-mix(in srgb, var(--tf-a-ink, var(--gl-3)) 62%, transparent); }
+html[data-skin="gallery"] .departure-block .gl-t-date { color: color-mix(in srgb, var(--tf-b-ink, var(--gl-3)) 62%, transparent); }
+html[data-skin="gallery"] .time-grid strong { text-shadow: none; }
+html[data-skin="gallery"] .destination-card[data-sky-a] .time-grid strong { font-size: 22px; }
+
+/* 摄影时刻徽章：灰阶化（与 tf-chip 同款磨砂，不再彩色） */
+html[data-skin="gallery"] .photo-badge.golden,
+html[data-skin="gallery"] .photo-badge.sunset,
+html[data-skin="gallery"] .photo-badge.blue {
+  padding: 3px 8px;
+  color: color-mix(in srgb, var(--tf-a-ink, var(--muted)) 88%, transparent);
+  background: color-mix(in srgb, var(--tf-a-ink, #1C1C1E) 10%, transparent);
+  font: 500 10px/1.5 var(--gl-font);
+}
+html[data-skin="gallery"] .departure-block .photo-badge.golden,
+html[data-skin="gallery"] .departure-block .photo-badge.sunset,
+html[data-skin="gallery"] .departure-block .photo-badge.blue {
+  color: color-mix(in srgb, var(--tf-b-ink, var(--muted)) 88%, transparent);
+  background: color-mix(in srgb, var(--tf-b-ink, #1C1C1E) 10%, transparent);
+}
+
+/* 路由状态 / 海拔提示 */
+html[data-skin="gallery"] .destination-card:not([data-sky-a]) .route-status {
+  border-radius: 8px;
+  color: var(--muted);
+  background: var(--gl-group);
+  font: 500 11px/1.5 var(--gl-font);
+}
+html[data-skin="gallery"] .route-status { font-family: var(--gl-font); }
+html[data-skin="gallery"] .destination-card:not([data-sky-a]) .route-status.error { color: #C22744; background: #FCEFF2; }
+html[data-skin="gallery"] .altitude-warning { color: #9A7B4F; font-size: 12px; }
+html[data-skin="gallery"] .night-arrival { font-size: 18px; }
+
+/* 停留带：白磨砂带（非过夜卡）；过夜星空带保留引擎原色 */
+html[data-skin="gallery"] .destination-card:not([data-tf-overnight]) .stay-section {
+  margin: 16px -18px 0;
+  padding: 14px 18px 16px;
+  border-top: 1px solid var(--line);
+  background: rgba(255, 255, 255, .78);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+html[data-skin="gallery"] .destination-card[data-tf-overnight] .stay-section { margin-right: -18px; margin-left: -18px; padding-right: 18px; padding-left: 18px; }
+html[data-skin="gallery"] .destination-card:not(.tf-has-dep) .stay-section { border-radius: 0 0 14px 14px; }
+html[data-skin="gallery"] .destination-card:not([data-tf-overnight]) .stay-relative-buttons::before,
+html[data-skin="gallery"] .destination-card:not([data-tf-overnight]) .stay-until-buttons::before {
+  color: var(--gl-3);
+  font: 500 10.5px/1 var(--gl-font);
+  letter-spacing: .06em;
+}
+html[data-skin="gallery"] .destination-card:not([data-tf-overnight]) .stay-section p[data-stay-current] { color: var(--muted); font-size: 12px; }
+
+/* 停留/快捷按钮：浅灰 pill，选中态墨钮 */
+html[data-skin="gallery"] .destination-card:not([data-tf-overnight]) .stay-buttons button,
+html[data-skin="gallery"] .start-card:not([data-sky-a]) .quick-starts button {
+  padding: 7px 11px;
+  border: 0;
+  border-radius: 999px;
+  color: #3A3A3C;
+  background: rgba(28, 28, 30, .055);
+  font: 500 12px var(--gl-font);
+  font-variant-numeric: tabular-nums;
+}
+html[data-skin="gallery"] .destination-card:not([data-tf-overnight]) .stay-buttons button.active,
+html[data-skin="gallery"] .start-card:not([data-sky-a]) .quick-starts button.active {
+  color: #fff;
+  background: var(--ink);
+}
+/* 过夜星空带上的按钮保持磨砂亮调 */
+html[data-skin="gallery"] .destination-card[data-tf-overnight] .stay-buttons button {
+  border: 0;
+  color: #E8EAF2;
+  background: rgba(255, 255, 255, .13);
+  font: 500 12px var(--gl-font);
+}
+html[data-skin="gallery"] .destination-card[data-tf-overnight] .stay-buttons button.active { color: #1C1C1E; background: rgba(255, 255, 255, .92); }
+
+/* 出发片：天空保留，圆角收边 14 */
+html[data-skin="gallery"] .departure-block {
+  margin: 14px -18px 0;
+  padding: 12px 18px 16px;
+  border-top: 1px solid rgba(28, 28, 30, .08);
+  border-radius: 0 0 14px 14px;
+}
+html[data-skin="gallery"] .departure-block strong { font-size: 20px; }
+
+/* ---------- 产品钩子 · 画廊化 ---------- */
+/* 过夜徽章：浅灰 pill（天空卡上退为磨砂） */
+html[data-skin="gallery"] .overnight-badge {
+  padding: 4px 10px;
+  border-radius: 999px;
+  color: var(--muted);
+  background: #F1F1EF;
+  font: 500 12px/1.5 var(--gl-font);
+}
+html[data-skin="gallery"] .destination-card[data-sky-a] .overnight-badge {
+  color: color-mix(in srgb, var(--tf-a-ink) 92%, transparent);
+  background: color-mix(in srgb, var(--tf-a-ink) 16%, transparent);
+  border: 1px solid color-mix(in srgb, var(--tf-a-ink) 26%, transparent);
+}
+/* 自动推算微标签：浅灰小 pill */
+html[data-skin="gallery"] .derived-tag {
+  padding: 3px 8px;
+  border-radius: 999px;
+  color: var(--gl-3);
+  background: #F1F1EF;
+  font: 500 11px/1.4 var(--gl-font);
+}
+html[data-skin="gallery"] .destination-card[data-sky-a] .derived-tag {
+  color: color-mix(in srgb, var(--tf-a-ink) 66%, transparent);
+  background: color-mix(in srgb, var(--tf-a-ink) 9%, transparent);
+}
+/* 疲劳提醒：卡内浅琥珀底 banner，圆角 10，按钮 pill */
+html[data-skin="gallery"] .fatigue-banner {
+  margin: 0 0 12px;
+  padding: 10px 12px 10px 14px;
+  border: 0;
+  border-radius: 10px;
+  color: #8A5A12;
+  background: #FBF3E4;
+  font-size: 12px;
+  line-height: 1.5;
+}
+html[data-skin="gallery"] .fatigue-banner button {
+  padding: 6px 12px;
+  border-radius: 999px;
+  color: #8A5A12;
+  background: rgba(138, 90, 18, .12);
+  font: 600 12px var(--gl-font);
+}
+/* 级联重算：珊瑚淡底渐隐（换名避免污染全局 keyframes） */
+@keyframes glValueFlash {
+  0% { background: rgba(255, 56, 92, .15); box-shadow: 0 0 0 4px rgba(255, 56, 92, .1); }
+  100% { background: transparent; box-shadow: none; }
+}
+html[data-skin="gallery"] .value-flash { border-radius: 6px; animation: glValueFlash 1.2s var(--gl-ease); }
+/* 撤销浮条：白底 + 珊瑚「撤销」（浮层专属投影） */
+html[data-skin="gallery"] .undo-snackbar {
+  gap: 14px;
+  padding: 10px 12px 10px 18px;
+  border: 0;
+  border-radius: 14px;
+  color: var(--ink);
+  background: #fff;
+  box-shadow: var(--gl-float);
+  font-size: 13px;
+}
+html[data-skin="gallery"] .undo-snackbar-action {
+  padding: 7px 13px;
+  border-radius: 999px;
+  color: var(--accent);
+  background: rgba(255, 56, 92, .1);
+  font: 600 13px var(--gl-font);
+}
+html[data-skin="gallery"] .persist-warning {
+  padding: 11px 14px;
+  border: 0;
+  border-radius: 10px;
+  color: #C22744;
+  background: #FCEFF2;
+  font-size: 13px;
+}
+
+/* ---------- POI 下拉（浮层） ---------- */
+html[data-skin="gallery"] .poi-results {
+  border: 0;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: var(--gl-float);
+}
+html[data-skin="gallery"] .poi-option { font-family: var(--gl-font); }
+html[data-skin="gallery"] .poi-option:active,
+html[data-skin="gallery"] .poi-option:hover { background: var(--gl-group); }
+
+/* ---------- 行程操作：珊瑚主按钮（配给 ②） ---------- */
+html[data-skin="gallery"] .trip-actions { gap: 10px; margin-top: 24px; }
+html[data-skin="gallery"] .add-destination {
+  padding: 15px;
+  border: 0;
+  border-radius: 12px;
+  color: #fff;
+  background: var(--accent);
+  font: 600 15px var(--gl-font);
+}
+html[data-skin="gallery"] .add-destination span { color: #fff; font-weight: 500; }
+html[data-skin="gallery"] .return-origin {
+  padding: 13px;
+  border-radius: 12px;
+  color: var(--muted);
+  background: var(--gl-group);
+  font: 500 13px var(--gl-font);
+}
+
+/* ---------- 路线预览：白卡 + 灰底地图位 ---------- */
+html[data-skin="gallery"] .route-preview {
+  margin-top: 32px;
+  padding: 18px;
+  border: 0;
+  border-radius: 14px;
+  background: var(--paper);
+  box-shadow: none;
+}
+html[data-skin="gallery"] .route-preview h2 {
+  margin-top: 6px;
+  font-family: var(--gl-font);
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: -.02em;
+}
+html[data-skin="gallery"] .refresh-route-preview {
+  padding: 7px 12px;
+  border: 0;
+  border-radius: 999px;
+  color: var(--muted);
+  background: var(--gl-group);
+  font: 500 12px var(--gl-font);
+}
+/* 嵌套圆角：外 14 − 内边距 ≈ 控件下限 8–10，地图取 10 */
+html[data-skin="gallery"] .route-map { border-radius: 10px; background: var(--gl-group); }
+html[data-skin="gallery"] .preview-summary {
+  border: 0;
+  border-radius: 10px;
+  background: var(--gl-group);
+}
+html[data-skin="gallery"] .preview-summary > div { border-color: rgba(28, 28, 30, .07); padding: 11px 10px; }
+html[data-skin="gallery"] .preview-summary span { color: var(--gl-3); font-size: 10.5px; }
+html[data-skin="gallery"] .preview-summary strong { color: var(--ink); font: 600 12px var(--gl-font); }
+html[data-skin="gallery"] .map-road { stroke: var(--accent); }
+html[data-skin="gallery"] .map-marker { fill: #fff; stroke: var(--ink); }
+html[data-skin="gallery"] .map-marker-label { fill: var(--ink); }
+html[data-skin="gallery"] .footnote { margin-top: 16px; color: var(--gl-3); font-size: 12px; font-weight: 400; line-height: 1.6; }
+
+/* ---------- 行程导航 Dock：浮层白玻 ---------- */
+html[data-skin="gallery"] .trip-dock {
+  border: 0;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, .92);
+  box-shadow: var(--gl-float);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+html[data-skin="gallery"] .dock-title { color: var(--gl-3); font: 600 10.5px var(--gl-font); letter-spacing: .08em; }
+html[data-skin="gallery"] .dock-toggle { border-radius: 999px; color: var(--ink); background: var(--gl-group); font: 500 11px var(--gl-font); }
+html[data-skin="gallery"] .dock-item { border-radius: 8px; color: var(--ink); background: var(--gl-group); }
+html[data-skin="gallery"] .dock-item b { color: var(--gl-3); font: 600 10.5px var(--gl-font); }
+/* 珊瑚配给 ③：时间线当前节点 */
+html[data-skin="gallery"] .dock-item.is-active { border-color: transparent; background: rgba(255, 56, 92, .08); }
+html[data-skin="gallery"] .dock-item.is-active b { color: var(--accent); }
+html[data-skin="gallery"] .dock-item.is-pressing { background: #EEEEED; }
+html[data-skin="gallery"] .dock-item.is-skipped,
+html[data-skin="gallery"] .dock-item.is-skipped b { color: var(--gl-3); }
+html[data-skin="gallery"] .trip-dock.is-dragging { border-color: transparent; box-shadow: var(--gl-float); }
+html[data-skin="gallery"] .trip-dock.is-dragging .dock-item.is-dragging { background: #fff; box-shadow: var(--gl-float); }
+html[data-skin="gallery"] .dock-item.drag-over { outline-color: rgba(255, 56, 92, .4); background: rgba(255, 56, 92, .06); }
+html[data-skin="gallery"] .dock-toast {
+  border: 0;
+  border-radius: 12px;
+  color: var(--ink);
+  background: rgba(255, 255, 255, .96);
+  box-shadow: var(--gl-float);
+}
+@media (max-width: 760px) {
+  html[data-skin="gallery"] .trip-dock { border-radius: 0; box-shadow: none; border-bottom: 1px solid var(--line); background: rgba(250, 250, 250, .92); }
+}
+
+/* ---------- 弹窗：白浮层 ---------- */
+html[data-skin="gallery"] .modal-backdrop { background: rgba(28, 28, 30, .3); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+html[data-skin="gallery"] .delete-modal,
+html[data-skin="gallery"] .share-modal {
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: var(--gl-float);
+}
+html[data-skin="gallery"] .delete-modal h2,
+html[data-skin="gallery"] .share-modal-head h2 { font-family: var(--gl-font); font-size: 20px; font-weight: 600; letter-spacing: -.02em; }
+html[data-skin="gallery"] .delete-modal p { color: var(--muted); font-size: 13px; }
+html[data-skin="gallery"] .delete-modal button { border-radius: 8px; color: var(--muted); background: var(--gl-group); font: 500 13px var(--gl-font); }
+html[data-skin="gallery"] .delete-modal .danger { color: #fff; background: var(--danger); }
+html[data-skin="gallery"] .human-check-status { color: var(--gl-3); }
+
+/* ---------- 分享面板（浅色 chrome） ---------- */
+html[data-skin="gallery"] .share-name-panel { border: 0; border-radius: 12px; background: var(--gl-group); }
+html[data-skin="gallery"] .share-name-panel label { color: var(--ink); font-weight: 600; }
+html[data-skin="gallery"] .share-name-panel label span { color: var(--gl-3); font-family: var(--gl-font); }
+html[data-skin="gallery"] .share-name-panel input {
+  border: 0;
+  border-radius: 8px;
+  color: var(--ink);
+  background: #fff;
+  font: 500 13px var(--gl-font);
+}
+html[data-skin="gallery"] .share-name-panel input:focus { box-shadow: 0 0 0 3px rgba(255, 56, 92, .14); }
+html[data-skin="gallery"] .share-name-panel small { color: var(--gl-3); }
+html[data-skin="gallery"] .share-name-shortcuts button {
+  border: 0;
+  border-radius: 999px;
+  color: var(--muted);
+  background: #fff;
+  font: 500 11px var(--gl-font);
+}
+html[data-skin="gallery"] .share-preview { border: 0; border-radius: 12px; background: var(--gl-group); }
+html[data-skin="gallery"] .share-actions button {
+  border: 0;
+  border-radius: 10px;
+  color: var(--muted);
+  background: var(--gl-group);
+  font: 600 13px var(--gl-font);
+}
+html[data-skin="gallery"] .share-actions #shareSystem { color: #fff; background: var(--accent); }
+html[data-skin="gallery"] .share-actions button:disabled { color: var(--gl-3); background: rgba(28, 28, 30, .05); }
+html[data-skin="gallery"] .share-status { color: var(--gl-3); font-size: 12px; }
+
+/* ---------- 分享长图：锁回浅色导出契约（timeflow 深色版全部退回） ---------- */
+html[data-skin="gallery"] .share-poster {
+  --ink: #1c2230;
+  --muted: #717989;
+  --line: #e8eaf0;
+  --paper: #fff;
+  --ground: #f4f5f8;
+  --accent: #2d5dff;
+  --danger: #d94a55;
+  --shadow: 0 10px 30px rgba(30, 37, 54, .06);
+  background: #f4f5f8;
+  color: #1c2230;
+}
+html[data-skin="gallery"] .share-poster .share-kicker,
+html[data-skin="gallery"] .share-poster .share-section-label { color: #717989; }
+html[data-skin="gallery"] .share-header h2 { color: #1c2230; }
+html[data-skin="gallery"] .share-subtitle { color: #717989; }
+html[data-skin="gallery"] .share-custom-title { border-bottom-color: #d9deea; color: #1c2230; }
+html[data-skin="gallery"] .share-summary { border-color: #e8eaf0; background: #fff; box-shadow: 0 7px 20px rgba(30, 37, 54, .05); }
+html[data-skin="gallery"] .share-summary > div { border-right-color: #e8eaf0; }
+html[data-skin="gallery"] .share-summary span { color: #717989; }
+html[data-skin="gallery"] .share-summary strong { color: #1c2230; }
+html[data-skin="gallery"] .share-summary-final { border-top-color: #e8eaf0; }
+html[data-skin="gallery"] .share-summary-final strong { color: #2d5dff; }
+html[data-skin="gallery"] .share-route { border-color: #e8eaf0; background: #fff; box-shadow: 0 7px 20px rgba(30, 37, 54, .045); }
+html[data-skin="gallery"] .share-route-note,
+html[data-skin="gallery"] .share-route-empty,
+html[data-skin="gallery"] .share-route-capturing { color: #717989; }
+html[data-skin="gallery"] .share-station { border-color: #e8eaf0; background: #fff; box-shadow: 0 7px 20px rgba(30, 37, 54, .045); }
+html[data-skin="gallery"] .share-station h3 { color: #1c2230; }
+html[data-skin="gallery"] .share-station-number { color: #2d5dff; }
+html[data-skin="gallery"] .share-station-address { color: #717989; }
+html[data-skin="gallery"] .share-station-time strong { color: #1c2230; }
+html[data-skin="gallery"] .share-station-meta { color: #8a92a1; }
+html[data-skin="gallery"] .share-station-stay { color: #596276; }
+html[data-skin="gallery"] .share-altitude-warning { color: #9b591e; }
+html[data-skin="gallery"] .share-station-departure { border-top-color: #e8eaf0; }
+html[data-skin="gallery"] .share-station-departure strong { color: #1c2230; }
+/* 出发行天空带保留（展品），文字反白保证夜空可读 */
+html[data-skin="gallery"] .share-station-departure.tf-poster-dep { border-top: 0; color: #fff; }
+html[data-skin="gallery"] .share-station-departure.tf-poster-dep strong { color: #fff; text-shadow: 0 1px 8px rgba(0, 0, 0, .35); }
+html[data-skin="gallery"] .share-leg-line { background: #cbd2df; }
+html[data-skin="gallery"] .share-leg-arrow { background: #f4f5f8; color: #2d5dff; }
+html[data-skin="gallery"] .share-leg-route { color: #2d5dff; }
+html[data-skin="gallery"] .share-footer { border-top-color: #d9dde6; color: #9aa1ae; }
+html[data-skin="gallery"] .share-footer strong { color: #737c8c; }
+
+/* ---------- 景区 AI 栏目 ---------- */
+html[data-skin="gallery"] .scenic-ai { border-top-color: var(--line); }
+html[data-skin="gallery"] .scenic-ai details { border-bottom-color: var(--line); }
+html[data-skin="gallery"] .scenic-ai summary { color: var(--ink); font-size: 15px; font-weight: 600; }
+html[data-skin="gallery"] .scenic-ai-body small { color: var(--gl-3); font-size: 12px; }
+html[data-skin="gallery"] .scenic-ai-body p { color: var(--muted); font-size: 13px; }
+html[data-skin="gallery"] .scenic-ai-body button { border-radius: 999px; color: var(--ink); background: var(--gl-group); font: 500 12px var(--gl-font); }
+html[data-skin="gallery"] .scenic-ai-error { color: #C22744; }
+
+/* ---------- 行程工具箱（tripkit.css 在引擎作用域有等优先级深色规则，
+   且加载晚于本文件：必须叠双属性提级压回浅色） ---------- */
+html[data-skin="gallery"][data-engine="timeflow"] .tk-action-btn {
+  border: 0;
+  border-radius: 12px;
+  color: var(--ink);
+  background: var(--paper);
+  box-shadow: none;
+  font: 600 13px var(--gl-font);
+}
+html[data-skin="gallery"][data-engine="timeflow"] .tk-action-btn:hover { transform: none; box-shadow: none; background: #F0F0EF; }
+html[data-skin="gallery"][data-engine="timeflow"] .tk-modal {
+  border: 0;
+  border-radius: 18px;
+  color: var(--ink);
+  background: #fff;
+  box-shadow: var(--gl-float);
+}
+html[data-skin="gallery"][data-engine="timeflow"] .tk-modal-head h2 { font-family: var(--gl-font); font-weight: 600; letter-spacing: -.02em; }
+html[data-skin="gallery"][data-engine="timeflow"] .tk-tpl-card,
+html[data-skin="gallery"][data-engine="timeflow"] .tk-snap-card {
+  border: 0;
+  border-radius: 12px;
+  background: var(--gl-group);
+}
+html[data-skin="gallery"][data-engine="timeflow"] .tk-tpl-card:hover { transform: none; border-color: transparent; box-shadow: none; background: #EFEFEE; }
+html[data-skin="gallery"][data-engine="timeflow"] .tk-tpl-top span,
+html[data-skin="gallery"][data-engine="timeflow"] .tk-snap-head span { color: var(--gl-3); font-family: var(--gl-font); }
+html[data-skin="gallery"][data-engine="timeflow"] .tk-note,
+html[data-skin="gallery"][data-engine="timeflow"] .tk-tpl-desc,
+html[data-skin="gallery"][data-engine="timeflow"] .tk-snap-meta { color: var(--muted); }
+html[data-skin="gallery"][data-engine="timeflow"] .tk-tpl-route { color: var(--muted); font-family: var(--gl-font); }
+html[data-skin="gallery"][data-engine="timeflow"] .tk-save-row input {
+  border: 0;
+  border-radius: 8px;
+  color: var(--ink);
+  background: var(--gl-group);
+  font: 500 13px var(--gl-font);
+}
+html[data-skin="gallery"][data-engine="timeflow"] .tk-primary { border-radius: 8px; color: #fff; background: var(--accent); font: 600 13px var(--gl-font); }
+html[data-skin="gallery"][data-engine="timeflow"] .tk-snap-actions button {
+  border: 0;
+  border-radius: 999px;
+  color: var(--ink);
+  background: #fff;
+  font: 500 11px var(--gl-font);
+}
+html[data-skin="gallery"][data-engine="timeflow"] .tk-snap-actions button:hover { color: var(--accent); }
+html[data-skin="gallery"][data-engine="timeflow"] .tk-snap-actions .tk-danger:hover { color: var(--danger); }
+html[data-skin="gallery"][data-engine="timeflow"] .tk-table th,
+html[data-skin="gallery"][data-engine="timeflow"] .tk-table td { border-top-color: var(--line); font-family: var(--gl-font); }
+html[data-skin="gallery"][data-engine="timeflow"] .tk-table thead th { color: var(--gl-3); }
+html[data-skin="gallery"] .tk-toast {
+  border-radius: 12px;
+  color: var(--ink);
+  background: rgba(255, 255, 255, .97);
+  box-shadow: var(--gl-float);
+  font: 500 12px/1.5 var(--gl-font);
+}
+
+/* ---------- 页脚 / 选中 / 焦点 ---------- */
+html[data-skin="gallery"] ::selection { color: var(--ink); background: rgba(255, 56, 92, .16); }
+html[data-skin="gallery"] :focus-visible { outline: 2px solid rgba(255, 56, 92, .45); outline-offset: 2px; }
+
+/* ---------- 减少动态偏好 ---------- */
+@media (prefers-reduced-motion: reduce) {
+  html[data-skin="gallery"] .gl-route,
+  html[data-skin="gallery"] .gl-caption { animation: none; }
+  html[data-skin="gallery"] .value-flash { animation-duration: .01s; }
+  html[data-skin="gallery"] button:not(.dock-item) { transition: none; }
+  html[data-skin="gallery"] button:not(.dock-item):not(:disabled):active { transform: none; }
+}

@@ -2,7 +2,7 @@
   const MINUTE = 60 * 1000;
   const HOUR = 60 * MINUTE;
   const CHINA_OFFSET = 8 * HOUR;
-  const RELATIVE_STAY_MINUTES = [30, 60, 120, 180, 240, 480, 600];
+  const RELATIVE_STAY_MINUTES = [20, 30, 60, 120, 180, 240, 480, 600]; /* 20：疲劳驾驶「多休 20 分钟」专用，不出现在停留按钮区 */
 
   function normaliseStayButtons(values) {
     return [...new Set(values || [])].map(Number).map((value) => ({ 1: 60, 2: 120, 8: 480, 10: 600 }[value] || value)).filter((value) => RELATIVE_STAY_MINUTES.includes(value));
