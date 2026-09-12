@@ -110,8 +110,32 @@
     return s;
   }
 
+  /* 卡片内容签名（排除已注入的 chip）：用于幂等处理。
+     关键防御：本模块的 DOM 注入发生在 #timeline 内，会被自己的
+     MutationObserver 捕获，若无幂等短路将形成「注入→触发→再注入」
+     的 rAF 空转循环（真机 60fps 持续耗电）。 */
+  function rawText(el) {
+    if (!el) return '';
+    var t = '';
+    el.childNodes.forEach(function (n) {
+      if (n.nodeType === 1 && n.classList && n.classList.contains('tf-chip')) return;
+      t += n.textContent;
+    });
+    return t;
+  }
+
   /* ---------- 目的地卡片 ---------- */
   function processCard(card) {
+    var arrivalEl = card.querySelector('[data-arrival]');
+    var metaText = (card.querySelector('[data-place-meta]') || {}).textContent || '';
+    var depBlock = card.querySelector('[data-departure-block]');
+    var depEl = card.querySelector('[data-departure]');
+    var sig = rawText(arrivalEl) + '|' + metaText + '|' +
+      (depBlock && depBlock.hidden ? 'H' : rawText(depEl)) + '|' +
+      (card.classList.contains('is-skipped') ? 'S' : '');
+    if (card.dataset.tfSig === sig) return; /* 内容未变，幂等跳过 */
+    card.dataset.tfSig = sig;
+
     card.querySelectorAll('.tf-chip').forEach(function (n) { n.remove(); });
     delete card.dataset.skyA;
     delete card.dataset.skyB;
@@ -122,12 +146,10 @@
     card.style.removeProperty('--tf-b-bg');
     card.style.removeProperty('--tf-b-ink');
 
-    var metaText = (card.querySelector('[data-place-meta]') || {}).textContent || '';
     var sr = parseHM(/日出\s*(\d{1,2}):(\d{2})/.exec(metaText));
     var ss = parseHM(/日落\s*(\d{1,2}):(\d{2})/.exec(metaText));
 
-    var arrivalEl = card.querySelector('[data-arrival]');
-    var a = arrivalEl ? parseDT(arrivalEl.textContent) : null;
+    var a = arrivalEl ? parseDT(rawText(arrivalEl)) : null;
     if (a) {
       var ka = periodFor(a.minutes, sr, ss);
       card.dataset.skyA = ka;
@@ -152,9 +174,7 @@
       }
     }
 
-    var depBlock = card.querySelector('[data-departure-block]');
-    var depEl = card.querySelector('[data-departure]');
-    var d = (depBlock && !depBlock.hidden && depEl) ? parseDT(depEl.textContent) : null;
+    var d = (depBlock && !depBlock.hidden && depEl) ? parseDT(rawText(depEl)) : null;
     if (d) {
       var kb = periodFor(d.minutes, sr, ss);
       card.dataset.skyB = kb;
@@ -357,6 +377,7 @@
   /* 切回经典/暗夜时清理全部注入物，恢复原貌 */
   function teardownCard(card) {
     card.querySelectorAll('.tf-chip').forEach(function (n) { n.remove(); });
+    delete card.dataset.tfSig;
     delete card.dataset.skyA;
     delete card.dataset.skyB;
     delete card.dataset.tfOvernight;

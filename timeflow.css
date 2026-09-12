@@ -207,8 +207,9 @@ html[data-engine="timeflow"] .date-divider::after {
   background: linear-gradient(90deg, transparent, rgba(255, 177, 77, .55), transparent);
 }
 
-/* ---------- 已跳过卡片：天空熄灯 ---------- */
+/* ---------- 已跳过卡片：天空熄灯，恢复底部内边距（停留带隐藏时收边） ---------- */
 html[data-engine="timeflow"] .destination-card.is-skipped {
+  padding-bottom: 16px;
   background: linear-gradient(160deg, rgba(255, 255, 255, .04), rgba(255, 255, 255, .02));
 }
 
