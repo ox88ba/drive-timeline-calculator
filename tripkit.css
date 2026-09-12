@@ -1,0 +1,127 @@
+/* ============================================================
+   行程工具箱样式（tripkit）
+   默认浅色（与经典版一致）；暗夜 / 时光皮肤下切深色玻璃。
+   ============================================================ */
+
+/* ---------- 操作区按钮 ---------- */
+.tk-action-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  padding: 13px 18px; border: 1px solid var(--line, #d9dde6); border-radius: 14px;
+  background: var(--paper, #fff); color: var(--ink, #1c2331);
+  font: 600 13px "Noto Sans SC", sans-serif; cursor: pointer;
+  transition: transform .18s ease, box-shadow .18s ease;
+}
+.tk-action-btn:hover { transform: translateY(-1px); box-shadow: 0 8px 22px rgba(30, 37, 54, .10); }
+
+/* ---------- 弹窗 ---------- */
+.tk-backdrop { z-index: 70; }
+.tk-modal {
+  width: min(560px, calc(100vw - 32px)); max-height: min(84vh, 760px);
+  display: flex; flex-direction: column;
+  padding: 20px; border: 1px solid var(--line, #d9dde6); border-radius: 20px;
+  background: var(--paper, #fff); color: var(--ink, #1c2331);
+  box-shadow: 0 24px 70px rgba(18, 24, 40, .22);
+}
+.tk-modal-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.tk-modal-head h2 { margin: 6px 0 0; font-size: 21px; letter-spacing: -.03em; }
+.tk-body { margin-top: 14px; overflow-y: auto; }
+.tk-note { margin: 0 0 12px; color: var(--muted, #7a8394); font-size: 11px; line-height: 1.6; }
+
+/* ---------- 模板卡片 ---------- */
+.tk-tpl-card {
+  display: block; width: 100%; margin-bottom: 10px; padding: 14px 15px;
+  border: 1px solid var(--line, #d9dde6); border-radius: 15px;
+  background: #f7f8fb; color: inherit; text-align: left; cursor: pointer;
+  transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+}
+.tk-tpl-card:hover { transform: translateY(-1px); border-color: var(--accent, #4a6cf7); box-shadow: 0 10px 26px rgba(30, 37, 54, .10); }
+.tk-tpl-top { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.tk-tpl-top b { font-size: 15px; }
+.tk-tpl-top span { color: var(--muted, #7a8394); font: 500 10px "DM Mono", monospace; white-space: nowrap; }
+.tk-tpl-desc { margin: 7px 0 0; color: var(--muted, #7a8394); font-size: 11px; line-height: 1.5; }
+.tk-tpl-route { margin: 8px 0 0; color: var(--accent, #4a6cf7); font: 500 10px/1.5 "DM Mono", monospace; }
+
+/* ---------- 快照 ---------- */
+.tk-save-row { display: grid; grid-template-columns: 1fr auto; gap: 8px; margin-bottom: 14px; }
+.tk-save-row input {
+  min-width: 0; padding: 11px 13px; border: 1px solid var(--line, #d9dde6); border-radius: 12px;
+  background: #f7f8fb; color: inherit; font: 500 13px "Noto Sans SC", sans-serif;
+}
+.tk-primary {
+  padding: 11px 16px; border: 0; border-radius: 12px;
+  background: var(--accent, #4a6cf7); color: #fff; font: 600 13px "Noto Sans SC", sans-serif; cursor: pointer;
+}
+.tk-snap-card { margin-bottom: 10px; padding: 13px 14px; border: 1px solid var(--line, #d9dde6); border-radius: 15px; background: #f7f8fb; }
+.tk-snap-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.tk-snap-head b { font-size: 14px; }
+.tk-snap-head span { color: var(--muted, #7a8394); font: 500 10px "DM Mono", monospace; }
+.tk-snap-meta { margin: 6px 0 0; color: var(--muted, #7a8394); font-size: 11px; }
+.tk-snap-actions { display: flex; gap: 7px; margin-top: 10px; }
+.tk-snap-actions button {
+  padding: 7px 12px; border: 1px solid var(--line, #d9dde6); border-radius: 999px;
+  background: #fff; color: var(--ink, #1c2331); font: 500 11px "Noto Sans SC", sans-serif; cursor: pointer;
+}
+.tk-snap-actions button:hover { border-color: var(--accent, #4a6cf7); color: var(--accent, #4a6cf7); }
+.tk-snap-actions .tk-danger:hover { border-color: #d9534f; color: #d9534f; }
+.tk-compare { margin-top: 12px; overflow-x: auto; }
+.tk-table { width: 100%; border-collapse: collapse; font-size: 11px; }
+.tk-table th, .tk-table td { padding: 7px 9px; border-top: 1px solid var(--line, #e3e6ee); text-align: left; white-space: nowrap; }
+.tk-table thead th { border-top: 0; color: var(--muted, #7a8394); font: 500 10px "DM Mono", monospace; }
+.tk-table td { font: 500 11px "DM Mono", monospace; }
+
+/* ---------- 分享弹窗：三个动作按钮 ---------- */
+.share-actions { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+
+/* ---------- Toast ---------- */
+.tk-toast {
+  position: fixed; right: 18px; bottom: 18px; z-index: 90;
+  max-width: min(420px, calc(100vw - 36px)); padding: 11px 15px;
+  border-radius: 12px; background: #1c2331; color: #f2f5fa;
+  font: 500 12px/1.5 "Noto Sans SC", sans-serif;
+  box-shadow: 0 14px 34px rgba(10, 14, 24, .32);
+}
+
+/* ---------- 暗夜 / 时光皮肤：深色玻璃 ---------- */
+html[data-skin="roadbook"] .tk-action-btn,
+html[data-engine="timeflow"] .tk-action-btn {
+  border-color: rgba(255, 255, 255, .14);
+  background: rgba(255, 255, 255, .06); color: #e9edf6;
+}
+html[data-skin="roadbook"] .tk-modal,
+html[data-engine="timeflow"] .tk-modal {
+  border-color: rgba(255, 255, 255, .12);
+  background: linear-gradient(180deg, #131b31, #0d1426); color: #e9edf6;
+  box-shadow: 0 28px 80px rgba(0, 0, 0, .5);
+}
+html[data-skin="roadbook"] .tk-tpl-card,
+html[data-skin="roadbook"] .tk-snap-card,
+html[data-engine="timeflow"] .tk-tpl-card,
+html[data-engine="timeflow"] .tk-snap-card {
+  border-color: rgba(255, 255, 255, .10); background: rgba(255, 255, 255, .05);
+}
+html[data-skin="roadbook"] .tk-tpl-card:hover,
+html[data-engine="timeflow"] .tk-tpl-card:hover { border-color: rgba(255, 209, 138, .55); box-shadow: 0 12px 30px rgba(0, 0, 0, .35); }
+html[data-skin="roadbook"] .tk-note, html[data-skin="roadbook"] .tk-tpl-desc,
+html[data-skin="roadbook"] .tk-snap-meta, html[data-skin="roadbook"] .tk-snap-head span,
+html[data-skin="roadbook"] .tk-tpl-top span,
+html[data-engine="timeflow"] .tk-note, html[data-engine="timeflow"] .tk-tpl-desc,
+html[data-engine="timeflow"] .tk-snap-meta, html[data-engine="timeflow"] .tk-snap-head span,
+html[data-engine="timeflow"] .tk-tpl-top span { color: rgba(233, 237, 246, .62); }
+html[data-skin="roadbook"] .tk-tpl-route,
+html[data-engine="timeflow"] .tk-tpl-route { color: #ffd98a; }
+html[data-skin="roadbook"] .tk-save-row input,
+html[data-engine="timeflow"] .tk-save-row input {
+  border-color: rgba(255, 255, 255, .14); background: rgba(255, 255, 255, .06); color: #e9edf6;
+}
+html[data-skin="roadbook"] .tk-primary,
+html[data-engine="timeflow"] .tk-primary { background: linear-gradient(135deg, #ffb45c, #ff8a3d); color: #241300; }
+html[data-skin="roadbook"] .tk-snap-actions button,
+html[data-engine="timeflow"] .tk-snap-actions button {
+  border-color: rgba(255, 255, 255, .16); background: rgba(255, 255, 255, .06); color: #e9edf6;
+}
+html[data-skin="roadbook"] .tk-snap-actions button:hover,
+html[data-engine="timeflow"] .tk-snap-actions button:hover { border-color: rgba(255, 209, 138, .6); color: #ffd98a; }
+html[data-skin="roadbook"] .tk-table th, html[data-skin="roadbook"] .tk-table td,
+html[data-engine="timeflow"] .tk-table th, html[data-engine="timeflow"] .tk-table td { border-top-color: rgba(255, 255, 255, .10); }
+html[data-skin="roadbook"] .tk-table thead th,
+html[data-engine="timeflow"] .tk-table thead th { color: rgba(233, 237, 246, .55); }

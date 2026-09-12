@@ -487,3 +487,78 @@ html[data-engine="timeflow"] .tf-whatif input[type="range"]::-moz-range-thumb {
   box-shadow: 0 2px 10px rgba(0, 0, 0, .45);
   cursor: grab;
 }
+
+/* ============================================================
+   时光版分享长图（仅 html[data-engine="timeflow"] 生效）
+   布局不动，只换质感：深夜纸面 + 每站一条「抵达时刻天空带」。
+   天空带是 timeflow.js 注入的真实元素（html2canvas 不渲染伪元素），
+   配色与界面天空引擎同源（PALETTES 的 top→bot 线性渐变）。
+   ============================================================ */
+html[data-engine="timeflow"] .share-poster {
+  background: linear-gradient(180deg, #0a1122 0%, #0e1730 100%);
+  color: #e9edf6;
+}
+html[data-engine="timeflow"] .share-poster .share-kicker,
+html[data-engine="timeflow"] .share-poster .share-section-label { color: rgba(233, 237, 246, .55); }
+html[data-engine="timeflow"] .share-header h2 { color: #f4f7ff; }
+html[data-engine="timeflow"] .share-subtitle { color: rgba(233, 237, 246, .55); }
+html[data-engine="timeflow"] .share-custom-title { border-bottom-color: rgba(255, 255, 255, .14); color: #fff; }
+
+/* 天空带（真实元素，可被 html2canvas 捕获） */
+.tf-poster-sky {
+  position: relative; height: 40px; margin: 0 0 12px;
+  overflow: hidden; border-radius: 12px;
+}
+.tf-poster-cel { position: absolute; border-radius: 50%; }
+.tf-poster-star { position: absolute; border-radius: 50%; background: #fff; }
+
+/* 头部天空带：整幅出发时刻天空，出血到海报边缘 */
+html[data-engine="timeflow"] .share-header .tf-poster-sky {
+  height: 58px; margin: -27px -28px 14px; border-radius: 17px 17px 0 0;
+}
+
+/* 站点卡：深色玻璃 + 顶部抵达天空带 */
+html[data-engine="timeflow"] .share-station {
+  border-color: rgba(255, 255, 255, .10);
+  background: rgba(255, 255, 255, .05);
+  box-shadow: none;
+}
+html[data-engine="timeflow"] .share-station .tf-poster-sky {
+  height: 34px; margin: -15px -16px 12px; border-radius: 15px 15px 0 0;
+}
+html[data-engine="timeflow"] .share-station h3 { color: #fff; }
+html[data-engine="timeflow"] .share-station-number { color: #ffd98a; }
+html[data-engine="timeflow"] .share-station-address { color: rgba(233, 237, 246, .55); }
+html[data-engine="timeflow"] .share-station-time strong { color: #fff; }
+html[data-engine="timeflow"] .share-station-meta { color: rgba(233, 237, 246, .48); }
+html[data-engine="timeflow"] .share-station-stay { color: rgba(233, 237, 246, .72); }
+html[data-engine="timeflow"] .share-altitude-warning { color: #f0b67f; }
+html[data-engine="timeflow"] .share-station-departure { border-top-color: rgba(255, 255, 255, .12); }
+html[data-engine="timeflow"] .share-station-departure strong { color: #fff; }
+
+/* 出发行：直接变成「出发时刻天空带」 */
+html[data-engine="timeflow"] .share-station-departure.tf-poster-dep {
+  margin-top: 12px; padding: 9px 11px; border-top: 0; border-radius: 10px;
+}
+html[data-engine="timeflow"] .share-station-departure.tf-poster-dep strong { color: inherit; }
+
+/* 汇总 / 路线 / 连接段 / 页脚：暗色玻璃化 */
+html[data-engine="timeflow"] .share-summary {
+  border-color: rgba(255, 255, 255, .12); background: rgba(255, 255, 255, .06); box-shadow: none;
+}
+html[data-engine="timeflow"] .share-summary > div { border-right-color: rgba(255, 255, 255, .10); }
+html[data-engine="timeflow"] .share-summary span { color: rgba(233, 237, 246, .55); }
+html[data-engine="timeflow"] .share-summary strong { color: #fff; }
+html[data-engine="timeflow"] .share-summary-final { border-top-color: rgba(255, 255, 255, .10); }
+html[data-engine="timeflow"] .share-summary-final strong { color: #ffd98a; }
+html[data-engine="timeflow"] .share-route {
+  border-color: rgba(255, 255, 255, .10); background: rgba(255, 255, 255, .05); box-shadow: none;
+}
+html[data-engine="timeflow"] .share-route-note,
+html[data-engine="timeflow"] .share-route-empty { color: rgba(233, 237, 246, .55); }
+html[data-engine="timeflow"] .share-route-capturing { color: rgba(233, 237, 246, .55); }
+html[data-engine="timeflow"] .share-leg-line { background: rgba(255, 255, 255, .16); }
+html[data-engine="timeflow"] .share-leg-arrow { background: #0d1728; color: #ffd98a; }
+html[data-engine="timeflow"] .share-leg-route { color: #9fc1ff; }
+html[data-engine="timeflow"] .share-footer { border-top-color: rgba(255, 255, 255, .12); color: rgba(233, 237, 246, .45); }
+html[data-engine="timeflow"] .share-footer strong { color: rgba(233, 237, 246, .7); }

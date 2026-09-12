@@ -429,6 +429,130 @@
     host.hidden = false;
   }
 
+  /* ---------- 时光版分享长图 ----------
+     只加视觉：向 .share-poster 注入「天空带」真实元素（html2canvas
+     不渲染伪元素），站点带 = 抵达时刻天空，头部带 = 出发时刻天空，
+     出发行 = 出发时刻天空带。配色与界面天空引擎同源。 */
+  var TRIP_STORAGE_KEY = 'drive-timeline-trip-v1';
+
+  function skyLinear(key) {
+    var p = PALETTES[key];
+    return 'linear-gradient(180deg, ' + p.top + ', ' + p.bot + ')';
+  }
+
+  function isValidLoc(loc) {
+    return loc && Number.isFinite(Number(loc.latitude)) && Number.isFinite(Number(loc.longitude));
+  }
+
+  function sunTimesFor(location, iso) {
+    try {
+      var dk = SolarPhotography.chinaDateKey(iso);
+      var sr = SolarPhotography.sunriseForChinaDate(dk, location.latitude, location.longitude);
+      var ss = SolarPhotography.sunsetForChinaDate(dk, location.latitude, location.longitude);
+      if (!sr || !ss) return {};
+      var a = SolarPhotography.chinaParts(sr);
+      var b = SolarPhotography.chinaParts(ss);
+      return { sr: a.hour * 60 + a.minute, ss: b.hour * 60 + b.minute };
+    } catch (e) { return {}; }
+  }
+
+  function minutesOfIso(iso) {
+    var p = SolarPhotography.chinaParts(new Date(iso));
+    return p.hour * 60 + p.minute;
+  }
+
+  function makeSkyBand(key, t, sr, ss, tall) {
+    var p = PALETTES[key];
+    var band = document.createElement('div');
+    band.className = 'tf-poster-sky' + (tall ? ' is-tall' : '');
+    band.style.background = skyLinear(key);
+    if (p.cel) {
+      var pos = celPos(t, sr, ss, key);
+      var cel = document.createElement('i');
+      cel.className = 'tf-poster-cel';
+      var size = Math.max(16, Math.round(p.cel.size / 3.4));
+      cel.style.width = size + 'px';
+      cel.style.height = size + 'px';
+      cel.style.left = 'calc(' + pos.x.toFixed(1) + '% - ' + (size / 2) + 'px)';
+      cel.style.top = 'calc(' + pos.y.toFixed(1) + '% - ' + (size / 2) + 'px)';
+      cel.style.background = p.cel.core;
+      cel.style.boxShadow = '0 0 ' + Math.round(size * 0.9) + 'px ' + p.cel.glow;
+      band.append(cel);
+    }
+    if (p.stars) {
+      [[18, 30], [34, 62], [52, 26], [68, 56], [84, 34]].forEach(function (s, i) {
+        var star = document.createElement('i');
+        star.className = 'tf-poster-star';
+        var sz = i % 2 ? 2 : 3;
+        star.style.width = sz + 'px';
+        star.style.height = sz + 'px';
+        star.style.left = s[0] + '%';
+        star.style.top = s[1] + '%';
+        star.style.opacity = i % 2 ? '0.55' : '0.85';
+        band.append(star);
+      });
+    }
+    return band;
+  }
+
+  function decoratePoster() {
+    var host = document.getElementById('sharePosterHost');
+    var poster = host ? host.querySelector('.share-poster') : null;
+    if (!poster || poster.dataset.tfDone === '1') return;
+    var raw = null;
+    try { raw = JSON.parse(localStorage.getItem(TRIP_STORAGE_KEY)); } catch (e) { /* noop */ }
+    if (!raw || !raw.initialDepartureTime ||
+        !globalThis.TripTimeline || !globalThis.SolarPhotography) return;
+    var tl;
+    try { tl = TripTimeline.calculateTimeline(raw); } catch (e) { return; }
+    poster.dataset.tfDone = '1';
+
+    var stations = poster.querySelectorAll('.share-station');
+    if (!stations.length) return;
+
+    /* 头部 + 出发站：整段行程出发时刻的天空 */
+    var t0 = minutesOfIso(tl.initialDepartureTime);
+    var st0 = isValidLoc(raw.startLocation) ? sunTimesFor(raw.startLocation, tl.initialDepartureTime) : {};
+    var k0 = periodFor(t0, st0.sr, st0.ss);
+    var header = poster.querySelector('.share-header');
+    if (header) header.insertBefore(makeSkyBand(k0, t0, st0.sr, st0.ss, true), header.firstChild);
+    stations[0].insertBefore(makeSkyBand(k0, t0, st0.sr, st0.ss, false), stations[0].firstChild);
+
+    /* 目的地站：抵达时刻天空带 + 出发时刻天空行 */
+    var active = (tl.destinations || []).filter(function (d) {
+      return !d.isSkipped && isValidLoc(d.location) && d.arrivalTime;
+    });
+    for (var i = 0; i < active.length && i + 1 < stations.length; i++) {
+      var d = active[i];
+      var station = stations[i + 1];
+      var ta = minutesOfIso(d.arrivalTime);
+      var sta = sunTimesFor(d.location, d.arrivalTime);
+      var ka = periodFor(ta, sta.sr, sta.ss);
+      station.insertBefore(makeSkyBand(ka, ta, sta.sr, sta.ss, false), station.firstChild);
+      if (d.hasDepartureDisplay && d.departureTime) {
+        var depRow = station.querySelector('.share-station-departure');
+        if (depRow) {
+          var td = minutesOfIso(d.departureTime);
+          var std = sunTimesFor(d.location, d.departureTime);
+          var kd = periodFor(td, std.sr, std.ss);
+          depRow.classList.add('tf-poster-dep');
+          depRow.style.background = skyLinear(kd);
+          depRow.style.color = PALETTES[kd].ink;
+        }
+      }
+    }
+  }
+
+  var posterObserver = null;
+  function watchPoster() {
+    if (posterObserver) return;
+    var host = document.getElementById('sharePosterHost');
+    if (!host) return;
+    posterObserver = new MutationObserver(function () { decoratePoster(); });
+    posterObserver.observe(host, { childList: true });
+    decoratePoster();
+  }
+
   function processAll() {
     var timeline = document.getElementById('timeline');
     if (timeline) {
@@ -437,6 +561,7 @@
     processStart();
     ensureWhatif();
     processRhythm();
+    watchPoster();
   }
 
   /* 切回经典/暗夜时清理全部注入物，恢复原貌 */
@@ -512,6 +637,10 @@
     if (rhythm) rhythm.remove();
     var whatif = document.getElementById('tfWhatif');
     if (whatif) whatif.remove();
+    if (posterObserver) {
+      posterObserver.disconnect();
+      posterObserver = null;
+    }
     whatifPending = null;
     if (whatifTimer) { clearTimeout(whatifTimer); whatifTimer = 0; }
     document.querySelectorAll('.destination-card, .start-card').forEach(teardownCard);
