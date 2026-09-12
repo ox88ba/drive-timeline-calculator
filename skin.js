@@ -1,6 +1,8 @@
-/* 皮肤/引擎入口：经典浅色（默认） ⇄ 暗夜路书 ⇄ 时光路书
-   - localStorage 'drive-skin' 记录三种模式：classic / roadbook / timeflow
-   - URL 入口：?skin=roadbook（暗夜）、?skin=timeflow 或 ?v=timeflow（时光版）
+/* 皮肤/引擎入口：时光路书（默认主打） ⇄ 暗夜路书 ⇄ 经典浅色（备份）
+   - 新访客默认进入时光路书（天空引擎界面）
+   - localStorage 'drive-skin' 记录三种模式：timeflow / roadbook / classic
+   - URL 入口：?skin=classic（备份简洁版）、?skin=roadbook（暗夜）、
+     ?skin=timeflow 或 ?v=timeflow（时光版，默认）
    - data-skin 控制底色底座（classic / roadbook），data-engine="timeflow"
      叠加在暗夜底座之上，启用天空引擎与两片天空卡片
    - 本脚本在 <head> 内同步执行，只设置 <html> 属性，避免换肤闪烁 */
@@ -17,7 +19,7 @@
 
   var mode = MODES[requested] || null;
   if (!mode) {
-    try { mode = MODES[localStorage.getItem(SKIN_KEY)] || 'classic'; } catch (e) { mode = 'classic'; }
+    try { mode = MODES[localStorage.getItem(SKIN_KEY)] || 'timeflow'; } catch (e) { mode = 'timeflow'; }
   } else {
     try { localStorage.setItem(SKIN_KEY, mode); } catch (e) { /* 隐私模式忽略 */ }
   }
@@ -42,10 +44,10 @@
       var isRoadbook = !isTimeflow && root.dataset.skin === 'roadbook';
       if (isTimeflow) {
         btn.textContent = '↩';
-        btn.title = '返回经典浅色';
+        btn.title = '返回简洁版';
       } else if (isRoadbook) {
         btn.textContent = '☀';
-        btn.title = '返回经典浅色';
+        btn.title = '返回简洁版';
       } else {
         btn.textContent = '✦';
         btn.title = '进入时光路书';
