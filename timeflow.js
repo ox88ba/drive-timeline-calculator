@@ -252,6 +252,70 @@
     card.style.setProperty('--tf-a-ink', PALETTES[k].ink);
   }
 
+  /* ---------- What-if 出发时间滑块 ----------
+     只驱动现有 #departureTime 的 change 事件，全链路重算、
+     天空与节律带更新全部复用 app.js 既有管线，零侵入。 */
+  var whatifTimer = 0;
+  var whatifPending = null;
+
+  function whatifLabel(t) {
+    var hh = String(Math.floor(t / 60)).padStart(2, '0');
+    var mm = String(t % 60).padStart(2, '0');
+    return hh + ':' + mm + ' · ' + PALETTES[periodFor(t, null, null)].label;
+  }
+
+  function whatifCommit() {
+    whatifTimer = 0;
+    if (whatifPending == null) return;
+    var t = whatifPending;
+    whatifPending = null;
+    var timeEl = document.getElementById('departureTime');
+    if (!timeEl) return;
+    var hh = String(Math.floor(t / 60)).padStart(2, '0');
+    var mm = String(t % 60).padStart(2, '0');
+    if (timeEl.value === hh + ':' + mm) return;
+    timeEl.value = hh + ':' + mm;
+    timeEl.dispatchEvent(new Event('change', { bubbles: true }));
+    if (navigator.vibrate) navigator.vibrate(8);
+  }
+
+  function ensureWhatif() {
+    var card = document.querySelector('.start-card');
+    var timeEl = document.getElementById('departureTime');
+    if (!card || !timeEl) return;
+    var box = document.getElementById('tfWhatif');
+    if (!box) {
+      box = document.createElement('div');
+      box.id = 'tfWhatif';
+      box.className = 'tf-whatif';
+      box.innerHTML =
+        '<div class="tf-whatif-head"><span>WHAT-IF · 拖动预览出发时刻</span>' +
+        '<output id="tfWhatifOut">—</output></div>' +
+        '<input id="tfWhatifRange" type="range" min="0" max="1439" step="15" aria-label="拖动预览出发时刻" />';
+      card.append(box);
+      var range = box.querySelector('#tfWhatifRange');
+      range.addEventListener('input', function () {
+        whatifPending = Number(range.value);
+        var out = box.querySelector('#tfWhatifOut');
+        if (out) out.textContent = whatifLabel(whatifPending);
+        if (!whatifTimer) whatifTimer = setTimeout(whatifCommit, 90);
+      });
+      range.addEventListener('change', function () {
+        whatifPending = Number(range.value);
+        if (whatifTimer) { clearTimeout(whatifTimer); whatifTimer = 0; }
+        whatifCommit();
+      });
+    }
+    /* 与真实输入框双向同步（快捷出发、手动改时间都会回填滑块） */
+    var m = /^(\d{1,2}):(\d{2})/.exec(timeEl.value || '');
+    if (!m) return;
+    var t = Number(m[1]) * 60 + Number(m[2]);
+    var rangeEl = box.querySelector('#tfWhatifRange');
+    var outEl = box.querySelector('#tfWhatifOut');
+    if (rangeEl && document.activeElement !== rangeEl) rangeEl.value = t;
+    if (outEl) outEl.textContent = whatifLabel(t);
+  }
+
   /* ---------- 行程节律带：按天的 24h 驾驶/停留/过夜分布 ---------- */
   var WEEK = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
   var NIGHT_END = 360;    /* 06:00 前为夜间窗口 */
@@ -371,6 +435,7 @@
       timeline.querySelectorAll('.destination-card').forEach(processCard);
     }
     processStart();
+    ensureWhatif();
     processRhythm();
   }
 
@@ -445,6 +510,10 @@
     prevDep.clear();
     var rhythm = document.getElementById('tfRhythm');
     if (rhythm) rhythm.remove();
+    var whatif = document.getElementById('tfWhatif');
+    if (whatif) whatif.remove();
+    whatifPending = null;
+    if (whatifTimer) { clearTimeout(whatifTimer); whatifTimer = 0; }
     document.querySelectorAll('.destination-card, .start-card').forEach(teardownCard);
     document.querySelectorAll('.destination-wrap.tf-enter').forEach(function (w) {
       w.classList.remove('tf-enter');

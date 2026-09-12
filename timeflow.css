@@ -403,3 +403,87 @@ html[data-engine="timeflow"] .tf-rhythm-warn {
 @media (prefers-reduced-motion: reduce) {
   html[data-engine="timeflow"] .tf-rb-latenight { animation: none; }
 }
+
+/* ============================================================
+   What-if 出发时间滑块：轨道本身就是一条微缩的 24h 天空
+   ============================================================ */
+html[data-engine="timeflow"] .tf-whatif {
+  grid-column: 1 / -1;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px dashed color-mix(in srgb, var(--tf-a-ink, #98a1b1) 28%, transparent);
+}
+html[data-engine="timeflow"] .tf-whatif-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+html[data-engine="timeflow"] .tf-whatif-head > span {
+  color: color-mix(in srgb, var(--tf-a-ink, #98a1b1) 62%, transparent);
+  font: 500 9px/1 "DM Mono", monospace;
+  letter-spacing: .12em;
+}
+html[data-engine="timeflow"] .tf-whatif-head output {
+  color: var(--accent);
+  font: 500 12px/1 "DM Mono", monospace;
+  text-shadow: 0 0 12px rgba(255, 177, 77, .35);
+}
+html[data-engine="timeflow"] .tf-whatif input[type="range"] {
+  width: 100%;
+  height: 22px;
+  margin: 9px 0 0;
+  padding: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  -webkit-appearance: none;
+  appearance: none;
+}
+/* 轨道：深夜→黎明→上午→正午→下午→黄昏→入夜→深夜 */
+html[data-engine="timeflow"] .tf-whatif input[type="range"]::-webkit-slider-runnable-track {
+  height: 8px;
+  border-radius: 999px;
+  background: linear-gradient(90deg,
+    #0d1426 0%, #0d1426 18%,
+    #f7a96f 27%,
+    #6fb1ea 38%, #4f9be0 50%, #6fa8dc 62%,
+    #ff9a55 76%,
+    #1c2745 86%, #0d1426 100%);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, .4), 0 1px 0 rgba(255, 255, 255, .08);
+}
+html[data-engine="timeflow"] .tf-whatif input[type="range"]::-webkit-slider-thumb {
+  width: 20px;
+  height: 20px;
+  margin-top: -6px;
+  border: 2px solid rgba(255, 255, 255, .92);
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, .45), 0 0 12px rgba(255, 177, 77, .5);
+  cursor: grab;
+  -webkit-appearance: none;
+  appearance: none;
+}
+html[data-engine="timeflow"] .tf-whatif input[type="range"]:active::-webkit-slider-thumb {
+  cursor: grabbing;
+  transform: scale(1.12);
+}
+html[data-engine="timeflow"] .tf-whatif input[type="range"]::-moz-range-track {
+  height: 8px;
+  border-radius: 999px;
+  background: linear-gradient(90deg,
+    #0d1426 0%, #0d1426 18%,
+    #f7a96f 27%,
+    #6fb1ea 38%, #4f9be0 50%, #6fa8dc 62%,
+    #ff9a55 76%,
+    #1c2745 86%, #0d1426 100%);
+}
+html[data-engine="timeflow"] .tf-whatif input[type="range"]::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, .92);
+  border-radius: 50%;
+  background: #ffb14d;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, .45);
+  cursor: grab;
+}
