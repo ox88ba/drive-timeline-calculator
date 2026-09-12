@@ -542,6 +542,28 @@ html[data-engine="timeflow"] .share-station-departure.tf-poster-dep {
 }
 html[data-engine="timeflow"] .share-station-departure.tf-poster-dep strong { color: inherit; }
 
+/* Canvas 天空带（v3：时间流渲染，html2canvas 可栅格化） */
+.tf-poster-sky > canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+html[data-engine="timeflow"] .share-station-departure.tf-poster-dep {
+  position: relative;
+  overflow: hidden;
+}
+html[data-engine="timeflow"] .share-station-departure.tf-poster-dep > canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+html[data-engine="timeflow"] .share-station-departure.tf-poster-dep > :not(canvas) {
+  position: relative;
+}
+
 /* 汇总 / 路线 / 连接段 / 页脚：暗色玻璃化 */
 html[data-engine="timeflow"] .share-summary {
   border-color: rgba(255, 255, 255, .12); background: rgba(255, 255, 255, .06); box-shadow: none;
@@ -562,3 +584,32 @@ html[data-engine="timeflow"] .share-leg-arrow { background: #0d1728; color: #ffd
 html[data-engine="timeflow"] .share-leg-route { color: #9fc1ff; }
 html[data-engine="timeflow"] .share-footer { border-top-color: rgba(255, 255, 255, .12); color: rgba(233, 237, 246, .45); }
 html[data-engine="timeflow"] .share-footer strong { color: rgba(233, 237, 246, .7); }
+
+
+/* ============================================================
+   天空渲染器 · Canvas 动态层（v3）
+   每张卡/出发片的画布位于内容之下（z-auto 按 DOM 序绘制，
+   不设 z-index，避免给 POI 下拉制造堆叠上下文陷阱）。
+   ============================================================ */
+html[data-engine="timeflow"] .destination-card.tf-sky-live,
+html[data-engine="timeflow"] .start-card.tf-sky-live {
+  position: relative;
+}
+html[data-engine="timeflow"] .tf-sky-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  pointer-events: none;
+}
+html[data-engine="timeflow"] .destination-card.tf-sky-live > :not(.tf-sky-canvas),
+html[data-engine="timeflow"] .start-card.tf-sky-live > :not(.tf-sky-canvas) {
+  position: relative; /* z-auto：后于画布绘制，天然位于天空之上 */
+}
+html[data-engine="timeflow"] .departure-block > .tf-sky-canvas--b {
+  border-radius: 0 0 18px 18px;
+}
+html[data-engine="timeflow"] .departure-block > :not(.tf-sky-canvas) {
+  position: relative;
+}

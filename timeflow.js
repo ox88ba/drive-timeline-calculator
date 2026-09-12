@@ -103,6 +103,454 @@
     return layers.join(',');
   }
 
+  /* ============================================================
+     天空渲染器 · Canvas 动态层（v3）
+     叠加在原 CSS 渐变之上：多段大气渐变、太阳/月亮弧线、
+     呼吸光晕、闪烁星野、漂移云层。
+     - 单 rAF 循环 + IntersectionObserver：只画视口内画布
+     - ~25fps 节流、DPR 上限 1.75，控制功耗
+     - prefers-reduced-motion → 单帧静态渲染
+     - canvas 不可用时静默回退原 CSS 渐变
+     ============================================================ */
+  var SkyFX = (function () {
+    var DPR_CAP = 1.75;
+    var FRAME_MS = 40;
+    var REDUCED = !!(window.matchMedia &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+
+    /* 多段大气渐变（zenith → horizon），比双色线性更接近真实散射；
+       stars 为星野强度，cloud 为该时段云层的着色与密度 */
+    var ATMOS = {
+      night:     { stops: [[0, '#04070e'], [.55, '#0a1122'], [1, '#122036']],
+                   stars: 1,   cloud: { tint: [140, 160, 210], alpha: .05, count: 2 } },
+      dawn:      { stops: [[0, '#2b3352'], [.45, '#6f5d83'], [.78, '#e0895f'], [1, '#f9bd7a']],
+                   stars: .22, cloud: { tint: [255, 190, 150], alpha: .13, count: 3 } },
+      morning:   { stops: [[0, '#3d83cc'], [.55, '#7ab5e8'], [1, '#c6e4f9']],
+                   stars: 0,   cloud: { tint: [255, 255, 255], alpha: .2, count: 3 } },
+      noon:      { stops: [[0, '#2a72c8'], [.55, '#57a2e0'], [1, '#aedaf7']],
+                   stars: 0,   cloud: { tint: [255, 255, 255], alpha: .18, count: 3 } },
+      afternoon: { stops: [[0, '#4e8ad0'], [.55, '#9dc0e2'], [1, '#f4dcab']],
+                   stars: 0,   cloud: { tint: [255, 246, 230], alpha: .17, count: 3 } },
+      dusk:      { stops: [[0, '#37305e'], [.45, '#8f5266'], [.78, '#f27e4b'], [1, '#ffb066']],
+                   stars: .18, cloud: { tint: [255, 160, 110], alpha: .14, count: 3 } },
+      evening:   { stops: [[0, '#0c1224'], [.55, '#182642'], [1, '#2c3d66']],
+                   stars: .7,  cloud: { tint: [150, 170, 220], alpha: .06, count: 2 } }
+    };
+
+    /* ---------- 连续时间天空：关键帧插值 ----------
+       不再按 7 个离散时段取色：一天被锚定在日出/日落上的
+       关键帧连续插值，任意时刻都有唯一天空状态；
+       卡片从上到下 = 从抵达时刻流向出发时刻。 */
+    var KF_DEF = [
+      ['night',     function (sr, ss) { return 0; }],
+      ['night',     function (sr, ss) { return Math.max(1, sr - 60); }],
+      ['dawn',      function (sr, ss) { return sr + 30; }],
+      ['morning',   function (sr, ss) { return sr + (ss - sr) * .25; }],
+      ['noon',      function (sr, ss) { return sr + (ss - sr) * .5; }],
+      ['afternoon', function (sr, ss) { return sr + (ss - sr) * .8; }],
+      ['dusk',      function (sr, ss) { return ss + 20; }],
+      ['evening',   function (sr, ss) { return Math.min(1439, ss + 100); }],
+      ['night',     function (sr, ss) { return 1440; }]
+    ];
+
+    function hex2rgb(hex) {
+      return [parseInt(hex.slice(1, 3), 16), parseInt(hex.slice(3, 5), 16), parseInt(hex.slice(5, 7), 16), 1];
+    }
+    function str2rgba(str) {
+      var m = /rgba?\(([^)]+)\)/.exec(str);
+      if (!m) return [255, 255, 255, 1];
+      var p = m[1].split(',');
+      return [Number(p[0]), Number(p[1]), Number(p[2]), p.length > 3 ? Number(p[3]) : 1];
+    }
+    var STATES = {};
+    function stateOf(key) {
+      if (STATES[key]) return STATES[key];
+      var A = ATMOS[key], P = PALETTES[key];
+      STATES[key] = {
+        zenith: hex2rgb(A.stops[0][1]),
+        horizon: hex2rgb(A.stops[A.stops.length - 1][1]),
+        stars: A.stars,
+        cloudA: A.cloud.alpha,
+        cloudT: A.cloud.tint.concat(1),
+        core: str2rgba(P.cel.core),
+        glow: str2rgba(P.cel.glow),
+        size: P.cel.size
+      };
+      return STATES[key];
+    }
+    function lerp(a, b, f) { return a + (b - a) * f; }
+    function lerp4(a, b, f) {
+      return [lerp(a[0], b[0], f), lerp(a[1], b[1], f), lerp(a[2], b[2], f), lerp(a[3], b[3], f)];
+    }
+    function css(c) {
+      return 'rgba(' + Math.round(c[0]) + ',' + Math.round(c[1]) + ',' +
+             Math.round(c[2]) + ',' + c[3].toFixed(3) + ')';
+    }
+    function smooth(f) { return f * f * (3 - 2 * f); }
+
+    /* 连续天空状态：t 为当日分钟（自动回绕跨午夜） */
+    function stateAt(t, sr, ss) {
+      sr = sr == null ? 390 : sr;
+      ss = ss == null ? 1140 : ss;
+      t = ((t % 1440) + 1440) % 1440;
+      var prev = null, next = null;
+      for (var i = 0; i < KF_DEF.length; i++) {
+        var at = KF_DEF[i][1](sr, ss);
+        if (at <= t) prev = { s: stateOf(KF_DEF[i][0]), at: at };
+        if (at > t) { next = { s: stateOf(KF_DEF[i][0]), at: at }; break; }
+      }
+      if (!prev) prev = { s: stateOf('night'), at: 0 };
+      if (!next) next = { s: stateOf('night'), at: 1440 };
+      var f = next.at === prev.at ? 0 : smooth((t - prev.at) / (next.at - prev.at));
+      return {
+        zenith: lerp4(prev.s.zenith, next.s.zenith, f),
+        horizon: lerp4(prev.s.horizon, next.s.horizon, f),
+        stars: lerp(prev.s.stars, next.s.stars, f),
+        cloudA: lerp(prev.s.cloudA, next.s.cloudA, f),
+        cloudT: lerp4(prev.s.cloudT, next.s.cloudT, f),
+        core: lerp4(prev.s.core, next.s.core, f),
+        glow: lerp4(prev.s.glow, next.s.glow, f),
+        size: lerp(prev.s.size, next.s.size, f)
+      };
+    }
+
+    /* 连续天体位置：白天沿东→西弧线，夜晚月亮缓移（无时段跳变） */
+    function celPosC(t, sr, ss) {
+      sr = sr == null ? 390 : sr;
+      ss = ss == null ? 1140 : ss;
+      t = ((t % 1440) + 1440) % 1440;
+      if (t >= sr - 30 && t <= ss + 30) {
+        var f = Math.max(0, Math.min(1, (t - sr) / (ss - sr)));
+        return { x: 14 + 72 * f, y: 30 - 19 * Math.sin(f * Math.PI), sun: true };
+      }
+      var nspan = (1440 - ss) + sr;
+      var passed = t > ss ? t - ss : (1440 - ss) + t;
+      var nf = Math.max(0, Math.min(1, passed / nspan));
+      return { x: 18 + 60 * nf, y: 15 + 6 * Math.sin(nf * Math.PI), sun: false };
+    }
+
+    /* 确定性伪随机：同一卡片的星野/云层布局刷新后保持稳定 */
+    function hash(str) {
+      var h = 2166136261;
+      for (var i = 0; i < str.length; i++) {
+        h ^= str.charCodeAt(i);
+        h = Math.imul(h, 16777619);
+      }
+      return h >>> 0;
+    }
+    function rng(seed) {
+      var s = seed >>> 0;
+      return function () {
+        s = (s + 0x6D2B79F5) >>> 0;
+        var t = Math.imul(s ^ (s >>> 15), 1 | s);
+        t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+      };
+    }
+
+    var instances = [];
+    var rafId = 0;
+    var lastFrame = 0;
+    var io = null;
+
+    function find(host, region) {
+      for (var i = 0; i < instances.length; i++) {
+        if (instances[i].host === host && instances[i].region === region) return instances[i];
+      }
+      return null;
+    }
+
+    function genField(inst) {
+      var rand = rng(inst.seed);
+      var area = Math.max(1, inst.w * inst.h);
+      var n = Math.max(10, Math.min(42, Math.round(area / 5200)));
+      inst.stars = [];
+      for (var i = 0; i < n; i++) {
+        inst.stars.push({
+          x: rand(), y: rand() * .82,
+          r: .5 + rand() * .9,
+          base: .35 + rand() * .6,
+          speed: .0008 + rand() * .0018,
+          phase: rand() * Math.PI * 2
+        });
+      }
+      var A = ATMOS[inst.key] || ATMOS.night;
+      inst.clouds = [];
+      for (var c = 0; c < A.cloud.count; c++) {
+        var puffs = [];
+        var pn = 3 + Math.floor(rand() * 3);
+        for (var pIdx = 0; pIdx < pn; pIdx++) {
+          puffs.push({ dx: (pIdx - (pn - 1) / 2) * (.55 + rand() * .3),
+                       dy: (rand() - .5) * .35,
+                       r: .45 + rand() * .5 });
+        }
+        inst.clouds.push({
+          x: rand(), y: .08 + rand() * .3,
+          r: 26 + rand() * 34,
+          speed: 1.5 + rand() * 2.5,   /* px/s，极慢漂移 */
+          phase: rand() * Math.PI * 2,
+          puffs: puffs
+        });
+      }
+    }
+
+    function size(inst) {
+      var rect = inst.host.getBoundingClientRect();
+      var dpr = Math.min(window.devicePixelRatio || 1, DPR_CAP);
+      inst.w = rect.width;
+      inst.h = rect.height;
+      inst.canvas.width = Math.max(1, Math.round(rect.width * dpr));
+      inst.canvas.height = Math.max(1, Math.round(rect.height * dpr));
+      inst.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      genField(inst); /* 星点密度随面积重算（同一种子，布局稳定） */
+    }
+
+    function draw(inst, now) {
+      var ctx = inst.ctx, w = inst.w, h = inst.h;
+      if (!w || !h) return;
+      var sr = inst.sr, ss = inst.ss;
+      var t0 = inst.t0;
+      var t1 = inst.t1 > t0 ? inst.t1 : t0 + 45;
+      var span = t1 - t0;
+
+      /* ① 时间流渐变：顶部 = 抵达时刻，底部 = 出发时刻。
+           采样数随停留跨度增加（过夜卡可容下整夜→清晨的流转） */
+      var K = Math.max(3, Math.min(9, Math.round(span / 90) + 1));
+      var g = ctx.createLinearGradient(0, 0, 0, h);
+      for (var i = 0; i < K; i++) {
+        var f = i / (K - 1);
+        var st = stateAt(t0 + span * f, sr, ss);
+        g.addColorStop(f, css(lerp4(st.zenith, st.horizon, .25 + .65 * f)));
+      }
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, w, h);
+
+      var mid = stateAt(t0 + span * .5, sr, ss);
+      var sA = stateAt(t0, sr, ss);
+
+      /* ② 闪烁星野（强度随时刻连续消长，不再有时段硬切换） */
+      if (mid.stars > .02) {
+        for (var s = 0; s < inst.stars.length; s++) {
+          var st2 = inst.stars[s];
+          var tw = REDUCED ? .8 : .55 + .45 * Math.sin(now * st2.speed + st2.phase);
+          ctx.globalAlpha = st2.base * tw * mid.stars;
+          ctx.fillStyle = '#ffffff';
+          ctx.beginPath();
+          ctx.arc(st2.x * w, st2.y * h, st2.r, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.globalAlpha = 1;
+      }
+
+      /* ③ 天体：主天体位于抵达时刻，身后拖出流向出发时刻的轨迹弧 */
+      var p0 = celPosC(t0, sr, ss);
+      var p1 = celPosC(t1, sr, ss);
+      var cx = p0.x / 100 * w, cy = p0.y / 100 * h;
+      if (span >= 90 && Math.abs(p1.x - p0.x) > 4) {
+        ctx.strokeStyle = css([sA.glow[0], sA.glow[1], sA.glow[2], .3]);
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([2, 5]);
+        ctx.beginPath();
+        var steps = 16, started = false, prevX = 0;
+        for (var q = 0; q <= steps; q++) {
+          var pq = celPosC(t0 + span * q / steps, sr, ss);
+          var qx = pq.x / 100 * w, qy = pq.y / 100 * h;
+          if (pq.sun !== p0.sun) break; /* 日落到月升不换笔，避免跳线 */
+          if (!started || Math.abs(qx - prevX) > w * .3) {
+            ctx.moveTo(qx, qy);
+            started = true;
+          } else {
+            ctx.lineTo(qx, qy);
+          }
+          prevX = qx;
+        }
+        ctx.stroke();
+        ctx.setLineDash([]);
+        /* 终点幽灵：出发时刻天体的淡影（用出发时刻自身的天空状态着色） */
+        var sB = stateAt(t1, sr, ss);
+        ctx.globalAlpha = .38;
+        ctx.fillStyle = css(sB.core);
+        ctx.beginPath();
+        ctx.arc(p1.x / 100 * w, p1.y / 100 * h, Math.max(4, sB.size * .2), 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = 1;
+      }
+      var breathe = REDUCED ? 1 : 1 + .06 * Math.sin(now / 1500 + inst.seed % 7);
+      var R = Math.max(8, sA.size * .32) * breathe;
+      var glow = ctx.createRadialGradient(cx, cy, 0, cx, cy, R * 3.2);
+      glow.addColorStop(0, css(sA.glow));
+      glow.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = glow;
+      ctx.beginPath();
+      ctx.arc(cx, cy, R * 3.2, 0, Math.PI * 2);
+      ctx.fill();
+      var core = ctx.createRadialGradient(cx, cy, 0, cx, cy, R);
+      core.addColorStop(0, css(sA.core));
+      core.addColorStop(.72, css(sA.core));
+      core.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = core;
+      ctx.beginPath();
+      ctx.arc(cx, cy, R, 0, Math.PI * 2);
+      ctx.fill();
+      if (sA.stars > .5) { /* 夜月：月海阴影 */
+        ctx.fillStyle = 'rgba(120,134,170,.16)';
+        [[-.3, -.18, .3], [.16, .1, .22], [-.05, .32, .16]].forEach(function (m) {
+          ctx.beginPath();
+          ctx.arc(cx + m[0] * R, cy + m[1] * R, m[2] * R, 0, Math.PI * 2);
+          ctx.fill();
+        });
+      }
+
+      /* ④ 漂移云层（最后一层，可局部遮住天体；着色随时刻插值） */
+      for (var c = 0; c < inst.clouds.length; c++) {
+        var cl = inst.clouds[c];
+        var cspan = w + cl.r * 6;
+        var drift = REDUCED ? 0 : now / 1000 * cl.speed;
+        var x = (((cl.x * w + drift) % cspan) + cspan) % cspan - cl.r * 3;
+        var y = cl.y * h + (REDUCED ? 0 : Math.sin(now / 2600 + cl.phase) * 3);
+        for (var pf = 0; pf < cl.puffs.length; pf++) {
+          var pu = cl.puffs[pf];
+          var pr = cl.r * pu.r;
+          var cg = ctx.createRadialGradient(x + pu.dx * cl.r, y + pu.dy * cl.r, 0,
+                                            x + pu.dx * cl.r, y + pu.dy * cl.r, pr);
+          cg.addColorStop(0, css([mid.cloudT[0], mid.cloudT[1], mid.cloudT[2], mid.cloudA]));
+          cg.addColorStop(1, css([mid.cloudT[0], mid.cloudT[1], mid.cloudT[2], 0]));
+          ctx.fillStyle = cg;
+          ctx.beginPath();
+          ctx.arc(x + pu.dx * cl.r, y + pu.dy * cl.r, pr, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+    }
+
+    function ensureIO() {
+      if (io || !('IntersectionObserver' in window)) return;
+      io = new IntersectionObserver(function (entries) {
+        entries.forEach(function (en) {
+          var inst = en.target.__tfSky;
+          if (!inst) return;
+          inst.visible = en.isIntersecting;
+          if (en.isIntersecting && REDUCED) draw(inst, 0);
+        });
+      }, { rootMargin: '120px' });
+    }
+
+    function tick(now) {
+      rafId = requestAnimationFrame(tick);
+      if (now - lastFrame < FRAME_MS) return;
+      lastFrame = now;
+      for (var i = 0; i < instances.length; i++) {
+        if (instances[i].visible !== false) draw(instances[i], now);
+      }
+    }
+
+    function start() {
+      if (!rafId && !REDUCED) rafId = requestAnimationFrame(tick);
+    }
+
+    function attach(host, region, key, t0, t1, sr, ss) {
+      if (!host) return;
+      var inst = find(host, region);
+      if (inst) {
+        var changed = inst.key !== key || inst.t0 !== t0 || inst.t1 !== t1 ||
+                      inst.sr !== sr || inst.ss !== ss;
+        inst.key = key; inst.t0 = t0; inst.t1 = t1; inst.sr = sr; inst.ss = ss;
+        if (changed) {
+          if (REDUCED) draw(inst, 0);
+          else if (inst.visible !== false) draw(inst, performance.now());
+        }
+        return;
+      }
+      var canvas = document.createElement('canvas');
+      canvas.className = 'tf-sky-canvas tf-sky-canvas--' + region;
+      canvas.setAttribute('aria-hidden', 'true');
+      var ctx = canvas.getContext && canvas.getContext('2d');
+      if (!ctx) return; /* 回退原 CSS 渐变 */
+      host.insertBefore(canvas, host.firstChild);
+      host.classList.add('tf-sky-live');
+      inst = {
+        host: host, region: region, canvas: canvas, ctx: ctx,
+        key: key, t0: t0, t1: t1, sr: sr, ss: ss, visible: true,
+        seed: hash((host.id || host.dataset.id || 'card') + '|' + region)
+      };
+      instances.push(inst);
+      size(inst);
+      if ('ResizeObserver' in window) {
+        inst.ro = new ResizeObserver(function () {
+          size(inst);
+          if (REDUCED || inst.visible === false) draw(inst, 0);
+        });
+        inst.ro.observe(host);
+      }
+      ensureIO();
+      if (io) {
+        host.__tfSky = inst;
+        inst.visible = false;
+        io.observe(host);
+      }
+      draw(inst, 0); /* 立即首帧，避免等待下一拍出现空白 */
+      start();
+    }
+
+    function drop(inst) {
+      if (inst.ro) inst.ro.disconnect();
+      if (io && inst.host.__tfSky === inst) {
+        io.unobserve(inst.host);
+        delete inst.host.__tfSky;
+      }
+      inst.canvas.remove();
+      if (!inst.host.querySelector('.tf-sky-canvas')) inst.host.classList.remove('tf-sky-live');
+    }
+
+    function detach(host, region) {
+      instances = instances.filter(function (inst) {
+        if (inst.host !== host) return true;
+        if (region && inst.region !== region) return true;
+        drop(inst);
+        return false;
+      });
+    }
+
+    function prune() {
+      instances = instances.filter(function (inst) {
+        if (inst.host.isConnected) return true;
+        drop(inst);
+        return false;
+      });
+    }
+
+    function detachAll() {
+      instances.forEach(drop);
+      instances = [];
+    }
+
+    /* 离线单帧渲染：分享长图等静态场景复用同一套连续天空，
+       输出确定（固定相位），html2canvas 可直接栅格化 */
+    function renderOnce(canvas, opts) {
+      var ctx = canvas.getContext && canvas.getContext('2d');
+      if (!ctx) return false;
+      var w = opts.w || 380, h = opts.h || 40;
+      var dpr = Math.min(window.devicePixelRatio || 1, 2);
+      canvas.width = Math.max(1, Math.round(w * dpr));
+      canvas.height = Math.max(1, Math.round(h * dpr));
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      var t0 = opts.t0;
+      var key = periodFor(((t0 % 1440) + 1440) % 1440, opts.sr, opts.ss);
+      var inst = {
+        ctx: ctx, w: w, h: h, key: key,
+        t0: t0, t1: opts.t1 > t0 ? opts.t1 : t0 + 45,
+        sr: opts.sr, ss: opts.ss,
+        seed: hash(opts.seedKey || ('poster|' + t0)),
+        stars: [], clouds: []
+      };
+      genField(inst);
+      draw(inst, 1200);
+      return true;
+    }
+
+    return { attach: attach, detach: detach, prune: prune, detachAll: detachAll, renderOnce: renderOnce };
+  })();
+
   function chip(cls, text) {
     var s = document.createElement('span');
     s.className = 'tf-chip ' + cls;
@@ -148,9 +596,10 @@
 
     var sr = parseHM(/日出\s*(\d{1,2}):(\d{2})/.exec(metaText));
     var ss = parseHM(/日落\s*(\d{1,2}):(\d{2})/.exec(metaText));
+    var skipped = card.classList.contains('is-skipped');
 
     var a = arrivalEl ? parseDT(rawText(arrivalEl)) : null;
-    if (a) {
+    if (a && !skipped) {
       var ka = periodFor(a.minutes, sr, ss);
       card.dataset.skyA = ka;
       card.style.setProperty('--tf-a-bg', bgFor(ka, a.minutes, sr, ss));
@@ -175,15 +624,24 @@
     }
 
     var d = (depBlock && !depBlock.hidden && depEl) ? parseDT(rawText(depEl)) : null;
-    if (d) {
+    if (d && !skipped) {
       var kb = periodFor(d.minutes, sr, ss);
       card.dataset.skyB = kb;
       card.style.setProperty('--tf-b-bg', bgFor(kb, d.minutes, sr, ss));
       card.style.setProperty('--tf-b-ink', PALETTES[kb].ink);
+      SkyFX.attach(depBlock, 'b', kb, d.minutes, d.minutes + 45, sr, ss);
       depEl.append(chip('tf-moment', PALETTES[kb].label));
       card.classList.add('tf-has-dep');
       if (a && d.day !== a.day) card.dataset.tfOvernight = '1';
+    } else if (depBlock) {
+      SkyFX.detach(depBlock, 'b');
     }
+    /* 抵达片：天空从抵达时刻流向出发时刻（过夜卡跨午夜流转） */
+    if (a && !skipped) {
+      var t1 = d ? d.minutes + (d.day !== a.day ? 1440 : 0) : a.minutes + 75;
+      SkyFX.attach(card, 'a', periodFor(a.minutes, sr, ss), a.minutes, t1, sr, ss);
+    }
+    if (!a || skipped) SkyFX.detach(card, 'a');
 
     /* ---------- 动效层 ---------- */
     var cid = card.id || card.dataset.id || '';
@@ -250,6 +708,7 @@
     card.dataset.skyA = k;
     card.style.setProperty('--tf-a-bg', bgFor(k, t, null, null));
     card.style.setProperty('--tf-a-ink', PALETTES[k].ink);
+    SkyFX.attach(card, 'a', k, t, t + 90, null, null);
   }
 
   /* ---------- What-if 出发时间滑块 ----------
@@ -461,38 +920,34 @@
     return p.hour * 60 + p.minute;
   }
 
-  function makeSkyBand(key, t, sr, ss, tall) {
-    var p = PALETTES[key];
+  /* 站点天空带：Canvas 单帧渲染，时间流从 t 流向 t1（可栅格化） */
+  function makeSkyBand(key, t, sr, ss, tall, t1) {
     var band = document.createElement('div');
     band.className = 'tf-poster-sky' + (tall ? ' is-tall' : '');
-    band.style.background = skyLinear(key);
-    if (p.cel) {
-      var pos = celPos(t, sr, ss, key);
-      var cel = document.createElement('i');
-      cel.className = 'tf-poster-cel';
-      var size = Math.max(16, Math.round(p.cel.size / 3.4));
-      cel.style.width = size + 'px';
-      cel.style.height = size + 'px';
-      cel.style.left = 'calc(' + pos.x.toFixed(1) + '% - ' + (size / 2) + 'px)';
-      cel.style.top = 'calc(' + pos.y.toFixed(1) + '% - ' + (size / 2) + 'px)';
-      cel.style.background = p.cel.core;
-      cel.style.boxShadow = '0 0 ' + Math.round(size * 0.9) + 'px ' + p.cel.glow;
-      band.append(cel);
-    }
-    if (p.stars) {
-      [[18, 30], [34, 62], [52, 26], [68, 56], [84, 34]].forEach(function (s, i) {
-        var star = document.createElement('i');
-        star.className = 'tf-poster-star';
-        var sz = i % 2 ? 2 : 3;
-        star.style.width = sz + 'px';
-        star.style.height = sz + 'px';
-        star.style.left = s[0] + '%';
-        star.style.top = s[1] + '%';
-        star.style.opacity = i % 2 ? '0.55' : '0.85';
-        band.append(star);
-      });
-    }
+    var canvas = document.createElement('canvas');
+    canvas.setAttribute('aria-hidden', 'true');
+    band.append(canvas);
+    SkyFX.renderOnce(canvas, {
+      t0: t, t1: t1 || t + (tall ? 90 : 60),
+      sr: sr, ss: ss,
+      w: 380, h: tall ? 58 : 34,
+      seedKey: 'poster|' + (key || '') + '|' + t
+    });
     return band;
+  }
+
+  /* 出发行：整行变成「出发时刻天空」Canvas 带 */
+  function paintDepartureRow(depRow, td, sr, ss) {
+    var kd = periodFor(td, sr, ss);
+    depRow.classList.add('tf-poster-dep');
+    depRow.style.color = PALETTES[kd].ink;
+    var canvas = document.createElement('canvas');
+    canvas.setAttribute('aria-hidden', 'true');
+    depRow.insertBefore(canvas, depRow.firstChild);
+    SkyFX.renderOnce(canvas, {
+      t0: td, t1: td + 45, sr: sr, ss: ss,
+      w: 340, h: 38, seedKey: 'poster-dep|' + td
+    });
   }
 
   function decoratePoster() {
@@ -518,7 +973,7 @@
     if (header) header.insertBefore(makeSkyBand(k0, t0, st0.sr, st0.ss, true), header.firstChild);
     stations[0].insertBefore(makeSkyBand(k0, t0, st0.sr, st0.ss, false), stations[0].firstChild);
 
-    /* 目的地站：抵达时刻天空带 + 出发时刻天空行 */
+    /* 目的地站：抵达→出发的时间流天空带 + 出发时刻天空行 */
     var active = (tl.destinations || []).filter(function (d) {
       return !d.isSkipped && isValidLoc(d.location) && d.arrivalTime;
     });
@@ -528,16 +983,18 @@
       var ta = minutesOfIso(d.arrivalTime);
       var sta = sunTimesFor(d.location, d.arrivalTime);
       var ka = periodFor(ta, sta.sr, sta.ss);
-      station.insertBefore(makeSkyBand(ka, ta, sta.sr, sta.ss, false), station.firstChild);
+      var t1 = ta + 75;
+      if (d.hasDepartureDisplay && d.departureTime) {
+        var td0 = minutesOfIso(d.departureTime);
+        t1 = ta + ((((td0 - ta) % 1440) + 1440) % 1440 || 45);
+      }
+      station.insertBefore(makeSkyBand(ka, ta, sta.sr, sta.ss, false, t1), station.firstChild);
       if (d.hasDepartureDisplay && d.departureTime) {
         var depRow = station.querySelector('.share-station-departure');
         if (depRow) {
           var td = minutesOfIso(d.departureTime);
           var std = sunTimesFor(d.location, d.departureTime);
-          var kd = periodFor(td, std.sr, std.ss);
-          depRow.classList.add('tf-poster-dep');
-          depRow.style.background = skyLinear(kd);
-          depRow.style.color = PALETTES[kd].ink;
+          paintDepartureRow(depRow, td, std.sr, std.ss);
         }
       }
     }
@@ -554,6 +1011,7 @@
   }
 
   function processAll() {
+    SkyFX.prune(); /* 清理 app.js 重渲染后已离树的画布实例 */
     var timeline = document.getElementById('timeline');
     if (timeline) {
       timeline.querySelectorAll('.destination-card').forEach(processCard);
@@ -566,6 +1024,9 @@
 
   /* 切回经典/暗夜时清理全部注入物，恢复原貌 */
   function teardownCard(card) {
+    SkyFX.detach(card);
+    var depBlock = card.querySelector('[data-departure-block]');
+    if (depBlock) SkyFX.detach(depBlock);
     card.querySelectorAll('.tf-chip').forEach(function (n) { n.remove(); });
     delete card.dataset.tfSig;
     delete card.dataset.skyA;
@@ -588,10 +1049,17 @@
   function schedule() {
     if (scheduled) return;
     scheduled = true;
-    requestAnimationFrame(function () {
+    var done = false;
+    var run = function () {
+      if (done) return; /* rAF 与兜底定时器只生效先到的一次 */
+      done = true;
       scheduled = false;
       processAll();
-    });
+    };
+    requestAnimationFrame(run);
+    /* rAF 在后台标签页/无帧渲染环境下可能延迟甚至短暂停摆，
+       用宏任务兜底，保证任何 DOM 变更最终都会被处理 */
+    setTimeout(run, 120);
   }
 
   function boot() {
@@ -633,6 +1101,7 @@
     seenIds.clear();
     inviewIds.clear();
     prevDep.clear();
+    SkyFX.detachAll();
     var rhythm = document.getElementById('tfRhythm');
     if (rhythm) rhythm.remove();
     var whatif = document.getElementById('tfWhatif');
@@ -655,6 +1124,18 @@
     if (document.documentElement.dataset.engine === 'timeflow') boot();
     else teardown();
   }
+
+  /* 调试钩子（回归巡检用）：只读暴露引擎状态 */
+  window.__tfDebug = {
+    state: function () {
+      return {
+        scheduled: scheduled,
+        observer: !!timelineObserver,
+        engine: document.documentElement.dataset.engine || null,
+        cards: document.querySelectorAll('#timeline .destination-card').length
+      };
+    }
+  };
 
   new MutationObserver(sync).observe(document.documentElement, {
     attributes: true,

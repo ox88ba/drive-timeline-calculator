@@ -127,7 +127,7 @@
     localStorage.setItem(SUNSET_CACHE_KEY, JSON.stringify(sunsetCache));
   }
   function apiUrl(path) { return `${API_BASE_URL}${path}`; }
-  async function requestJson(url) { const response = await fetch(apiUrl(url)); const data = await response.json().catch(() => ({})); if (!response.ok) throw new Error(data.error?.message || '服务请求失败，请稍后再试。'); return data; }
+  async function requestJson(url) { const response = await fetch(apiUrl(url), { signal: AbortSignal.timeout(20000) }); const data = await response.json().catch(() => ({})); if (!response.ok) throw new Error(data.error?.message || '服务请求失败，请稍后再试。'); return data; }
   async function postJson(url, body) { const response = await fetch(apiUrl(url), { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) }); const data = await response.json().catch(() => ({})); if (!response.ok) throw new Error(data.error?.message || '服务请求失败，请稍后再试。'); return data; }
   async function requestPublicElevation(location) { const url = new URL('https://api.open-elevation.com/api/v1/lookup'); url.searchParams.set('locations', `${location.latitude},${location.longitude}`); const res = await fetch(url); const data = await res.json().catch(() => ({})); const elevationMeters = Number(data.results?.[0]?.elevation); if (!res.ok || !Number.isFinite(elevationMeters)) throw new Error('海拔数据暂不可用。'); return { elevationMeters }; }
   async function loadElevation(id) {
@@ -394,7 +394,7 @@
       results = $('#startPoiResults');
       const prior = searchTimers.get('start'); if (prior) clearTimeout(prior);
       const query = input.value.trim();
-      if (query.length < 2) { results.hidden = true; return; }
+      if (query.length < 2) { if (query.length === 1) showSearchStatus(results, '再输入一个字，满 2 个字开始搜索'); else results.hidden = true; return; }
       showSearchStatus(results, '正在搜索地点…');
       searchTimers.set('start', setTimeout(() => searchStartPoi(query, results), 350));
     });
@@ -413,7 +413,7 @@
   function selectStartPoi(poi) {
     trip.startLocation = poi; trip.startSearchText = poi.name; syncReturnOrigins(); rebuildRouteGraph(); refreshElevations();
   }
-  function bindPicker(input, results, id) { if (input.disabled) return; input.addEventListener('input', () => { const destination = trip.destinations.find((item) => item.id === id); if (!destination) return; destination.searchText = input.value; destination.location = null; destination.route = null; calculate(); persist(); const prior = searchTimers.get(id); if (prior) clearTimeout(prior); const query = input.value.trim(); if (query.length < 2) { results.hidden = true; return; } showSearchStatus(results, '正在搜索地点…'); searchTimers.set(id, setTimeout(() => searchPoi(id, query, results), 350)); }); }
+  function bindPicker(input, results, id) { if (input.disabled) return; input.addEventListener('input', () => { const destination = trip.destinations.find((item) => item.id === id); if (!destination) return; destination.searchText = input.value; destination.location = null; destination.route = null; calculate(); persist(); const prior = searchTimers.get(id); if (prior) clearTimeout(prior); const query = input.value.trim(); if (query.length < 2) { if (query.length === 1) showSearchStatus(results, '再输入一个字，满 2 个字开始搜索'); else results.hidden = true; return; } showSearchStatus(results, '正在搜索地点…'); searchTimers.set(id, setTimeout(() => searchPoi(id, query, results), 350)); }); }
   async function searchPoi(id, query, results) { try { const data = await requestJson(`/api/poi?keywords=${encodeURIComponent(query)}`); const destination = trip.destinations.find((item) => item.id === id); if (!destination || destination.searchText.trim() !== query) return; results.replaceChildren(); results.hidden = false; if (!data.pois?.length) return showSearchStatus(results, '没有找到带坐标的候选地点，请换一个关键词。'); data.pois.forEach((poi) => { const button = document.createElement('button'); button.type = 'button'; button.className = 'poi-option'; button.innerHTML = `<b></b><small></small>`; button.querySelector('b').textContent = poi.name; button.querySelector('small').textContent = poi.address || '高德地图 POI'; button.addEventListener('click', () => selectPoi(id, poi)); results.append(button); }); } catch (error) { showSearchStatus(results, `地点搜索失败：${error.message}`); } }
   function selectPoi(id, poi) { const destination = trip.destinations.find((item) => item.id === id); if (!destination) return; destination.location = poi; destination.searchText = poi.name; destination.elevationMeters = null; delete destination.elevationError; rebuildRouteGraph(); loadElevation(id); }
   function addDestination() { trip.destinations.push({ id: newId(), location: null, searchText: '', route: null, elevationMeters: null, selectedStayButtons: [], stayMode: 'duration', untilTime: null, isSkipped: false, isReturnToOrigin: false }); calculate(); persist(); render(); timelineNode.querySelector('.destination-wrap:last-child [data-place-input]')?.focus(); }
