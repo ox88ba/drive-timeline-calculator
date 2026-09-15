@@ -409,8 +409,11 @@
     const previous = index > 0 ? legs[index - 1].destination.elevationMeters : elevationCache[elevationKey(legs[index].origin)];
     const current = destination.elevationMeters;
     if (Number.isFinite(current) && current >= 2500) {
-      const note = document.createElement('p'); note.className = 'altitude-warning';
-      note.textContent = Number.isFinite(previous) && current > previous ? `本站位于高原，海拔上升${Math.round(current - previous)}m` : '本站位于高原';
+      /* 与「距日落」同款的椭圆气泡：插在 time-grid 之后（视觉上紧跟日光气泡）。
+         注意不能插进 grid 内部——timeflow 重建日光气泡时会冲掉它 */
+      /* 不能用 tf-chip 类——timeflow 重建日光气泡时会清掉卡片里所有 .tf-chip */
+      const note = document.createElement('span'); note.className = 'altitude-warning';
+      note.textContent = Number.isFinite(previous) && current > previous ? `高原，爬升${Math.round(current - previous)}m` : '高原';
       note.title = Number.isFinite(previous) && current > previous ? '海拔上升根据相邻有效站点的海拔差计算，不代表道路累计爬升' : '本站海拔达到2500m';
       card.querySelector('.time-grid').after(note);
     }

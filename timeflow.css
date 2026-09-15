@@ -64,11 +64,9 @@ html[data-engine="timeflow"] .destination-card[data-sky-a] .station-number {
 html[data-engine="timeflow"] .destination-card[data-sky-a] .section-label {
   color: color-mix(in srgb, var(--tf-a-ink) 72%, transparent);
 }
-/* 高原提示：用墨色徽章保证任意天空下可读 */
+/* 高原提示：与「距日落」同款的椭圆气泡，墨色自适应保证任意天空可读 */
 html[data-engine="timeflow"] .destination-card[data-sky-a] .altitude-warning {
-  width: fit-content;
-  padding: 3px 9px;
-  border-radius: 999px;
+  margin-top: 7px;
   color: var(--tf-a-ink);
   background: color-mix(in srgb, var(--tf-a-ink) 13%, transparent);
   border: 1px solid color-mix(in srgb, var(--tf-a-ink) 22%, transparent);

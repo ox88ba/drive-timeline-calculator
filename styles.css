@@ -142,7 +142,7 @@
 .drive-warning.is-orange { color:#a64b10; background:#fff0df; }
 .drive-warning.is-red { color:#b42332; background:#ffe7e9; }
 .night-arrival { display:inline-block; margin-left:8px; color:#596381; font:600 22px/1 sans-serif; vertical-align:middle; }
-.altitude-warning { margin:8px 0 0; color:#9b591e; font:400 12px/1.65 sans-serif; }
+.altitude-warning { display:inline-block; width:fit-content; margin:8px 0 0; padding:3px 9px; border:1px solid #ecd9b8; border-radius:999px; color:#9b591e; background:#fdf6e9; font:500 11px/1.6 sans-serif; }
 /* Route connectors also provide a quick insertion point for a via stop. */
 .route-connector { display:flex; align-items:flex-start; justify-content:space-between; gap:10px; padding-right:8px; }
 .route-connector > span { min-width:0; }
