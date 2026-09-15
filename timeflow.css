@@ -8,10 +8,13 @@
    ============================================================ */
 
 /* ---------- 目的地卡片：两片天空 ---------- */
+/* [data-sky-a] 提升优先级：voyage.css 的玻璃卡片背景与本规则同优先级且加载更晚，
+   无 photo-* 类目的卡片会被压成暗底，导致上午/正午等深色文字不可读 */
 html[data-engine="timeflow"] .destination-card,
 html[data-engine="timeflow"] .destination-card.photo-golden,
 html[data-engine="timeflow"] .destination-card.photo-sunset,
-html[data-engine="timeflow"] .destination-card.photo-blue {
+html[data-engine="timeflow"] .destination-card.photo-blue,
+html[data-engine="timeflow"] .destination-card[data-sky-a] {
   padding-bottom: 0;
   border: 1px solid rgba(255, 255, 255, .08);
   background: var(--tf-a-bg, linear-gradient(160deg, rgba(255, 255, 255, .058), rgba(255, 255, 255, .026)));
@@ -620,6 +623,12 @@ html[data-engine="timeflow"] .destination-card[data-sky-a] .poi-review-retry {
   border-color: color-mix(in srgb, var(--tf-a-ink) 42%, transparent);
   color: var(--tf-a-ink);
   background: color-mix(in srgb, var(--tf-a-ink) 12%, transparent);
+}
+/* 展开/收起按钮：天空卡上随墨色自适应，避免默认蓝色在亮天空上发飘 */
+html[data-engine="timeflow"] .destination-card[data-sky-a] .poi-review-toggle {
+  border-color: color-mix(in srgb, var(--tf-a-ink) 36%, transparent);
+  color: var(--tf-a-ink);
+  background: color-mix(in srgb, var(--tf-a-ink) 8%, transparent);
 }
 
 /* 自动推算微标签：天空卡上改为墨色自适应，避免浅灰字在白 pill 上像空白 */
