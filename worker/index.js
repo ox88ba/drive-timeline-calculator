@@ -225,7 +225,11 @@ async function aiAnalysis(request, env) {
     return error(502, 'AI_PROVIDER_FAILED', 'AI 分析服务暂时不可用，请稍后重试。');
   }
   let parsed;
-  try { parsed = JSON.parse(String(data?.choices?.[0]?.message?.content || '').replace(/^```(?:json)?\s*|\s*```$/g, '').trim()); } catch { return error(502, 'AI_INVALID_RESPONSE', 'AI 分析未返回可用结果，请重试。'); }
+  const aiContent = String(data?.choices?.[0]?.message?.content || '').replace(/^```(?:json)?\s*|\s*```$/g, '').trim();
+  try { parsed = JSON.parse(aiContent); } catch {
+    try { const match = aiContent.match(/\{[\s\S]*\}/); parsed = match ? JSON.parse(match[0]) : null; } catch { parsed = null; }
+    if (!parsed) return error(502, 'AI_INVALID_RESPONSE', 'AI 分析未返回可用结果，请重试。');
+  }
   const analysis = normaliseAiResult(parsed, trip);
   if (!analysis) return error(502, 'AI_INVALID_RESPONSE', 'AI 分析结果格式异常，请重试。');
   return json({ fingerprint, analysis });
@@ -276,10 +280,14 @@ ${category.brief}
     });
     if (!response.ok) return error(response.status === 429 ? 429 : 502, 'DOTS_FAILED', response.status === 429 ? 'AI 评价请求较多，请稍后重试。' : 'AI 评价服务暂时不可用，请稍后重试。');
     const data = await response.json();
-    const content = String(data?.choices?.[0]?.message?.content || '').replace(/^```(?:json)?\s*|\s*```$/g, '').trim();
-    let result; try { result = JSON.parse(content); } catch { return error(502, 'DOTS_FORMAT', 'AI 返回格式异常，请重试。'); }
-    if (typeof result.review !== 'string' || !result.review.trim()) return error(502, 'DOTS_FORMAT', 'AI 未返回完整评价，请重试。');
-    return json({analysis: {category: categoryKey, review: result.review.slice(0, 3000)}});
+    const raw = String(data?.choices?.[0]?.message?.content || '').trim();
+    /* dots 是笔记式搜索模型，可能返回围栏 JSON、内嵌 JSON 或直接返回散文，逐级兜底解析 */
+    let review = '';
+    try { const parsed = JSON.parse(raw.replace(/^```(?:json)?\s*|\s*```$/g, '').trim()); if (typeof parsed?.review === 'string') review = parsed.review.trim(); } catch {}
+    if (!review) { const match = raw.match(/\{[\s\S]*\}/); if (match) { try { const parsed = JSON.parse(match[0]); if (typeof parsed?.review === 'string') review = parsed.review.trim(); } catch {} } }
+    if (!review && raw.length >= 40 && !/^[{<]/.test(raw)) review = raw;
+    if (!review) return error(502, 'DOTS_FORMAT', 'AI 未返回完整评价，请重试。');
+    return json({analysis: {category: categoryKey, review: review.slice(0, 3000)}});
   } catch { return error(504, 'DOTS_TIMEOUT', 'AI 评价响应超时，请稍后重试。'); }
 }
 
