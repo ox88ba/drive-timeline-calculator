@@ -553,10 +553,18 @@
   }
   function setDeparture() { const date = $('#departureDate').value; const time = $('#departureTime').value; const next = SolarPhotography.chinaDateTimeToDate(`${date}T${time}`); if (!next || Number.isNaN(next.getTime())) return; trip.initialDepartureTime = next.toISOString(); calculate(); persist(); render(); }
   function setQuickDeparture(value) { const next = SolarPhotography.chinaDateTimeToDate(value); if (!next) return; trip.initialDepartureTime = next.toISOString(); calculate(); persist(); render(); }
-  /* 快捷出发档位相对当前时间生成：今天傍晚（过时自动滚到明晚）+ 明早两档 */
+  /* 快捷出发 = 下一个「休 ≥5 天」法定节假日的前一天的 12:00 / 15:00 / 17:00 / 18:00。
+     数据：国务院办公厅《关于2026年部分节假日安排的通知》（国办发明电〔2025〕7号），
+     每年 11 月新通知发布后在此追加下一年数据；表内没有未来假期时退回相对档位 */
+  const LONG_HOLIDAYS = [
+    { name: '春节', start: '2026-02-15', end: '2026-02-23' },
+    { name: '劳动节', start: '2026-05-01', end: '2026-05-05' },
+    { name: '国庆节', start: '2026-10-01', end: '2026-10-07' },
+  ];
   function buildQuickStarts() {
     const host = document.querySelector('.quick-starts'); if (!host) return;
     host.querySelectorAll('[data-quick-start]').forEach((node) => node.remove());
+    const lead = host.querySelector('span');
     const pad = (n) => String(n).padStart(2, '0');
     const chinaLocal = (daysAhead, hour, minute) => {
       const now = SolarPhotography.chinaParts(new Date());
@@ -564,12 +572,29 @@
       return `${day.getUTCFullYear()}-${pad(day.getUTCMonth() + 1)}-${pad(day.getUTCDate())}T${pad(hour)}:${pad(minute)}:00`;
     };
     const nowMs = Date.now();
-    const evening = SolarPhotography.chinaDateTimeToDate(chinaLocal(0, 18, 0));
+    const chinaNow = SolarPhotography.chinaParts(new Date());
+    const todayStr = `${chinaNow.year}-${pad(chinaNow.month)}-${pad(chinaNow.day)}`;
     const slots = [];
-    if (evening && evening.getTime() > nowMs + 15 * 60000) slots.push({ value: chinaLocal(0, 18, 0), label: '今天 18:00' });
-    else slots.push({ value: chinaLocal(1, 18, 0), label: '明晚 18:00' });
-    slots.push({ value: chinaLocal(1, 5, 30), label: '明早 05:30' });
-    slots.push({ value: chinaLocal(1, 8, 0), label: '明早 08:00' });
+    const nextHoliday = LONG_HOLIDAYS.find((item) => item.start > todayStr);
+    if (nextHoliday) {
+      const dayBefore = new Date(new Date(`${nextHoliday.start}T00:00:00Z`).getTime() - 86400000);
+      const y = dayBefore.getUTCFullYear(); const m = pad(dayBefore.getUTCMonth() + 1); const d = pad(dayBefore.getUTCDate());
+      const dateLabel = `${dayBefore.getUTCMonth() + 1}/${dayBefore.getUTCDate()}`;
+      [12, 15, 17, 18].forEach((hour) => {
+        const value = `${y}-${m}-${d}T${pad(hour)}:00:00`;
+        const time = SolarPhotography.chinaDateTimeToDate(value);
+        if (time && time.getTime() > nowMs + 15 * 60000) slots.push({ value, label: `${dateLabel} ${pad(hour)}:00` });
+      });
+      if (slots.length && lead) lead.textContent = `${nextHoliday.name}前出发`;
+    }
+    if (!slots.length) {
+      if (lead) lead.textContent = '快捷出发';
+      const evening = SolarPhotography.chinaDateTimeToDate(chinaLocal(0, 18, 0));
+      if (evening && evening.getTime() > nowMs + 15 * 60000) slots.push({ value: chinaLocal(0, 18, 0), label: '今天 18:00' });
+      else slots.push({ value: chinaLocal(1, 18, 0), label: '明晚 18:00' });
+      slots.push({ value: chinaLocal(1, 5, 30), label: '明早 05:30' });
+      slots.push({ value: chinaLocal(1, 8, 0), label: '明早 08:00' });
+    }
     slots.forEach((slot) => {
       const button = document.createElement('button');
       button.type = 'button'; button.dataset.quickStart = slot.value; button.textContent = slot.label;
