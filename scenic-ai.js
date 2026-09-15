@@ -52,6 +52,10 @@
   function splitReview(review) {
     let blocks = String(review || '').split(/\n{2,}/).map((s) => s.trim()).filter(Boolean);
     if (blocks.length === 1) blocks = blocks[0].split(/\n/).map((s) => s.trim()).filter(Boolean);
+    /* 模型偶发整段无换行输出：按固定小节标题切句，保证结论独立成段 */
+    if (blocks.length === 1 && blocks[0].length > 120) {
+      blocks = blocks[0].split(/(?=(?:Dots AI综合体验评级|值得去的理由|可能劝退|常见好评点|常见吐槽点|门票与开放时间的核实提示|人均与排队情况的核实提示|自驾友好度|招牌菜|适合谁|补充建议)[:：])/u).map((s) => s.trim()).filter(Boolean);
+    }
     const lead = (blocks[0] || '').replace(/^一句话结论[:：]\s*/, '');
     return { lead, rest: blocks.slice(1) };
   }
