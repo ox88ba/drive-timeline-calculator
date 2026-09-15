@@ -16,7 +16,7 @@
   const dockShell = document.querySelector('.trip-dock'); const dockToggle = $('#dockToggle'); const dockTitle = document.querySelector('.dock-title');
   let routeCache = readJson(ROUTE_CACHE_KEY, {}); let sunsetCache = readJson(SUNSET_CACHE_KEY, {}); let elevationCache = readJson(ELEVATION_CACHE_KEY, {});
   let searchTimers = new Map(); let activeDockId = null; let dockPointer = null; let dockSuppressClickUntil = 0; let dockToastTimer = null; let mapGesture = null; let routeRebuildVersion = 0; let mapRenderVersion = 0; let amapLoadPromise = null; let amapMap = null; let amapOverlays = []; let mapCenterAction = () => {}; let turnstileWidgetId = null; let turnstileToken = ''; let turnstileReadyTimer = null; let aiTurnstileWidgetId = null; let aiTurnstileToken = ''; let aiTurnstileReadyTimer = null; let aiLoading = false; let aiLastError = ''; let aiCache = readJson(AI_ANALYSIS_CACHE_KEY, null);
-  let mapReadyPromise = Promise.resolve();
+  let mapReadyPromise = Promise.resolve(); let lastMapSignature = ''; let mapRebuildTimer = null;
   let lastTimeSnapshot = new Map(); /* destination.id -> { arrival, departure } 上一次 render 的时刻文本 */
   const flashSuppress = new Set();  /* 用户刚直接操作过的卡片 id：本次重算不 flash */
   const newId = () => (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`);
@@ -340,9 +340,19 @@
       console.warn('高德地图底图加载失败', error);
     }
   }
+  function mapSignature(data) { if (data.message) return `msg:${data.message}`; return [trip.startLocation ? elevationKey(trip.startLocation) : '', ...data.legs.map((leg) => `${locationText(leg.destination.location)}:${leg.destination.route?.distanceMeters ?? 'x'}:${leg.destination.route?.polyline?.length ?? 0}`)].join('|'); }
+  /* 路线逐条刷新时不再立刻销毁重建地图：内容签名没变就直接跳过，
+     变了则防抖 800ms——进度加载期间旧地图保持不动，全部就绪后一次性重绘 */
   function renderMap() {
-    const version = ++mapRenderVersion; disposeAmap(); mapCenterAction = () => {}; const data = mapPreviewData(); if (data.message) { mapReadyPromise = Promise.resolve(); mapNode.replaceChildren(); mapNode.textContent = data.message; return; }
-    renderFallbackMap(data); mapReadyPromise = API_BASE_URL ? renderAmapMap(data, version) : Promise.resolve();
+    const signature = mapSignature(mapPreviewData());
+    if (signature === lastMapSignature && !mapRebuildTimer) return;
+    lastMapSignature = signature;
+    clearTimeout(mapRebuildTimer);
+    mapReadyPromise = new Promise((resolve) => { mapRebuildTimer = setTimeout(() => { mapRebuildTimer = null; renderMapNow().then(resolve, resolve); }, 800); });
+  }
+  function renderMapNow() {
+    const version = ++mapRenderVersion; disposeAmap(); mapCenterAction = () => {}; const data = mapPreviewData(); if (data.message) { mapNode.replaceChildren(); mapNode.textContent = data.message; return Promise.resolve(); }
+    renderFallbackMap(data); return API_BASE_URL ? renderAmapMap(data, version) : Promise.resolve();
   }
   function bindMapGestures(svg, scene) { let scale = 1; let tx = 0; let ty = 0; const paint = () => scene.setAttribute('transform', `translate(${tx} ${ty}) scale(${scale})`); svg.addEventListener('wheel', (event) => { event.preventDefault(); scale = Math.max(.7, Math.min(4, scale * (event.deltaY < 0 ? 1.12 : .89))); paint(); }, { passive: false }); svg.addEventListener('pointerdown', (event) => { mapGesture = { x: event.clientX, y: event.clientY, tx, ty }; svg.setPointerCapture(event.pointerId); }); svg.addEventListener('pointermove', (event) => { if (!mapGesture) return; tx = mapGesture.tx + (event.clientX - mapGesture.x) * 1.4; ty = mapGesture.ty + (event.clientY - mapGesture.y) * 1.4; paint(); }); svg.addEventListener('pointerup', () => { mapGesture = null; }); return () => { mapGesture = null; scale = 1; tx = 0; ty = 0; paint(); }; }
   // A deliberate reset should feel immediate after the user has panned or
