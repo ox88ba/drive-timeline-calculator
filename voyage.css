@@ -874,8 +874,8 @@ html[data-skin="voyage"][data-engine="timeflow"] .destination-card[data-sky-a] .
 html[data-skin="voyage"][data-engine="timeflow"] .destination-card[data-sky-a] .poi-review-error { color: #a32332; }
 /* Arrival hints share one line; compact padding leaves room on 375–430px phones. */
 html[data-engine="timeflow"] .arrival-hints { display: flex; flex-wrap: nowrap; align-items: center; gap: 5px; margin-top: 7px; min-width: 0; }
-html[data-engine="timeflow"] .arrival-hints .tf-daylight,
-html[data-engine="timeflow"] .arrival-hints .altitude-warning { margin: 0; padding: 3px 6px; letter-spacing: 0; font-size: clamp(8px, 2.45vw, 10px); white-space: nowrap; }
+html[data-engine="timeflow"] .destination-card[data-sky-a] .arrival-hints .tf-daylight,
+html[data-engine="timeflow"] .destination-card[data-sky-a] .arrival-hints .altitude-warning { display: inline-flex; align-items: center; box-sizing: border-box; margin: 0; padding: 3px 6px; line-height: 1.4; letter-spacing: 0; font-size: clamp(8px, 2.45vw, 10px); white-space: nowrap; }
 html[data-skin="voyage"] .route-status,
 html[data-skin="voyage"] .poi-review-title { white-space: normal; overflow-wrap: anywhere; height: auto; }
 @media (max-width: 600px) {
@@ -889,9 +889,9 @@ html[data-skin="voyage"] .poi-review-title { white-space: normal; overflow-wrap:
 #clearTripDialog { margin: auto; padding: 0; border: 0; border-radius: 18px; width: min(355px, calc(100vw - 40px)); background: transparent; color: var(--ink); }
 #clearTripDialog::backdrop { background: rgba(10, 16, 28, .5); backdrop-filter: blur(4px); }
 #clearTripDialog .delete-modal { width: 100%; box-sizing: border-box; }
-.safe-area-cover { display: none; }
+/* Safari owns the unsafe inset (viewport-fit=contain); paint its canvas solid. */
+html[data-skin="voyage"] { background-color: #0b0e14; }
+html[data-skin="voyage"][data-theme="light"] { background-color: #f7f8fa; }
 @media (max-width: 760px) {
-  .safe-area-cover { display: block; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); background: #0b0e14; z-index: 1000; pointer-events: none; }
-  html[data-theme="light"] .safe-area-cover { background: #f7f8fa; }
-  html[data-skin="voyage"] .trip-dock { border-top-left-radius: 0; border-top-right-radius: 0; }
+  html[data-skin="voyage"] .trip-dock { border-top-left-radius: 0; border-top-right-radius: 0; padding-top: 7px; backdrop-filter: none; -webkit-backdrop-filter: none; }
 }

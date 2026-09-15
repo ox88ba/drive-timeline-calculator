@@ -197,13 +197,17 @@
     }
     var url = tripUrl();
     if (!url) { toast('链接生成失败，请重试'); return; }
-    var nameInput = document.getElementById('shareNameInput');
-    var title = (nameInput && nameInput.value.trim()) || '我的自驾行程';
+    // Trip dates use Beijing time, regardless of the sharing device's timezone.
+    var departureMs = Date.parse(trip.initialDepartureTime);
+    var datePrefix = Number.isFinite(departureMs)
+      ? new Date(departureMs + 8 * 3600000).toISOString().slice(5, 10).replace('-', '/') : '';
+    var originName = trip.startLocation && trip.startLocation.name || '起点';
+    var title = datePrefix + originName + '出发，快来查看我的自驾行程！';
     var button = event.currentTarget;
     button.disabled = true;
     try {
       // Call inside the user's click gesture; do not wait for image generation.
-      await navigator.share({ title: title, text: '查看我的自驾行程', url: url });
+      await navigator.share({ title: title, text: title, url: url });
       toast('行程链接已分享');
     } catch (error) {
       if (error.name !== 'AbortError') {

@@ -20,7 +20,7 @@
     var theme = effective();
     root.dataset.theme = theme;
     var meta = document.querySelector('meta[name="theme-color"]');
-    if (meta) meta.setAttribute('content', theme === 'light' ? '#f2f4f8' : '#07090d');
+    if (meta) meta.setAttribute('content', theme === 'light' ? '#f7f8fa' : '#0b0e14');
   }
   apply();
 
