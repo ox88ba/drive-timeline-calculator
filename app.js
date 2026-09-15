@@ -16,7 +16,7 @@
   const dockShell = document.querySelector('.trip-dock'); const dockToggle = $('#dockToggle'); const dockTitle = document.querySelector('.dock-title');
   let routeCache = readJson(ROUTE_CACHE_KEY, {}); let sunsetCache = readJson(SUNSET_CACHE_KEY, {}); let elevationCache = readJson(ELEVATION_CACHE_KEY, {});
   let searchTimers = new Map(); let activeDockId = null; let dockPointer = null; let dockSuppressClickUntil = 0; let dockToastTimer = null; let mapGesture = null; let routeRebuildVersion = 0; let mapRenderVersion = 0; let amapLoadPromise = null; let amapMap = null; let amapOverlays = []; let mapCenterAction = () => {}; let turnstileWidgetId = null; let turnstileToken = ''; let turnstileReadyTimer = null; let aiTurnstileWidgetId = null; let aiTurnstileToken = ''; let aiTurnstileReadyTimer = null; let aiLoading = false; let aiLastError = ''; let aiCache = readJson(AI_ANALYSIS_CACHE_KEY, null);
-  let mapReadyPromise = Promise.resolve(); let lastMapSignature = ''; let mapRebuildTimer = null;
+  let mapReadyPromise = Promise.resolve(); let lastMapSignature = ''; let mapBatchDepth = 0;
   let lastTimeSnapshot = new Map(); /* destination.id -> { arrival, departure } 上一次 render 的时刻文本 */
   const flashSuppress = new Set();  /* 用户刚直接操作过的卡片 id：本次重算不 flash */
   const newId = () => (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`);
@@ -207,6 +207,10 @@
     // objects. Re-read the next leg after every request rather than iterating a
     // stale snapshot. A new rebuild cancels the older queue cleanly.
     const version = ++routeRebuildVersion; const destinationIds = activeLegs().map((leg) => leg.destination.id);
+    mapBatchDepth++;
+    ++mapRenderVersion; // Invalidate an SDK load belonging to the previous graph.
+    if (!amapMap) lastMapSignature = '';
+    try {
     clearActiveRoutes(); calculate(); persist(); render();
     for (const destinationId of destinationIds) {
       if (version !== routeRebuildVersion) break;
@@ -214,6 +218,7 @@
       if (!leg) continue;
       await loadRoute(leg, force);
     }
+    } finally { mapBatchDepth--; renderMap(); }
   }
 
   function badge(moment) { if (!moment) return null; const node = document.createElement('b'); node.className = `photo-badge ${moment.kind}`; node.textContent = moment.label; return node; }
@@ -328,33 +333,38 @@
   async function renderAmapMap(data, version) {
     try {
       const AMap = await loadAmap(); if (version !== mapRenderVersion) return;
-      mapNode.replaceChildren(); const canvas = document.createElement('div'); canvas.className = 'amap-route-canvas'; canvas.setAttribute('aria-label', '可缩放的高德地图路线预览'); mapNode.append(canvas);
-      const map = new AMap.Map(canvas, { viewMode: '2D', zoom: 5, zooms: [3, 12], resizeEnable: true, showLabel: true }); amapMap = map;
+      if (!amapMap) {
+        mapNode.replaceChildren(); const canvas = document.createElement('div'); canvas.className = 'amap-route-canvas'; canvas.setAttribute('aria-label', '可缩放的高德地图路线预览'); mapNode.append(canvas);
+        amapMap = new AMap.Map(canvas, { viewMode: '2D', zoom: 5, zooms: [3, 12], resizeEnable: true, showLabel: true });
+      }
+      const map = amapMap;
       const overlays = [];
       data.legs.forEach((leg) => { const path = (leg.destination.route?.polyline || []).map((point) => [Number(point[0]), Number(point[1])]).filter(([x, y]) => Number.isFinite(x) && Number.isFinite(y)); if (path.length >= 2) { const line = new AMap.Polyline({ path, strokeColor: '#315efb', strokeOpacity: .9, strokeWeight: 5, strokeLineJoin: 'round', strokeLineCap: 'round', zIndex: 20 }); overlays.push(line); } });
       [{ location: trip.startLocation, number: '01' }, ...data.legs.map((leg) => ({ location: leg.destination.location, number: String(leg.index + 2).padStart(2, '0') }))].forEach((marker) => { const instance = new AMap.Marker({ position: [Number(marker.location.longitude), Number(marker.location.latitude)], content: mapMarkerContent(marker.number), offset: new AMap.Pixel(-15, -15), anchor: 'top-left', zIndex: 40 }); overlays.push(instance); });
-      amapOverlays = overlays; map.add(overlays); map.setFitView(overlays, false, [36, 36, 36, 36]);
+      map.remove(amapOverlays); amapOverlays = overlays; map.add(overlays);
+      map.setZooms([3, 13]); map.setFitView(overlays, true, [36, 36, 36, 36]);
       // The fitted view is allowed to reveal the complete route, but the user
       // cannot zoom out into an unusably empty world map or into street-level detail.
       setTimeout(() => { if (version !== mapRenderVersion || amapMap !== map) return; const fitted = Number(map.getZoom()); if (Number.isFinite(fitted)) map.setZooms([Math.max(3, Math.floor(fitted) - 1), Math.min(13, Math.max(9, Math.ceil(fitted) + 3))]); }, 0);
     } catch (error) {
-      if (version === mapRenderVersion) renderFallbackMap(data, '地图底图暂不可用，已显示道路轨迹示意。');
+      if (version === mapRenderVersion) { disposeAmap(); renderFallbackMap(data, '地图底图暂不可用，已显示道路轨迹示意。'); }
       console.warn('高德地图底图加载失败', error);
     }
   }
-  function mapSignature(data) { if (data.message) return `msg:${data.message}`; return [trip.startLocation ? elevationKey(trip.startLocation) : '', ...data.legs.map((leg) => `${locationText(leg.destination.location)}:${leg.destination.route?.distanceMeters ?? 'x'}:${leg.destination.route?.polyline?.length ?? 0}`)].join('|'); }
-  /* 路线逐条刷新时不再立刻销毁重建地图：内容签名没变就直接跳过，
-     变了则防抖 800ms——进度加载期间旧地图保持不动，全部就绪后一次性重绘 */
+  function mapSignature(data) { if (data.message) return `msg:${data.message}`; return JSON.stringify([data.points, data.legs.map((leg) => [leg.index, leg.destination.route?.polyline || []])]); }
+  // Commit the whole route batch, rather than fitting each slow network response.
   function renderMap() {
+    mapNode.setAttribute('aria-busy', String(mapBatchDepth > 0));
+    if (mapBatchDepth) return;
     const signature = mapSignature(mapPreviewData());
-    if (signature === lastMapSignature && !mapRebuildTimer) return;
+    if (signature === lastMapSignature && (amapMap || mapNode.childNodes.length)) return;
     lastMapSignature = signature;
-    clearTimeout(mapRebuildTimer);
-    mapReadyPromise = new Promise((resolve) => { mapRebuildTimer = setTimeout(() => { mapRebuildTimer = null; renderMapNow().then(resolve, resolve); }, 800); });
+    mapReadyPromise = renderMapNow();
   }
   function renderMapNow() {
-    const version = ++mapRenderVersion; disposeAmap(); mapCenterAction = () => {}; const data = mapPreviewData(); if (data.message) { mapNode.replaceChildren(); mapNode.textContent = data.message; return Promise.resolve(); }
-    renderFallbackMap(data); return API_BASE_URL ? renderAmapMap(data, version) : Promise.resolve();
+    const version = ++mapRenderVersion; const data = mapPreviewData(); if (data.message) { disposeAmap(); mapCenterAction = () => {}; mapNode.replaceChildren(); mapNode.textContent = data.message; return Promise.resolve(); }
+    if (API_BASE_URL) return renderAmapMap(data, version);
+    renderFallbackMap(data); return Promise.resolve();
   }
   function bindMapGestures(svg, scene) { let scale = 1; let tx = 0; let ty = 0; const paint = () => scene.setAttribute('transform', `translate(${tx} ${ty}) scale(${scale})`); svg.addEventListener('wheel', (event) => { event.preventDefault(); scale = Math.max(.7, Math.min(4, scale * (event.deltaY < 0 ? 1.12 : .89))); paint(); }, { passive: false }); svg.addEventListener('pointerdown', (event) => { mapGesture = { x: event.clientX, y: event.clientY, tx, ty }; svg.setPointerCapture(event.pointerId); }); svg.addEventListener('pointermove', (event) => { if (!mapGesture) return; tx = mapGesture.tx + (event.clientX - mapGesture.x) * 1.4; ty = mapGesture.ty + (event.clientY - mapGesture.y) * 1.4; paint(); }); svg.addEventListener('pointerup', () => { mapGesture = null; }); return () => { mapGesture = null; scale = 1; tx = 0; ty = 0; paint(); }; }
   // A deliberate reset should feel immediate after the user has panned or
@@ -365,7 +375,10 @@
     /* 存储中的路线摘要不含道路几何（localStorage 配额设计），
        回访/分享链接打开的行程直接截图会拿不到轨迹 → 先逐段补抓几何 */
     const missingGeometry = activeLegs().filter((leg) => !(Array.isArray(leg.destination.route?.polyline) && leg.destination.route.polyline.length >= 2));
-    for (const leg of missingGeometry) await loadRoute(leg, true);
+    mapBatchDepth++;
+    try { for (const leg of missingGeometry) await loadRoute(leg, true); }
+    finally { mapBatchDepth--; renderMap(); }
+    if (mapBatchDepth) throw new Error('导航路线仍在加载，请完成后再生成长图。');
     const data = mapPreviewData();
     if (data.message) throw new Error('网页路线预览尚未完成，请先点击“刷新预览”获取道路轨迹后再生成长图。');
     if (typeof globalThis.html2canvas !== 'function') throw new Error('地图快照组件未加载。');
@@ -454,7 +467,9 @@
         const flags = document.createElement('div'); flags.className = 'card-flags';
         const nightIndex = overnights.get(destination.id);
         if (nightIndex) { const badge = document.createElement('span'); badge.className = 'overnight-badge'; badge.dataset.overnight = String(nightIndex); badge.textContent = `🌙 第 ${nightIndex} 晚`; flags.append(badge); card.dataset.overnight = String(nightIndex); }
-        const tag = document.createElement('span'); tag.className = 'derived-tag'; tag.textContent = '自动推算'; if (tag.textContent.trim()) flags.append(tag);
+        if (nightIndex) {
+          const tag = document.createElement('span'); tag.className = 'derived-tag'; tag.textContent = '自动推算'; flags.append(tag);
+        }
         if (flags.childElementCount) card.querySelector('[data-place-meta]').after(flags);
       }
       if (destination.hasDepartureDisplay && !destination.isSkipped) { departureStrong.classList.add('is-derived'); departureStrong.dataset.derived = '1'; }
@@ -541,6 +556,11 @@
   }
   let lastClear = null; /* { trip, routeCache, aiCache } 清空前快照 */
   function clearTripWithUndo() {
+    const dialog = $('#clearTripDialog');
+    if (!dialog.open) dialog.showModal();
+    $('#clearTripCancel').focus();
+  }
+  function performClearTripWithUndo() {
     lastClear = { trip, routeCache, aiCache };
     trip = createTrip(); routeCache = {}; aiCache = null;
     localStorage.removeItem(AI_ANALYSIS_CACHE_KEY);
@@ -553,6 +573,17 @@
       calculate(); persist(); render(); rebuildRouteGraph();
     });
   }
+  $('#clearTripCancel').addEventListener('click', () => $('#clearTripDialog').close());
+  $('#clearTripConfirm').addEventListener('click', () => {
+    const dialog = $('#clearTripDialog');
+    if (!dialog.open) return;
+    dialog.close();
+    performClearTripWithUndo();
+  });
+  $('#clearTripDialog').addEventListener('click', (event) => {
+    if (event.target === event.currentTarget) event.currentTarget.close();
+  });
+  $('#clearTripDialog').addEventListener('close', () => $('#clearTrip').focus());
   function setDeparture() { const date = $('#departureDate').value; const time = $('#departureTime').value; const next = SolarPhotography.chinaDateTimeToDate(`${date}T${time}`); if (!next || Number.isNaN(next.getTime())) return; trip.initialDepartureTime = next.toISOString(); calculate(); persist(); render(); }
   function setQuickDeparture(value) { const next = SolarPhotography.chinaDateTimeToDate(value); if (!next) return; trip.initialDepartureTime = next.toISOString(); calculate(); persist(); render(); }
   /* 快捷出发 = 下一个「休 ≥5 天」法定节假日的前一天的 12:00 / 15:00 / 17:00 / 18:00。

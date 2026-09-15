@@ -83,7 +83,7 @@
 
   function paint(box, id, category, location, visit, request) {
     box.replaceChildren();
-    box.append(node('span', 'DOTS / AI 评价', 'section-label'));
+    box.append(node('span', 'AI 评价', 'section-label'));
     const title = node('h4', `${CATEGORY_LABEL[category] || '地点'} · ${location.name}`.slice(0, 40), 'poi-review-title');
     box.append(title);
     const body = node('div', '', 'poi-review-body');

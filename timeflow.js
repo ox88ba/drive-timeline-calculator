@@ -124,6 +124,13 @@
     return t;
   }
 
+  function momentLabel(timeEl, period) {
+    var photo = timeEl.querySelector('.photo-badge');
+    var label = photo ? photo.textContent.trim() : '';
+    return ['黄金时刻', '火烧云时刻', '蓝调时刻'].includes(label)
+      ? '黄昏 · ' + label : PALETTES[period].label;
+  }
+
   /* ---------- 目的地卡片 ---------- */
   function processCard(card) {
     var arrivalEl = card.querySelector('[data-arrival]');
@@ -155,7 +162,7 @@
       card.dataset.skyA = ka;
       card.style.setProperty('--tf-a-bg', bgFor(ka, a.minutes, sr, ss));
       card.style.setProperty('--tf-a-ink', PALETTES[ka].ink);
-      arrivalEl.append(chip('tf-moment', PALETTES[ka].label));
+      arrivalEl.append(chip('tf-moment', momentLabel(arrivalEl, ka)));
 
       /* 日光余额：到达景区还剩多少天光可玩 */
       if (sr != null && ss != null) {
@@ -174,13 +181,26 @@
       }
     }
 
+    // Keep the independent altitude warning after the daylight chip in one row.
+    var hints = card.querySelector('.arrival-hints');
+    var daylight = card.querySelector('.tf-daylight');
+    var altitude = card.querySelector('.altitude-warning');
+    if (daylight || altitude) {
+      if (!hints) {
+        hints = document.createElement('div'); hints.className = 'arrival-hints';
+        card.querySelector('.time-grid').after(hints);
+      }
+      if (daylight) hints.append(daylight);
+      if (altitude) hints.append(altitude);
+    } else if (hints) hints.remove();
+
     var d = (depBlock && !depBlock.hidden && depEl) ? parseDT(rawText(depEl)) : null;
     if (d) {
       var kb = periodFor(d.minutes, sr, ss);
       card.dataset.skyB = kb;
       card.style.setProperty('--tf-b-bg', bgFor(kb, d.minutes, sr, ss));
       card.style.setProperty('--tf-b-ink', PALETTES[kb].ink);
-      depEl.append(chip('tf-moment', PALETTES[kb].label));
+      depEl.append(chip('tf-moment', momentLabel(depEl, kb)));
       card.classList.add('tf-has-dep');
       if (a && d.day !== a.day) card.dataset.tfOvernight = '1';
     }

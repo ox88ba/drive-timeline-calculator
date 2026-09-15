@@ -189,6 +189,32 @@
     } else fallback();
   }
 
+  async function shareLink(event) {
+    if (typeof navigator.share !== 'function') { copyLink(); return; }
+    var trip = readTrip();
+    if (!trip || !trip.destinations || !trip.destinations.length) {
+      toast('请先添加目的地再分享链接'); return;
+    }
+    var url = tripUrl();
+    if (!url) { toast('链接生成失败，请重试'); return; }
+    var nameInput = document.getElementById('shareNameInput');
+    var title = (nameInput && nameInput.value.trim()) || '我的自驾行程';
+    var button = event.currentTarget;
+    button.disabled = true;
+    try {
+      // Call inside the user's click gesture; do not wait for image generation.
+      await navigator.share({ title: title, text: '查看我的自驾行程', url: url });
+      toast('行程链接已分享');
+    } catch (error) {
+      if (error.name !== 'AbortError') {
+        toast('系统分享暂不可用，可点击“复制行程链接”后发送');
+        button.textContent = '复制行程链接';
+        button.removeEventListener('click', shareLink);
+        button.addEventListener('click', copyLink);
+      }
+    } finally { button.disabled = false; }
+  }
+
   /* ---------- 模板行程 ---------- */
   /* 坐标为景区公开大致位置；载入后仍可在卡片中重新搜索精确 POI */
   var TEMPLATES = [
@@ -521,14 +547,14 @@
   /* ---------- 挂载入口 ---------- */
   function mount() {
     checkLoadUndo();
-    /* 分享弹窗里加「复制链接」 */
+    /* 分享弹窗里使用系统链接分享；不支持时提供明确的复制后备入口。 */
     var shareActions = document.querySelector('.share-actions');
     if (shareActions && !document.getElementById('tkCopyLink')) {
       var linkBtn = document.createElement('button');
       linkBtn.id = 'tkCopyLink';
       linkBtn.type = 'button';
-      linkBtn.textContent = '复制行程链接';
-      linkBtn.addEventListener('click', copyLink);
+      linkBtn.textContent = typeof navigator.share === 'function' ? '分享行程链接' : '复制行程链接';
+      linkBtn.addEventListener('click', shareLink);
       shareActions.append(linkBtn);
     }
 

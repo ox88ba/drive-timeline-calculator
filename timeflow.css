@@ -86,6 +86,9 @@ html[data-engine="timeflow"] .tf-chip {
   letter-spacing: .04em;
   white-space: nowrap;
 }
+/* Keep source badges for recalculation; show only the combined sky chip. */
+html[data-engine="timeflow"] .destination-card[data-sky-a] [data-arrival]:has(.tf-moment) > .photo-badge,
+html[data-engine="timeflow"] .destination-card[data-sky-b] [data-departure]:has(.tf-moment) > .photo-badge { display: none; }
 html[data-engine="timeflow"] .tf-moment {
   color: var(--tf-a-ink, #e9edf6);
   background: color-mix(in srgb, var(--tf-a-ink, #fff) 16%, transparent);
@@ -418,7 +421,7 @@ html[data-engine="timeflow"] .tf-rhythm-warn {
   font-size: 11px;
   line-height: 1.5;
 }
-/* 当日风险：独占一行居中显示在当天节律条下方 */
+/* 当日风险：独占一行，左对齐 */
 html[data-engine="timeflow"] .tf-rhythm-day-warn {
   display: block;
   grid-column: 1 / -1;
@@ -426,7 +429,7 @@ html[data-engine="timeflow"] .tf-rhythm-day-warn {
   color: #ff98a0;
   font: 600 10px/1.45 "Noto Sans SC", sans-serif;
   font-style: normal;
-  text-align: center;
+  text-align: left;
 }
 @media (prefers-reduced-motion: reduce) {
   html[data-engine="timeflow"] .tf-rb-latenight { animation: none; }
