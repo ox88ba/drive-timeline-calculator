@@ -48,7 +48,7 @@
 
     var stops = Math.max(0, names.length - 1);
     var dist = (document.getElementById('totalDistance') || {}).textContent || '—';
-    var meta = stops > 0 ? stops + ' STOPS · ' + dist.trim() : 'ROADBOOK';
+    var meta = stops > 0 ? stops + '站 · ' + dist.trim() : 'ROADBOOK';
 
     var sig = names.join('→') + '|' + meta;
     if (breadcrumb.dataset.vgSig === sig) return; /* 幂等短路 */
@@ -98,6 +98,10 @@
   new MutationObserver(sync).observe(document.documentElement, {
     attributes: true,
     attributeFilter: ['data-skin']
+  });
+
+  document.getElementById('backToTop').addEventListener('click', function () {
+    window.scrollTo({ top: 0, behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' });
   });
 
   if (document.readyState === 'loading') {

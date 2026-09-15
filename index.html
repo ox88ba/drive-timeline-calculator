@@ -11,7 +11,7 @@
     <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;600&family=Sora:wght@400;600;700&family=Noto+Sans+SC:wght@400;500;600;700&family=Noto+Serif+SC:wght@600;700&family=Source+Serif+4:opsz,wght@8..60,300;8..60,400;8..60,600&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="./styles.css?v=20260916-ui5" />
     <link rel="stylesheet" href="./timeflow.css?v=20260916-dusk-chip" />
-    <link rel="stylesheet" href="./voyage.css?v=20260916-safe-viewport" />
+    <link rel="stylesheet" href="./voyage.css?v=20260916-average-speed" />
     <link rel="stylesheet" href="./tripkit.css?v=20260916-theme1" />
   </head>
   <body>
@@ -25,7 +25,7 @@
         <div class="hero-row">
           <div>
             <h1>时光路书</h1>
-            <p>基于官方导航数据的行程时间轴</p>
+            <p>基于高德导航的行程时间，精确规划未来旅程</p>
           </div>
           <div class="hero-actions">
             <button id="themeToggle" class="icon-button" type="button" aria-label="切换深色浅色模式" title="切换深色浅色模式">☀</button>
@@ -74,8 +74,9 @@
         <button id="addDestination" class="add-destination" type="button"><span>＋</span> 添加目的地</button>
         <button id="returnOrigin" class="return-origin" type="button">添加起点</button>
       </div>
-      <section class="route-preview" aria-label="路线预览"><div class="route-preview-head"><div><span class="section-label">高德道路轨迹</span><h2>路线预览</h2></div><div class="route-preview-actions"><button id="centerRoutePreview" class="refresh-route-preview" type="button" title="将地图恢复到路线默认全览">回到全览</button><button id="refreshRoutePreview" class="refresh-route-preview" type="button" title="重新获取高德道路轨迹并刷新地图预览">刷新预览</button></div></div><div id="routeMap" class="route-map" tabindex="0"></div><div class="preview-summary" aria-label="路线统计"><div><span>总里程</span><strong id="previewDistance">—</strong></div><div><span>驾驶时间</span><strong id="previewDrive">—</strong></div><div><span>停留时间</span><strong id="previewStay">0分</strong></div><div><span>总行程</span><strong id="previewDuration">—</strong></div><div class="preview-departure"><span>出发时间</span><strong id="previewDeparture">—</strong></div><div class="preview-arrival"><span>最终抵达</span><strong id="previewFinalArrival">—</strong></div></div></section>
+      <section class="route-preview" aria-label="路线预览"><div class="route-preview-head"><div><span class="section-label">高德道路轨迹</span><h2>路线预览</h2></div><div class="route-preview-actions"><button id="centerRoutePreview" class="refresh-route-preview" type="button" title="将地图恢复到路线默认全览">回到全览</button><button id="refreshRoutePreview" class="refresh-route-preview" type="button" title="重新获取高德道路轨迹并刷新地图预览">刷新预览</button></div></div><div id="routeMap" class="route-map" tabindex="0"></div><div class="preview-summary" aria-label="路线统计"><div><span>总里程</span><strong id="previewDistance">—</strong></div><div><span>驾驶时间</span><strong id="previewDrive">—</strong></div><div><span>停留时间</span><strong id="previewStay">0分</strong></div><div><span>总行程</span><strong id="previewDuration">—</strong></div><div class="preview-speed"><span>平均时速</span><strong id="previewAverageSpeed">待导航</strong><small>该时速为总里程/驾驶时间得到，仅供验证长途驾驶可行性</small></div><div class="preview-departure"><span>出发时间</span><strong id="previewDeparture">—</strong></div><div class="preview-arrival"><span>最终抵达</span><strong id="previewFinalArrival">—</strong></div></div></section>
       <p class="footnote">路线、里程与预计驾驶时长均来自高德地图官方驾车路径规划。未来行程使用地图服务返回的基础预计时长。</p>
+      <button id="backToTop" class="back-to-top" type="button">回到顶部</button>
     </main>
 
     <template id="destinationTemplate">
@@ -148,8 +149,8 @@
     <script src="./share.js?v=20260916-fix1"></script>
     <script src="./scenic-ai.js?v=20260916-map-stability"></script>
     <script src="./tripkit.js?v=20260916-link-title"></script>
-    <script src="./app.js?v=20260916-derived-badge"></script>
+    <script src="./app.js?v=20260916-average-speed"></script>
     <script src="./timeflow.js?v=20260916-dusk-chip"></script>
-    <script src="./voyage.js?v=20260913-voyage1"></script>
+    <script src="./voyage.js?v=20260916-summary-center"></script>
   </body>
 </html>
