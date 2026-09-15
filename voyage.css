@@ -609,10 +609,10 @@ html[data-skin="voyage"][data-theme="light"] #themeToggle {
   box-shadow: 0 0 12px rgba(185, 116, 15, .12);
 }
 
-/* ---------- 磨砂白玻璃卡 ---------- */
+/* ---------- 磨砂白玻璃卡（天空卡除外，天空始终归 timeflow） ---------- */
 html[data-skin="voyage"][data-theme="light"] .summary,
-html[data-skin="voyage"][data-theme="light"] .start-card,
-html[data-skin="voyage"][data-theme="light"] .destination-card,
+html[data-skin="voyage"][data-theme="light"] .start-card:not([data-sky-a]),
+html[data-skin="voyage"][data-theme="light"] .destination-card:not([data-sky-a]),
 html[data-skin="voyage"][data-theme="light"] .route-preview,
 html[data-skin="voyage"][data-theme="light"] .tf-rhythm,
 html[data-skin="voyage"][data-theme="light"] .ai-analysis {
@@ -637,9 +637,9 @@ html[data-skin="voyage"][data-theme="light"] .summary-arrival strong {
 }
 html[data-skin="voyage"][data-theme="light"] .summary-arrival strong { animation-name: vg-glow-light; }
 
-/* ---------- 站点编号 / pill 按钮 ---------- */
-html[data-skin="voyage"][data-theme="light"] .station-number,
-html[data-skin="voyage"][data-theme="light"] .start-number {
+/* ---------- 站点编号 / pill 按钮（天空卡编号沿用天色描边） ---------- */
+html[data-skin="voyage"][data-theme="light"] .destination-card:not([data-sky-a]) .station-number,
+html[data-skin="voyage"][data-theme="light"] .start-card:not([data-sky-a]) .start-number {
   -webkit-text-stroke: 1px rgba(185, 116, 15, .75);
 }
 html[data-skin="voyage"][data-theme="light"] .quick-starts button,
