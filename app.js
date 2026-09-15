@@ -164,7 +164,18 @@
     catch (error) { const current = trip.destinations.find((item) => item.id === id); if (current) current.elevationError = error.message; }
     finally { const current = trip.destinations.find((item) => item.id === id); if (current) delete current.elevationLoading; calculate(); persist(); render(); }
   }
-  function refreshElevations() { trip.destinations.forEach((item) => { if (item.location && !Number.isFinite(item.elevationMeters)) loadElevation(item.id); }); }
+  const originElevationPending = new Set();
+  async function loadOriginElevation() {
+    const location = trip.startLocation; if (!isValidLocation(location)) return;
+    const key = elevationKey(location); if (Number.isFinite(elevationCache[key]) || originElevationPending.has(key)) return;
+    originElevationPending.add(key);
+    try {
+      let data; try { data = await requestJson(`/api/elevation?latitude=${encodeURIComponent(location.latitude)}&longitude=${encodeURIComponent(location.longitude)}`); } catch { data = await requestPublicElevation(location); }
+      elevationCache[key] = Math.round(data.elevationMeters); persist(); render();
+    } catch { /* 起点海拔只用于高原爬升提示，失败时退化为「高原」 */ }
+    finally { originElevationPending.delete(key); }
+  }
+  function refreshElevations() { loadOriginElevation(); trip.destinations.forEach((item) => { if (item.location && !Number.isFinite(item.elevationMeters)) loadElevation(item.id); }); }
 
   function clearActiveRoutes() { trip.destinations.forEach((item) => { if (!item.isSkipped) { item.route = null; delete item.routeError; delete item.routeLoading; } }); }
   async function loadRoute(leg, force = false) {
