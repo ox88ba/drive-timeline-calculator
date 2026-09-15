@@ -13,9 +13,9 @@ html[data-engine="timeflow"] .destination-card.photo-golden,
 html[data-engine="timeflow"] .destination-card.photo-sunset,
 html[data-engine="timeflow"] .destination-card.photo-blue {
   padding-bottom: 0;
-  border: 1px solid rgba(255, 255, 255, .12);
+  border: 1px solid rgba(255, 255, 255, .08);
   background: var(--tf-a-bg, linear-gradient(160deg, rgba(255, 255, 255, .058), rgba(255, 255, 255, .026)));
-  box-shadow: 0 20px 48px rgba(0, 0, 0, .5), inset 0 1px 0 rgba(255, 255, 255, .12);
+  box-shadow: 0 20px 48px rgba(0, 0, 0, .5);
   transition: background .6s ease, box-shadow .3s ease;
 }
 
@@ -161,9 +161,9 @@ html[data-engine="timeflow"] .destination-card[data-sky-b] .departure-block stro
 
 /* ---------- 出发点卡片：出发时刻的天空 ---------- */
 html[data-engine="timeflow"] .start-card[data-sky-a] {
-  border: 1px solid rgba(255, 255, 255, .12);
+  border: 1px solid rgba(255, 255, 255, .08);
   background: var(--tf-a-bg);
-  box-shadow: 0 20px 48px rgba(0, 0, 0, .5), inset 0 1px 0 rgba(255, 255, 255, .12);
+  box-shadow: 0 20px 48px rgba(0, 0, 0, .5);
 }
 html[data-engine="timeflow"] .start-card[data-sky-a] .section-label,
 html[data-engine="timeflow"] .start-card[data-sky-a] .date-field,

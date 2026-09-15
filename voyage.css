@@ -239,9 +239,8 @@ html[data-skin="voyage"] .route-connector::before {
 }
 @keyframes vg-road-flow { to { background-position: 0 10px; } }
 html[data-skin="voyage"] .route-connector::after {
-  color: var(--accent);
-  background: transparent;
-  text-shadow: 0 0 10px rgba(240, 179, 94, .5);
+  /* 流光虚线已表达方向，去掉重复的 ↓ 箭头 */
+  content: none;
 }
 html[data-skin="voyage"] .route-connector { color: #6d7590; }
 html[data-skin="voyage"] .connector-route { color: var(--accent); }

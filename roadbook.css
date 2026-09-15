@@ -151,9 +151,8 @@ html[data-skin="roadbook"] .route-connector::before {
   to { background-position: 0 11px; }
 }
 html[data-skin="roadbook"] .route-connector::after {
-  color: var(--accent);
-  background: transparent;
-  text-shadow: 0 0 10px rgba(255, 177, 77, .55);
+  /* 流光虚线已表达方向，去掉重复的 ↓ 箭头 */
+  content: none;
 }
 html[data-skin="roadbook"] .connector-route { color: var(--accent); }
 html[data-skin="roadbook"] .skipped-connector { color: #5d6675; }
