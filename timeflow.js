@@ -17,7 +17,7 @@
                  cel: { core: 'rgba(255,232,182,.98)', glow: 'rgba(255,178,108,.42)', size: 104 } },
     morning:   { label: '上午', top: '#4f96e0', bot: '#c3e2f8', ink: '#0a2a4e',
                  cel: { core: 'rgba(255,246,214,.98)', glow: 'rgba(255,226,150,.40)', size: 88 } },
-    noon:      { label: '正午', top: '#2e7bd4', bot: '#aad8f6', ink: '#f2f9ff',
+    noon:      { label: '正午', top: '#2e7bd4', bot: '#aad8f6', ink: '#082747',
                  cel: { core: 'rgba(255,252,230,1)', glow: 'rgba(255,242,182,.48)', size: 96 } },
     afternoon: { label: '下午', top: '#5d9bd8', bot: '#f2d9a8', ink: '#0d2c4c',
                  cel: { core: 'rgba(255,238,196,.98)', glow: 'rgba(255,206,130,.42)', size: 90 } },

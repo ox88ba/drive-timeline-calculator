@@ -5,13 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="theme-color" content="#f5f6f8" />
     <script src="./skin.js?v=20260913-voyage1"></script>
-    <title>自驾时间计算器</title>
+    <title>时光路书</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;600&family=Sora:wght@400;600;700&family=Noto+Sans+SC:wght@400;500;600;700&family=Noto+Serif+SC:wght@600;700&family=Source+Serif+4:opsz,wght@8..60,300;8..60,400;8..60,600&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="./styles.css?v=20260916-fix1" />
     <link rel="stylesheet" href="./roadbook.css?v=20260916-fix2" />
-    <link rel="stylesheet" href="./timeflow.css?v=20260916-fix2" />
+    <link rel="stylesheet" href="./timeflow.css?v=20260916-fix3" />
     <link rel="stylesheet" href="./voyage.css?v=20260916-fix2" />
     <link rel="stylesheet" href="./ledger.css?v=20260913-ab1" />
     <link rel="stylesheet" href="./gallery.css?v=20260916-fix1" />
@@ -24,10 +24,10 @@
     </aside>
     <main class="shell">
       <header class="hero">
-        <div class="eyebrow"><span class="pulse"></span> ROADBOOK / 01</div>
+        <div class="eyebrow"><span class="pulse"></span> 高德导航 / 高速优先</div>
         <div class="hero-row">
           <div>
-            <h1>自驾时间计算器</h1>
+            <h1>时光路书</h1>
             <p>基于官方导航数据的行程时间轴</p>
           </div>
           <div class="hero-actions">
@@ -86,7 +86,7 @@
         <div class="route-connector" data-route-connector></div>
         <div class="date-divider" hidden></div>
         <section class="destination-card">
-          <div class="card-topline"><span class="station-number" data-station-number></span><span class="section-label">目的地</span><div class="card-actions"><button type="button" data-action="toggle-skip" aria-label="暂时跳过目的地">◌</button><button type="button" data-action="move-up" aria-label="上移">↑</button><button type="button" data-action="move-down" aria-label="下移">↓</button><button type="button" data-action="remove" aria-label="删除">×</button></div></div>
+          <div class="card-topline"><span class="station-number" data-station-number></span><span class="section-label">目的地</span><div class="card-actions"><button type="button" data-action="retry-route" aria-label="重新获取导航数据" title="重新获取导航数据">⟳</button><button type="button" data-action="toggle-skip" aria-label="暂时跳过目的地">◌</button><button type="button" data-action="move-up" aria-label="上移">↑</button><button type="button" data-action="move-down" aria-label="下移">↓</button><button type="button" data-action="remove" aria-label="删除">×</button></div></div>
           <div class="place-picker">
             <input data-place-input type="search" autocomplete="off" placeholder="搜索地点，如：大柴旦翡翠湖" />
             <span class="search-mark">⌕</span>
@@ -145,8 +145,8 @@
     <script src="./share.js?v=20260916-fix1"></script>
     <script src="./scenic-ai.js?v=20260911-guides2"></script>
     <script src="./tripkit.js?v=20260916-fix1"></script>
-    <script src="./app.js?v=20260916-fix1"></script>
-    <script src="./timeflow.js?v=20260916-fix1"></script>
+    <script src="./app.js?v=20260916-fix3"></script>
+    <script src="./timeflow.js?v=20260916-fix3"></script>
     <script src="./voyage.js?v=20260913-voyage1"></script>
     <script src="./ledger.js?v=20260913-ab1"></script>
     <script src="./gallery.js?v=20260913-ab1"></script>

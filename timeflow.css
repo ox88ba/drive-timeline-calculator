@@ -28,16 +28,16 @@ html[data-engine="timeflow"] .destination-card[data-sky-a] .place-picker input::
   color: color-mix(in srgb, var(--tf-a-ink) 45%, transparent);
 }
 html[data-engine="timeflow"] .destination-card[data-sky-a] .place-address {
-  color: color-mix(in srgb, var(--tf-a-ink) 78%, transparent);
+  color: color-mix(in srgb, var(--tf-a-ink) 86%, transparent);
 }
 html[data-engine="timeflow"] .destination-card[data-sky-a] .place-meta {
-  color: color-mix(in srgb, var(--tf-a-ink) 62%, transparent);
+  color: color-mix(in srgb, var(--tf-a-ink) 74%, transparent);
 }
 html[data-engine="timeflow"] .destination-card[data-sky-a] .search-mark {
-  color: color-mix(in srgb, var(--tf-a-ink) 55%, transparent);
+  color: color-mix(in srgb, var(--tf-a-ink) 66%, transparent);
 }
-html[data-engine="timeflow"] .destination-card[data-sky-a] .time-grid > span {
-  color: color-mix(in srgb, var(--tf-a-ink) 78%, transparent);
+html[data-engine="timeflow"] .destination-card[data-sky-a] .time-grid span {
+  color: color-mix(in srgb, var(--tf-a-ink) 88%, transparent);
 }
 html[data-engine="timeflow"] .destination-card[data-sky-a] .time-grid strong {
   color: var(--tf-a-ink);
@@ -45,8 +45,8 @@ html[data-engine="timeflow"] .destination-card[data-sky-a] .time-grid strong {
   text-shadow: 0 1px 12px rgba(0, 0, 0, .18);
 }
 html[data-engine="timeflow"] .destination-card[data-sky-a] .route-status {
-  color: color-mix(in srgb, var(--tf-a-ink) 82%, transparent);
-  background: color-mix(in srgb, var(--tf-a-ink) 10%, transparent);
+  color: color-mix(in srgb, var(--tf-a-ink) 92%, transparent);
+  background: color-mix(in srgb, var(--tf-a-ink) 14%, transparent);
 }
 html[data-engine="timeflow"] .destination-card[data-sky-a] .route-status.error {
   color: #ffd7da;
@@ -62,7 +62,17 @@ html[data-engine="timeflow"] .destination-card[data-sky-a] .station-number {
   text-shadow: 0 0 10px color-mix(in srgb, var(--tf-a-ink) 45%, transparent);
 }
 html[data-engine="timeflow"] .destination-card[data-sky-a] .section-label {
-  color: color-mix(in srgb, var(--tf-a-ink) 60%, transparent);
+  color: color-mix(in srgb, var(--tf-a-ink) 72%, transparent);
+}
+/* 高原提示：用墨色徽章保证任意天空下可读 */
+html[data-engine="timeflow"] .destination-card[data-sky-a] .altitude-warning {
+  width: fit-content;
+  padding: 3px 9px;
+  border-radius: 999px;
+  color: var(--tf-a-ink);
+  background: color-mix(in srgb, var(--tf-a-ink) 13%, transparent);
+  border: 1px solid color-mix(in srgb, var(--tf-a-ink) 22%, transparent);
+  font-weight: 600;
 }
 
 /* 时段徽章 & 日光余额 */
@@ -152,7 +162,7 @@ html[data-engine="timeflow"] .departure-block {
   transition: background .6s ease;
 }
 html[data-engine="timeflow"] .destination-card[data-sky-b] .departure-block > span {
-  color: color-mix(in srgb, var(--tf-b-ink) 68%, transparent);
+  color: color-mix(in srgb, var(--tf-b-ink) 82%, transparent);
 }
 html[data-engine="timeflow"] .destination-card[data-sky-b] .departure-block strong {
   color: var(--tf-b-ink);
@@ -168,7 +178,7 @@ html[data-engine="timeflow"] .start-card[data-sky-a] {
 html[data-engine="timeflow"] .start-card[data-sky-a] .section-label,
 html[data-engine="timeflow"] .start-card[data-sky-a] .date-field,
 html[data-engine="timeflow"] .start-card[data-sky-a] .time-field {
-  color: color-mix(in srgb, var(--tf-a-ink) 66%, transparent);
+  color: color-mix(in srgb, var(--tf-a-ink) 80%, transparent);
 }
 html[data-engine="timeflow"] .start-card[data-sky-a] .place-picker input {
   color: var(--tf-a-ink);
@@ -189,12 +199,19 @@ html[data-engine="timeflow"] .start-card[data-sky-a] .search-mark {
   color: color-mix(in srgb, var(--tf-a-ink) 55%, transparent);
 }
 html[data-engine="timeflow"] .start-card[data-sky-a] .quick-starts > span {
-  color: color-mix(in srgb, var(--tf-a-ink) 62%, transparent);
+  color: color-mix(in srgb, var(--tf-a-ink) 74%, transparent);
 }
 html[data-engine="timeflow"] .start-card[data-sky-a] .quick-starts button {
-  border-color: color-mix(in srgb, var(--tf-a-ink) 18%, transparent);
+  border-color: color-mix(in srgb, var(--tf-a-ink) 26%, transparent);
   color: color-mix(in srgb, var(--tf-a-ink) 88%, transparent);
   background: color-mix(in srgb, var(--tf-a-ink) 10%, transparent);
+}
+html[data-engine="timeflow"] .start-card[data-sky-a] .quick-starts button.active {
+  border-color: var(--tf-a-ink);
+  color: var(--tf-a-ink);
+  background: color-mix(in srgb, var(--tf-a-ink) 24%, transparent);
+  box-shadow: 0 0 0 1px var(--tf-a-ink), 0 4px 14px color-mix(in srgb, var(--tf-a-ink) 35%, transparent);
+  font-weight: 700;
 }
 
 /* ---------- 跨天分割线：日出刻度 ---------- */
@@ -420,14 +437,14 @@ html[data-engine="timeflow"] .tf-whatif-head {
   gap: 10px;
 }
 html[data-engine="timeflow"] .tf-whatif-head > span {
-  color: color-mix(in srgb, var(--tf-a-ink, #98a1b1) 62%, transparent);
+  color: color-mix(in srgb, var(--tf-a-ink, #98a1b1) 74%, transparent);
   font: 500 9px/1 "DM Mono", monospace;
   letter-spacing: .12em;
 }
 html[data-engine="timeflow"] .tf-whatif-head output {
-  color: var(--accent);
-  font: 500 12px/1 "DM Mono", monospace;
-  text-shadow: 0 0 12px rgba(255, 177, 77, .35);
+  color: var(--tf-a-ink);
+  font: 600 12px/1 "DM Mono", monospace;
+  text-shadow: 0 1px 10px color-mix(in srgb, var(--tf-a-ink) 30%, transparent);
 }
 html[data-engine="timeflow"] .tf-whatif input[type="range"] {
   width: 100%;
