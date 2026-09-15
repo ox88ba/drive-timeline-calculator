@@ -623,3 +623,13 @@ html[data-engine="timeflow"] .destination-card[data-sky-a] .poi-review-retry {
   color: var(--tf-a-ink);
   background: color-mix(in srgb, var(--tf-a-ink) 12%, transparent);
 }
+
+/* 自动推算微标签：天空卡上改为墨色自适应，避免浅灰字在白 pill 上像空白 */
+html[data-engine="timeflow"] .destination-card[data-sky-a] .derived-tag {
+  color: color-mix(in srgb, var(--tf-a-ink) 78%, transparent);
+  background: color-mix(in srgb, var(--tf-a-ink) 12%, transparent);
+}
+html[data-engine="timeflow"] .destination-card[data-sky-a] .overnight-badge {
+  color: color-mix(in srgb, var(--tf-a-ink) 88%, transparent);
+  background: color-mix(in srgb, var(--tf-a-ink) 14%, transparent);
+}
