@@ -101,7 +101,8 @@
   });
 
   document.getElementById('backToTop').addEventListener('click', function () {
-    window.scrollTo({ top: 0, behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' });
+    var target = window.matchMedia('(max-width: 760px)').matches ? document.querySelector('.shell') : window;
+    target.scrollTo({ top: 0, behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' });
   });
 
   if (document.readyState === 'loading') {

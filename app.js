@@ -13,6 +13,12 @@
   const START_LOCATION = { name: '重庆市', address: '重庆市', latitude: 29.56301, longitude: 106.55156, poiId: 'START_CHONGQING' };
   const $ = (selector) => document.querySelector(selector);
   const timelineNode = $('#timeline'); const dockNode = $('#tripDock'); const mapNode = $('#routeMap'); const template = $('#destinationTemplate');
+  const mapFrame = document.createElement('div'); mapFrame.className = 'route-map-frame';
+  mapNode.before(mapFrame); mapFrame.append(mapNode);
+  const mapLoading = document.createElement('div'); mapLoading.className = 'route-map-loading'; mapLoading.hidden = true;
+  mapLoading.setAttribute('role', 'status'); mapLoading.setAttribute('aria-live', 'polite');
+  mapLoading.innerHTML = '<i class="spinner" aria-hidden="true"></i><span>正在刷新导航路线…<small>正在获取道路数据，请稍候</small></span>';
+  mapFrame.append(mapLoading);
   const dockShell = document.querySelector('.trip-dock'); const dockToggle = $('#dockToggle'); const dockTitle = document.querySelector('.dock-title');
   let routeCache = readJson(ROUTE_CACHE_KEY, {}); let sunsetCache = readJson(SUNSET_CACHE_KEY, {}); let elevationCache = readJson(ELEVATION_CACHE_KEY, {});
   let searchTimers = new Map(); let activeDockId = null; let dockPointer = null; let dockSuppressClickUntil = 0; let dockToastTimer = null; let mapGesture = null; let routeRebuildVersion = 0; let mapRenderVersion = 0; let amapLoadPromise = null; let amapMap = null; let amapOverlays = []; let mapCenterAction = () => {}; let turnstileWidgetId = null; let turnstileToken = ''; let turnstileReadyTimer = null; let aiTurnstileWidgetId = null; let aiTurnstileToken = ''; let aiTurnstileReadyTimer = null; let aiLoading = false; let aiLastError = ''; let aiCache = readJson(AI_ANALYSIS_CACHE_KEY, null);
@@ -353,13 +359,25 @@
   }
   function mapSignature(data) { if (data.message) return `msg:${data.message}`; return JSON.stringify([data.points, data.legs.map((leg) => [leg.index, leg.destination.route?.polyline || []])]); }
   // Commit the whole route batch, rather than fitting each slow network response.
+  let mapPaintPending = false;
+  function updateMapLoading() {
+    const busy = mapBatchDepth > 0 || mapPaintPending;
+    mapLoading.hidden = !busy;
+    mapNode.setAttribute('aria-busy', String(busy));
+  }
   function renderMap() {
-    mapNode.setAttribute('aria-busy', String(mapBatchDepth > 0));
+    updateMapLoading();
     if (mapBatchDepth) return;
     const signature = mapSignature(mapPreviewData());
     if (signature === lastMapSignature && (amapMap || mapNode.childNodes.length)) return;
     lastMapSignature = signature;
-    mapReadyPromise = renderMapNow();
+    mapPaintPending = true; updateMapLoading();
+    const pending = renderMapNow();
+    mapReadyPromise = pending;
+    pending.finally(() => {
+      if (mapReadyPromise !== pending) return;
+      mapPaintPending = false; updateMapLoading();
+    });
   }
   function renderMapNow() {
     const version = ++mapRenderVersion; const data = mapPreviewData(); if (data.message) { disposeAmap(); mapCenterAction = () => {}; mapNode.replaceChildren(); mapNode.textContent = data.message; return Promise.resolve(); }
