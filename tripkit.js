@@ -532,22 +532,28 @@
       shareActions.append(linkBtn);
     }
 
-    /* 行程操作区加「模板 / 快照」 */
+    /* 行程操作区加「载入模板 / 保存方案 / 分享」 */
     var actions = document.querySelector('.trip-actions');
     if (actions && !document.getElementById('tkTemplatesBtn')) {
       var tplBtn = document.createElement('button');
       tplBtn.id = 'tkTemplatesBtn';
       tplBtn.className = 'tk-action-btn';
       tplBtn.type = 'button';
-      tplBtn.textContent = '✦ 模板行程';
+      tplBtn.textContent = '✦ 载入模板行程';
       tplBtn.addEventListener('click', openTemplates);
       var snapBtn = document.createElement('button');
       snapBtn.id = 'tkSnapshotsBtn';
       snapBtn.className = 'tk-action-btn';
       snapBtn.type = 'button';
-      snapBtn.textContent = '▣ 方案快照';
+      snapBtn.textContent = '▣ 保存本方案';
       snapBtn.addEventListener('click', openSnapshots);
-      actions.append(tplBtn, snapBtn);
+      var shareBtn = document.createElement('button');
+      shareBtn.id = 'tkShareBtn';
+      shareBtn.className = 'tk-action-btn';
+      shareBtn.type = 'button';
+      shareBtn.textContent = '↗ 分享';
+      shareBtn.addEventListener('click', function () { var open = document.getElementById('openShare'); if (open) open.click(); });
+      actions.append(tplBtn, snapBtn, shareBtn);
     }
   }
 

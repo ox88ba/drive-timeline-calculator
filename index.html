@@ -3,19 +3,16 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <meta name="theme-color" content="#f5f6f8" />
-    <script src="./skin.js?v=20260913-voyage1"></script>
+    <meta name="theme-color" content="#07090d" />
+    <script src="./skin.js?v=20260916-theme1"></script>
     <title>时光路书</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;600&family=Sora:wght@400;600;700&family=Noto+Sans+SC:wght@400;500;600;700&family=Noto+Serif+SC:wght@600;700&family=Source+Serif+4:opsz,wght@8..60,300;8..60,400;8..60,600&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="./styles.css?v=20260916-saf1" />
-    <link rel="stylesheet" href="./roadbook.css?v=20260916-saf1" />
+    <link rel="stylesheet" href="./styles.css?v=20260916-theme1" />
     <link rel="stylesheet" href="./timeflow.css?v=20260916-alt2" />
-    <link rel="stylesheet" href="./voyage.css?v=20260916-saf1" />
-    <link rel="stylesheet" href="./ledger.css?v=20260916-saf1" />
-    <link rel="stylesheet" href="./gallery.css?v=20260916-saf1" />
-    <link rel="stylesheet" href="./tripkit.css?v=20260912-tripkit1" />
+    <link rel="stylesheet" href="./voyage.css?v=20260916-theme1" />
+    <link rel="stylesheet" href="./tripkit.css?v=20260916-theme1" />
   </head>
   <body>
     <aside class="trip-dock is-collapsed" aria-label="行程导航">
@@ -31,9 +28,9 @@
             <p>基于官方导航数据的行程时间轴</p>
           </div>
           <div class="hero-actions">
-            <button id="skinToggle" class="icon-button" type="button" aria-label="返回简洁版" title="返回简洁版">↩</button>
-            <button id="openShare" class="icon-button" type="button" aria-label="分享行程" title="分享行程">↗</button>
-            <button id="clearTrip" class="icon-button" type="button" aria-label="清空行程">⌫</button>
+            <button id="themeToggle" class="icon-button" type="button" aria-label="切换深色浅色模式" title="切换深色浅色模式">☀</button>
+            <button id="openShare" class="hero-text-button" type="button">分享</button>
+            <button id="clearTrip" class="hero-text-button" type="button">清空</button>
           </div>
         </div>
       </header>
@@ -75,7 +72,7 @@
 
       <div class="trip-actions">
         <button id="addDestination" class="add-destination" type="button"><span>＋</span> 添加目的地</button>
-        <button id="returnOrigin" class="return-origin" type="button">↩ 回到起点</button>
+        <button id="returnOrigin" class="return-origin" type="button">添加起点</button>
       </div>
       <section class="route-preview" aria-label="路线预览"><div class="route-preview-head"><div><span class="section-label">高德道路轨迹</span><h2>路线预览</h2></div><div class="route-preview-actions"><button id="centerRoutePreview" class="refresh-route-preview" type="button" title="将地图恢复到路线默认全览">回到全览</button><button id="refreshRoutePreview" class="refresh-route-preview" type="button" title="重新获取高德道路轨迹并刷新地图预览">刷新预览</button></div></div><div id="routeMap" class="route-map" tabindex="0"></div><div class="preview-summary" aria-label="路线统计"><div><span>总里程</span><strong id="previewDistance">—</strong></div><div><span>驾驶时间</span><strong id="previewDrive">—</strong></div><div><span>停留时间</span><strong id="previewStay">0分</strong></div><div><span>总行程</span><strong id="previewDuration">—</strong></div><div class="preview-departure"><span>出发时间</span><strong id="previewDeparture">—</strong></div><div class="preview-arrival"><span>最终抵达</span><strong id="previewFinalArrival">—</strong></div></div></section>
       <p class="footnote">路线、里程与预计驾驶时长均来自高德地图官方驾车路径规划。未来行程使用地图服务返回的基础预计时长。</p>
@@ -144,11 +141,9 @@
     <script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" defer></script>
     <script src="./share.js?v=20260916-fix1"></script>
     <script src="./scenic-ai.js?v=20260916-dots1"></script>
-    <script src="./tripkit.js?v=20260916-fix1"></script>
-    <script src="./app.js?v=20260916-map1"></script>
+    <script src="./tripkit.js?v=20260916-theme1"></script>
+    <script src="./app.js?v=20260916-theme1"></script>
     <script src="./timeflow.js?v=20260916-dots1"></script>
     <script src="./voyage.js?v=20260913-voyage1"></script>
-    <script src="./ledger.js?v=20260913-ab1"></script>
-    <script src="./gallery.js?v=20260913-ab1"></script>
   </body>
 </html>

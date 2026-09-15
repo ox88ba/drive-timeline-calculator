@@ -82,46 +82,46 @@
 }
 
 /* ---------- 暗夜 / 时光皮肤：深色玻璃 ---------- */
-html[data-skin="roadbook"] .tk-action-btn,
-html[data-engine="timeflow"] .tk-action-btn {
+html[data-theme="dark"] .tk-action-btn,
+html[data-theme="dark"] .tk-action-btn {
   border-color: rgba(255, 255, 255, .14);
   background: rgba(255, 255, 255, .06); color: #e9edf6;
 }
-html[data-skin="roadbook"] .tk-modal,
-html[data-engine="timeflow"] .tk-modal {
+html[data-theme="dark"] .tk-modal,
+html[data-theme="dark"] .tk-modal {
   border-color: rgba(255, 255, 255, .12);
   background: linear-gradient(180deg, #131b31, #0d1426); color: #e9edf6;
   box-shadow: 0 28px 80px rgba(0, 0, 0, .5);
 }
-html[data-skin="roadbook"] .tk-tpl-card,
-html[data-skin="roadbook"] .tk-snap-card,
-html[data-engine="timeflow"] .tk-tpl-card,
-html[data-engine="timeflow"] .tk-snap-card {
+html[data-theme="dark"] .tk-tpl-card,
+html[data-theme="dark"] .tk-snap-card,
+html[data-theme="dark"] .tk-tpl-card,
+html[data-theme="dark"] .tk-snap-card {
   border-color: rgba(255, 255, 255, .10); background: rgba(255, 255, 255, .05);
 }
-html[data-skin="roadbook"] .tk-tpl-card:hover,
-html[data-engine="timeflow"] .tk-tpl-card:hover { border-color: rgba(255, 209, 138, .55); box-shadow: 0 12px 30px rgba(0, 0, 0, .35); }
-html[data-skin="roadbook"] .tk-note, html[data-skin="roadbook"] .tk-tpl-desc,
-html[data-skin="roadbook"] .tk-snap-meta, html[data-skin="roadbook"] .tk-snap-head span,
-html[data-skin="roadbook"] .tk-tpl-top span,
-html[data-engine="timeflow"] .tk-note, html[data-engine="timeflow"] .tk-tpl-desc,
-html[data-engine="timeflow"] .tk-snap-meta, html[data-engine="timeflow"] .tk-snap-head span,
-html[data-engine="timeflow"] .tk-tpl-top span { color: rgba(233, 237, 246, .62); }
-html[data-skin="roadbook"] .tk-tpl-route,
-html[data-engine="timeflow"] .tk-tpl-route { color: #ffd98a; }
-html[data-skin="roadbook"] .tk-save-row input,
-html[data-engine="timeflow"] .tk-save-row input {
+html[data-theme="dark"] .tk-tpl-card:hover,
+html[data-theme="dark"] .tk-tpl-card:hover { border-color: rgba(255, 209, 138, .55); box-shadow: 0 12px 30px rgba(0, 0, 0, .35); }
+html[data-theme="dark"] .tk-note, html[data-theme="dark"] .tk-tpl-desc,
+html[data-theme="dark"] .tk-snap-meta, html[data-theme="dark"] .tk-snap-head span,
+html[data-theme="dark"] .tk-tpl-top span,
+html[data-theme="dark"] .tk-note, html[data-theme="dark"] .tk-tpl-desc,
+html[data-theme="dark"] .tk-snap-meta, html[data-theme="dark"] .tk-snap-head span,
+html[data-theme="dark"] .tk-tpl-top span { color: rgba(233, 237, 246, .62); }
+html[data-theme="dark"] .tk-tpl-route,
+html[data-theme="dark"] .tk-tpl-route { color: #ffd98a; }
+html[data-theme="dark"] .tk-save-row input,
+html[data-theme="dark"] .tk-save-row input {
   border-color: rgba(255, 255, 255, .14); background: rgba(255, 255, 255, .06); color: #e9edf6;
 }
-html[data-skin="roadbook"] .tk-primary,
-html[data-engine="timeflow"] .tk-primary { background: linear-gradient(135deg, #ffb45c, #ff8a3d); color: #241300; }
-html[data-skin="roadbook"] .tk-snap-actions button,
-html[data-engine="timeflow"] .tk-snap-actions button {
+html[data-theme="dark"] .tk-primary,
+html[data-theme="dark"] .tk-primary { background: linear-gradient(135deg, #ffb45c, #ff8a3d); color: #241300; }
+html[data-theme="dark"] .tk-snap-actions button,
+html[data-theme="dark"] .tk-snap-actions button {
   border-color: rgba(255, 255, 255, .16); background: rgba(255, 255, 255, .06); color: #e9edf6;
 }
-html[data-skin="roadbook"] .tk-snap-actions button:hover,
-html[data-engine="timeflow"] .tk-snap-actions button:hover { border-color: rgba(255, 209, 138, .6); color: #ffd98a; }
-html[data-skin="roadbook"] .tk-table th, html[data-skin="roadbook"] .tk-table td,
-html[data-engine="timeflow"] .tk-table th, html[data-engine="timeflow"] .tk-table td { border-top-color: rgba(255, 255, 255, .10); }
-html[data-skin="roadbook"] .tk-table thead th,
-html[data-engine="timeflow"] .tk-table thead th { color: rgba(233, 237, 246, .55); }
+html[data-theme="dark"] .tk-snap-actions button:hover,
+html[data-theme="dark"] .tk-snap-actions button:hover { border-color: rgba(255, 209, 138, .6); color: #ffd98a; }
+html[data-theme="dark"] .tk-table th, html[data-theme="dark"] .tk-table td,
+html[data-theme="dark"] .tk-table th, html[data-theme="dark"] .tk-table td { border-top-color: rgba(255, 255, 255, .10); }
+html[data-theme="dark"] .tk-table thead th,
+html[data-theme="dark"] .tk-table thead th { color: rgba(233, 237, 246, .55); }
