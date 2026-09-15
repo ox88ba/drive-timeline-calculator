@@ -264,7 +264,8 @@ async function scenicAnalysis(request, env) {
   const visit = {arrivalTime: compactIso(visitRaw.arrivalTime), departureTime: compactIso(visitRaw.departureTime), stayMinutes: compactNumber(visitRaw.stayMinutes, 0, 10080), elevationMeters: compactNumber(visitRaw.elevationMeters, -500, 10000), sunriseAt: compactIso(visitRaw.sunriseAt), sunsetAt: compactIso(visitRaw.sunsetAt)};
   if (!location.name || location.longitude === null || location.latitude === null) return error(400, 'INVALID_POI', '请先选择具体地点。');
   /* Dots POI 评价不再要求人机验证；滥用由入口的按 IP 限流兜底 */
-  try {
+  /* dots 偶发返回非 JSON 散文导致解析失败，格式失败时自动重试一次 */
+  async function attempt() {
     const response = await fetch('https://note3-prev-api.askdiandian.com/v1/chat/completions', {
       method: 'POST', signal: AbortSignal.timeout(45000),
       headers: {'content-type': 'application/json', 'api-key': env.DOTS_API_KEY},
@@ -276,7 +277,7 @@ ${category.brief}
         {role: 'user', content: JSON.stringify({questionSet: category.questions(scenicSubject), category: categoryKey, subject: scenicSubject, selectedPoi: location, visit})}
       ]})
     });
-    if (!response.ok) return error(response.status === 429 ? 429 : 502, 'DOTS_FAILED', response.status === 429 ? 'AI 评价请求较多，请稍后重试。' : 'AI 评价服务暂时不可用，请稍后重试。');
+    if (!response.ok) return {failed: response.status};
     const data = await response.json();
     const raw = String(data?.choices?.[0]?.message?.content || '').trim();
     /* dots 是笔记式搜索模型，可能返回围栏 JSON、内嵌 JSON 或直接返回散文，逐级兜底解析 */
@@ -284,6 +285,13 @@ ${category.brief}
     try { const parsed = JSON.parse(raw.replace(/^```(?:json)?\s*|\s*```$/g, '').trim()); if (typeof parsed?.review === 'string') review = parsed.review.trim(); } catch {}
     if (!review) { const match = raw.match(/\{[\s\S]*\}/); if (match) { try { const parsed = JSON.parse(match[0]); if (typeof parsed?.review === 'string') review = parsed.review.trim(); } catch {} } }
     if (!review && raw.length >= 40 && !/^[{<]/.test(raw)) review = raw;
+    return {review};
+  }
+  try {
+    let result = await attempt();
+    if (!result.review && !result.failed) result = await attempt();
+    if (result.failed) return error(result.failed === 429 ? 429 : 502, 'DOTS_FAILED', result.failed === 429 ? 'AI 评价请求较多，请稍后重试。' : 'AI 评价服务暂时不可用，请稍后重试。');
+    const review = result.review;
     if (!review) return error(502, 'DOTS_FORMAT', 'AI 未返回完整评价，请重试。');
     return json({analysis: {category: categoryKey, review: review.slice(0, 3000)}});
   } catch { return error(504, 'DOTS_TIMEOUT', 'AI 评价响应超时，请稍后重试。'); }
