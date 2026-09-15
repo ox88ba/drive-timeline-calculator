@@ -644,3 +644,8 @@ html[data-skin="ledger"] .scenic-ai-error { color: var(--danger); }
   html[data-skin="ledger"] .tk-action-btn,
   html[data-skin="ledger"] .tk-tpl-card { transition: none; }
 }
+
+/* 移动端吸顶时实色遮住刘海/灵动岛区域 */
+@media (max-width: 760px) {
+  html[data-skin="ledger"] .trip-dock { background: #f4f2ee; }
+}

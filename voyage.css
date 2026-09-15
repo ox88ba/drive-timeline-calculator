@@ -510,3 +510,8 @@ html[data-skin="voyage"] :focus-visible {
   html[data-skin="voyage"] .stay-buttons button:hover,
   html[data-skin="voyage"] .card-actions button:hover { transform: none; }
 }
+
+/* 移动端吸顶时实色遮住刘海/灵动岛区域（安全区内边距由 styles.css 统一处理） */
+@media (max-width: 760px) {
+  html[data-skin="voyage"] .trip-dock { background: #0b0e14; }
+}

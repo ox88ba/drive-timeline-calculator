@@ -488,3 +488,8 @@ html[data-skin="roadbook"] ::selection {
   color: #241703;
   background: rgba(255, 177, 77, .85);
 }
+
+/* 移动端吸顶时实色遮住刘海/灵动岛区域 */
+@media (max-width: 760px) {
+  html[data-skin="roadbook"] .trip-dock { background: #10141b; }
+}

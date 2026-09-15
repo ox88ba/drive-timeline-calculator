@@ -629,7 +629,7 @@ html[data-skin="gallery"] .dock-toast {
   box-shadow: var(--gl-float);
 }
 @media (max-width: 760px) {
-  html[data-skin="gallery"] .trip-dock { border-radius: 0; box-shadow: none; border-bottom: 1px solid var(--line); background: rgba(250, 250, 250, .92); }
+  html[data-skin="gallery"] .trip-dock { border-radius: 0; box-shadow: none; border-bottom: 1px solid var(--line); background: #fafafa; }
 }
 
 /* ---------- 弹窗：白浮层 ---------- */
