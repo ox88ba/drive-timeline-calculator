@@ -214,3 +214,6 @@
 .poi-review-meta { display:block; margin-top:8px; color:var(--muted); font-size:9px; line-height:1.5; }
 .poi-review-error { color:#c2452f; }
 .poi-review-retry { margin-top:7px; padding:4px 11px; border:1px solid var(--line); border-radius:999px; color:var(--ink); background:transparent; font-size:10px; cursor:pointer; }
+.poi-review-lead { font-weight:600; }
+.poi-review-more p + p { margin-top:7px; }
+.poi-review-toggle { margin-top:8px; padding:4px 12px; border:1px solid var(--line); border-radius:999px; color:var(--accent); background:transparent; font-size:10px; font-weight:600; cursor:pointer; }

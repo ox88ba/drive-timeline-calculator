@@ -219,18 +219,20 @@
   function badge(moment) { if (!moment) return null; const node = document.createElement('b'); node.className = `photo-badge ${moment.kind}`; node.textContent = moment.label; return node; }
   function attachTime(node, iso, photo) { node.replaceChildren(); node.append(document.createTextNode(formatDateTime(iso))); if (photo?.moment) node.append(badge(photo.moment)); }
   function updateSummary() { const s = trip.summary; const distance = s.routeChainIsComplete ? formatDistance(s.distanceMeters) : '待导航'; const drive = s.routeChainIsComplete ? formatDuration(s.drivingSeconds) : '待导航'; const stay = formatStay(s.totalStayMinutes); const duration = s.routeChainIsComplete ? formatDuration(s.totalDurationSeconds) : '待导航'; const finalArrival = s.finalArrivalTime ? formatDateTime(s.finalArrivalTime, true) : (trip.destinations.length ? '等待完整导航数据' : '添加目的地后计算'); $('#totalDistance').textContent = distance; $('#totalDrive').textContent = drive; $('#totalStay').textContent = stay; $('#totalDuration').textContent = duration; $('#finalArrival').textContent = finalArrival; $('#previewDistance').textContent = distance; $('#previewDrive').textContent = drive; $('#previewStay').textContent = stay; $('#previewDuration').textContent = duration; $('#previewDeparture').textContent = trip.initialDepartureTime ? formatDateTime(trip.initialDepartureTime, true) : '—'; $('#previewFinalArrival').textContent = finalArrival; }
+  /* 统一转北京时间 ISO（+08:00）：Dots 按字面读取时间，UTC 的 Z 时间会被误当本地时间分析 */
+  const beijingIso = (iso) => { const t = Date.parse(iso); if (!Number.isFinite(t)) return null; return `${new Date(t + 8 * 3600e3).toISOString().slice(0, 19)}+08:00`; };
   function buildAiTrip() {
     const legs = activeLegs(); const summary = trip.summary || {};
     if (!isValidLocation(trip.startLocation) || !legs.length || !summary.routeChainIsComplete || !summary.finalArrivalTime || legs.some((leg) => !leg.destination.route || !leg.destination.arrivalTime)) return null;
     return {
-      departureTime: trip.initialDepartureTime,
+      departureTime: beijingIso(trip.initialDepartureTime),
       startName: locationText(trip.startLocation),
-      summary: { distanceMeters: summary.distanceMeters, drivingSeconds: summary.drivingSeconds, stayMinutes: summary.totalStayMinutes, finalArrivalTime: summary.finalArrivalTime },
+      summary: { distanceMeters: summary.distanceMeters, drivingSeconds: summary.drivingSeconds, stayMinutes: summary.totalStayMinutes, finalArrivalTime: beijingIso(summary.finalArrivalTime) },
       stops: legs.map((leg) => {
         const stop = leg.destination;
-        return { id: stop.id, name: locationText(stop.location), arrivalTime: stop.arrivalTime, departureTime: stop.hasDepartureDisplay ? stop.departureTime : null, stayMinutes: stop.stayMinutes || 0, elevationMeters: Number.isFinite(stop.elevationMeters) ? stop.elevationMeters : null, sunrise: stop.arrivalPhoto?.sunriseAt ? formatTime(stop.arrivalPhoto.sunriseAt) : '', sunset: stop.arrivalPhoto?.sunsetAt ? formatTime(stop.arrivalPhoto.sunsetAt) : '', photoState: stop.arrivalPhoto?.moment?.kind || '' };
+        return { id: stop.id, name: locationText(stop.location), arrivalTime: beijingIso(stop.arrivalTime), departureTime: stop.hasDepartureDisplay ? beijingIso(stop.departureTime) : null, stayMinutes: stop.stayMinutes || 0, elevationMeters: Number.isFinite(stop.elevationMeters) ? stop.elevationMeters : null, sunrise: stop.arrivalPhoto?.sunriseAt ? formatTime(stop.arrivalPhoto.sunriseAt) : '', sunset: stop.arrivalPhoto?.sunsetAt ? formatTime(stop.arrivalPhoto.sunsetAt) : '', photoState: stop.arrivalPhoto?.moment?.kind || '' };
       }),
-      segments: legs.map((leg, index) => ({ fromStopId: index ? legs[index - 1].destination.id : 'start', toStopId: leg.destination.id, fromName: locationText(leg.origin), toName: locationText(leg.destination.location), distanceMeters: leg.destination.route.distanceMeters, durationSeconds: leg.destination.route.durationSeconds, departureTime: plannedDeparture(leg), arrivalTime: leg.destination.arrivalTime }))
+      segments: legs.map((leg, index) => ({ fromStopId: index ? legs[index - 1].destination.id : 'start', toStopId: leg.destination.id, fromName: locationText(leg.origin), toName: locationText(leg.destination.location), distanceMeters: leg.destination.route.distanceMeters, durationSeconds: leg.destination.route.durationSeconds, departureTime: beijingIso(plannedDeparture(leg)), arrivalTime: beijingIso(leg.destination.arrivalTime) }))
     };
   }
   function aiTripSource(tripPayload) { return tripPayload ? JSON.stringify(tripPayload) : ''; }
@@ -618,68 +620,17 @@
   function openRefreshModal() { resetRefreshChallenge(); $('#refreshModal').hidden = false; renderRefreshTurnstile(); }
   function closeRefreshModal() { $('#refreshModal').hidden = true; }
   async function confirmRefresh() { const token = turnstileToken || (globalThis.turnstile && turnstileWidgetId ? globalThis.turnstile.getResponse(turnstileWidgetId) : ''); if (!token) return; const confirm = $('#refreshConfirm'); const status = $('#refreshHumanStatus'); if (confirm) confirm.disabled = true; if (status) status.textContent = '正在确认验证…'; try { await postJson('/api/verify-turnstile', { token }); closeRefreshModal(); showDockToast('正在重新获取高德道路轨迹…'); await rebuildRouteGraph(true); } catch (error) { turnstileToken = ''; if (globalThis.turnstile && turnstileWidgetId) globalThis.turnstile.reset(turnstileWidgetId); if (status) status.textContent = `验证失败：${error.message}`; } }
-  function resetAiChallenge() { aiTurnstileToken = ''; const confirm = $('#aiConfirm'); const status = $('#aiHumanStatus'); if (confirm) confirm.disabled = true; if (status) status.textContent = '请完成 Cloudflare 人机验证'; if (globalThis.turnstile && aiTurnstileWidgetId) globalThis.turnstile.reset(aiTurnstileWidgetId); }
-  function renderAiTurnstile() {
-    const container = $('#aiTurnstile'); const sitekey = String(globalThis.DRIVE_TURNSTILE_SITE_KEY || '').trim();
-    if (!container || !sitekey) { $('#aiHumanStatus').textContent = '人机验证服务未配置，请联系管理员'; return; }
-    if (!globalThis.turnstile) {
-      if (!aiTurnstileReadyTimer) { let attempts = 0; aiTurnstileReadyTimer = setInterval(() => { if (globalThis.turnstile || ++attempts > 40) { clearInterval(aiTurnstileReadyTimer); aiTurnstileReadyTimer = null; if (globalThis.turnstile) renderAiTurnstile(); else $('#aiHumanStatus').textContent = '人机验证加载失败，请刷新页面重试'; } }, 250); }
-      return;
-    }
-    if (aiTurnstileWidgetId) { globalThis.turnstile.reset(aiTurnstileWidgetId); return; }
-    aiTurnstileWidgetId = globalThis.turnstile.render(container, { sitekey, action: 'ai_analysis', theme: 'light', callback: (token) => { aiTurnstileToken = token; $('#aiConfirm').disabled = false; $('#aiHumanStatus').textContent = '验证通过，可以生成分析'; }, 'expired-callback': () => { aiTurnstileToken = ''; $('#aiConfirm').disabled = true; $('#aiHumanStatus').textContent = '验证已过期，请重新验证'; }, 'error-callback': () => { aiTurnstileToken = ''; $('#aiConfirm').disabled = true; $('#aiHumanStatus').textContent = '验证加载失败，请重试'; } });
-  }
   function openAiModal() {
     if (!buildAiTrip()) { showDockToast('请先完成全部官方导航，再进行 AI 行程分析'); return; }
     if (aiResultForCurrentTrip()) { showDockToast('当前行程已有 AI 分析；调整行程后会提示重新生成'); return; }
-    resetAiChallenge(); $('#aiModal').hidden = false; renderAiTurnstile();
+    /* Dots 行程总评不再要求人机验证，弹窗只做数据告知与确认 */
+    const confirm = $('#aiConfirm'); if (confirm) confirm.disabled = false;
+    const status = $('#aiHumanStatus'); if (status) status.textContent = '';
+    $('#aiModal').hidden = false;
   }
-  /* ---------- POI 自动 AI 评价：隐形 Turnstile + 串行队列（无需用户操作） ---------- */
-  let autoTurnstileId = null;
-  let autoTurnstileHost = null;
-  let autoTurnstileWaiter = null;
+  /* ---------- POI 自动 AI 评价：串行队列直发（Dots 接口不再要求人机验证） ---------- */
   const poiQueue = [];
   let poiQueueRunning = false;
-  function teardownAutoTurnstile() {
-    /* 挑战失败/出错时整个摘掉：否则挂件会以错误状态永远卡在右下角 */
-    if (autoTurnstileId && globalThis.turnstile) { try { globalThis.turnstile.remove(autoTurnstileId); } catch { /* 忽略 */ } }
-    autoTurnstileId = null;
-    if (autoTurnstileHost) { autoTurnstileHost.remove(); autoTurnstileHost = null; }
-  }
-  function ensureAutoTurnstile() {
-    return new Promise((resolve, reject) => {
-      if (autoTurnstileId) { resolve(autoTurnstileId); return; }
-      const sitekey = String(globalThis.DRIVE_TURNSTILE_SITE_KEY || '').trim();
-      if (!sitekey) { reject(new Error('人机验证未配置')); return; }
-      let attempts = 0;
-      const timer = setInterval(() => {
-        if (!globalThis.turnstile && ++attempts <= 80) return;
-        clearInterval(timer);
-        if (!globalThis.turnstile) { reject(new Error('人机验证加载失败')); return; }
-        const host = document.createElement('div');
-        /* appearance:execute 空闲时 Cloudflare 自动隐藏挂件；出错则由 error-callback 整体摘除 */
-        host.style.cssText = 'position:fixed;right:10px;bottom:10px;z-index:60;';
-        document.body.append(host);
-        autoTurnstileHost = host;
-        try {
-          autoTurnstileId = globalThis.turnstile.render(host, {
-            sitekey, action: 'ai_analysis', appearance: 'execute', size: 'compact',
-            callback: (token) => { const w = autoTurnstileWaiter; autoTurnstileWaiter = null; if (w) { clearTimeout(w.timer); w.resolve(token); } },
-            'expired-callback': () => {},
-            'error-callback': () => { const w = autoTurnstileWaiter; autoTurnstileWaiter = null; teardownAutoTurnstile(); if (w) { clearTimeout(w.timer); w.reject(new Error('人机验证未通过')); } }
-          });
-          resolve(autoTurnstileId);
-        } catch { reject(new Error('人机验证初始化失败')); }
-      }, 250);
-    });
-  }
-  function acquireAutoToken() {
-    return ensureAutoTurnstile().then((id) => new Promise((resolve, reject) => {
-      const timer = setTimeout(() => { autoTurnstileWaiter = null; reject(new Error('人机验证超时')); }, 30000);
-      autoTurnstileWaiter = { resolve, reject, timer };
-      try { globalThis.turnstile.reset(id); globalThis.turnstile.execute(id); } catch { clearTimeout(timer); autoTurnstileWaiter = null; reject(new Error('人机验证执行失败')); }
-    }));
-  }
   function requestPoiReview(location, category) {
     return new Promise((resolve, reject) => { poiQueue.push({ location, category, resolve, reject }); runPoiQueue(); });
   }
@@ -689,15 +640,13 @@
     while (poiQueue.length) {
       const job = poiQueue.shift();
       try {
-        const token = await acquireAutoToken();
         try {
-          job.resolve(await postJson('/api/scenic-analysis', { location: job.location, category: job.category, turnstileToken: token }));
+          job.resolve(await postJson('/api/scenic-analysis', { location: job.location, category: job.category }));
         } catch (error) {
           /* 触发 Worker 每分钟限流时自动排队重试一次 */
           if (/频繁|较多|429/.test(String(error?.message))) {
             await new Promise((r) => setTimeout(r, 20000));
-            const retryToken = await acquireAutoToken();
-            job.resolve(await postJson('/api/scenic-analysis', { location: job.location, category: job.category, turnstileToken: retryToken }));
+            job.resolve(await postJson('/api/scenic-analysis', { location: job.location, category: job.category }));
           } else throw error;
         }
       } catch (error) { job.reject(error); }
@@ -709,18 +658,17 @@
     $('#aiModal').hidden = true;
   }
   async function confirmAiAnalysis() {
-    const token = aiTurnstileToken || (globalThis.turnstile && aiTurnstileWidgetId ? globalThis.turnstile.getResponse(aiTurnstileWidgetId) : ''); const tripPayload = buildAiTrip();
-    if (!token) return;
+    const tripPayload = buildAiTrip();
     if (!tripPayload) return;
     const source = aiTripSource(tripPayload); const confirm = $('#aiConfirm'); confirm.disabled = true; $('#aiHumanStatus').textContent = '正在提交行程事实…';
     aiLoading = true; aiLastError = ''; closeAiModal(); renderAiAnalysis();
     try {
-      const fingerprint = await aiFingerprint(source); const data = await postJson('/api/ai-analysis', { fingerprint, trip: tripPayload, turnstileToken: token });
+      const fingerprint = await aiFingerprint(source); const data = await postJson('/api/ai-analysis', { fingerprint, trip: tripPayload });
       if (data.fingerprint !== fingerprint || !data.analysis) throw new Error('AI 分析返回校验失败，请重试。');
       if (aiTripSource(buildAiTrip()) !== source) { aiLastError = '行程在分析期间已修改，旧分析未显示。'; }
       else { aiCache = { source, fingerprint, analysis: data.analysis, createdAt: new Date().toISOString() }; localStorage.setItem(AI_ANALYSIS_CACHE_KEY, JSON.stringify(aiCache)); showDockToast('AI 行程分析已生成'); }
     } catch (error) { aiLastError = error.message || '服务请求失败，请稍后再试。'; showDockToast(`AI 分析失败：${aiLastError}`); }
-    finally { aiLoading = false; aiTurnstileToken = ''; renderAiAnalysis(); }
+    finally { aiLoading = false; renderAiAnalysis(); }
   }
   timelineNode.addEventListener('click', (event) => { const action = event.target.closest('[data-action]'); if (!action) return; if (action.dataset.action === 'add-via-point') { addViaPoint(Number(action.dataset.index)); return; } const card = action.closest('.destination-card'); const index = Number(card?.dataset.index); const destination = trip.destinations[index]; if (!destination) return; if (action.dataset.action === 'toggle-stay') toggleStay(destination, Number(action.dataset.minutes)); if (action.dataset.action === 'until-stay') toggleUntil(destination, action.dataset.until); if (action.dataset.action === 'toggle-skip') { flashSuppress.add(destination.id); destination.isSkipped = !destination.isSkipped; rebuildRouteGraph(); } if (action.dataset.action === 'move-up') moveDestination(index, -1); if (action.dataset.action === 'move-down') moveDestination(index, 1); if (action.dataset.action === 'remove') requestRemove(index); if (action.dataset.action === 'retry-route') rebuildRouteGraph(true); });
   dockNode.addEventListener('click', (event) => { const item = event.target.closest('.dock-item'); if (!item) return; if (Date.now() < dockSuppressClickUntil) { event.preventDefault(); event.stopPropagation(); return; } const anchor = item.dataset.anchor || `destination-${item.dataset.id}`; activeDockId = item.dataset.id || null; renderDock(); document.getElementById(anchor)?.scrollIntoView({ behavior: 'smooth', block: 'center' }); });

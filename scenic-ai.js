@@ -25,14 +25,17 @@
     return null;
   }
 
+  /* 统一转北京时间 ISO（+08:00）：Dots 按字面读取时间，UTC 的 Z 时间会被误当本地时间分析 */
+  function beijingIso(iso) { const t = Date.parse(iso); if (!Number.isFinite(t)) return null; return `${new Date(t + 8 * 3600e3).toISOString().slice(0, 19)}+08:00`; }
+
   function visitContext(destination) {
     return {
-      arrivalTime: destination.arrivalTime || null,
-      departureTime: destination.hasDepartureDisplay ? destination.departureTime : null,
+      arrivalTime: beijingIso(destination.arrivalTime),
+      departureTime: destination.hasDepartureDisplay ? beijingIso(destination.departureTime) : null,
       stayMinutes: Number(destination.stayMinutes) || 0,
       elevationMeters: Number.isFinite(destination.elevationMeters) ? destination.elevationMeters : null,
-      sunriseAt: destination.arrivalPhoto?.sunriseAt || null,
-      sunsetAt: destination.arrivalPhoto?.sunsetAt || null
+      sunriseAt: beijingIso(destination.arrivalPhoto?.sunriseAt),
+      sunsetAt: beijingIso(destination.arrivalPhoto?.sunsetAt)
     };
   }
 
@@ -45,6 +48,35 @@
   }
   function node(tag, text, cls) { const n = document.createElement(tag); n.textContent = text; if (cls) n.className = cls; return n; }
 
+  /* 结论先行：首段即「一句话结论」正文（不展示该标题），其余内容收进展开区 */
+  function splitReview(review) {
+    let blocks = String(review || '').split(/\n{2,}/).map((s) => s.trim()).filter(Boolean);
+    if (blocks.length === 1) blocks = blocks[0].split(/\n/).map((s) => s.trim()).filter(Boolean);
+    const lead = (blocks[0] || '').replace(/^一句话结论[:：]\s*/, '');
+    return { lead, rest: blocks.slice(1) };
+  }
+  function renderReview(body, box, entry) {
+    const { lead, rest } = splitReview(entry.review);
+    if (lead) body.append(node('p', lead, 'poi-review-lead'));
+    if (rest.length) {
+      const more = node('div', '', 'poi-review-more');
+      more.hidden = true;
+      rest.forEach((para) => more.append(node('p', para)));
+      body.append(more);
+      const toggle = node('button', '展开全部 ▾', 'poi-review-toggle');
+      toggle.type = 'button';
+      toggle.setAttribute('aria-expanded', 'false');
+      toggle.onclick = () => {
+        const open = more.hidden;
+        more.hidden = !open;
+        toggle.textContent = open ? '收起 ▴' : '展开全部 ▾';
+        toggle.setAttribute('aria-expanded', String(open));
+      };
+      body.append(toggle);
+    }
+    box.append(node('small', 'Dots AI 联网评价 · ' + new Date(entry.createdAt).toISOString().slice(0, 10) + ' · 信息可能变化，出发前请核实', 'poi-review-meta'));
+  }
+
   function paint(box, id, category, location, visit, request) {
     box.replaceChildren();
     box.append(node('span', 'DOTS / AI 评价', 'section-label'));
@@ -54,8 +86,7 @@
     box.append(body);
     const entry = cache[id];
     if (entry && Date.now() - entry.createdAt < TTL) {
-      body.append(node('p', entry.review));
-      box.append(node('small', 'Dots AI 联网评价 · ' + new Date(entry.createdAt).toISOString().slice(0, 10) + ' · 信息可能变化，出发前请核实', 'poi-review-meta'));
+      renderReview(body, box, entry);
       return;
     }
     body.append(node('p', '正在联网搜索并生成评价…', 'poi-review-loading'));
