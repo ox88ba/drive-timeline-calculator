@@ -562,3 +562,15 @@ html[data-engine="timeflow"] .share-leg-arrow { background: #0d1728; color: #ffd
 html[data-engine="timeflow"] .share-leg-route { color: #9fc1ff; }
 html[data-engine="timeflow"] .share-footer { border-top-color: rgba(255, 255, 255, .12); color: rgba(233, 237, 246, .45); }
 html[data-engine="timeflow"] .share-footer strong { color: rgba(233, 237, 246, .7); }
+
+/* 圆角对齐：停留带/出发片/幽灵层与卡片 19px 圆角同心，
+   消除卡片圆角处露出的半透明直角残边（gallery 以 14px 规则覆盖） */
+html[data-engine="timeflow"] .destination-card:not(.tf-has-dep) .stay-section,
+html[data-engine="timeflow"] .destination-card.tf-has-dep .stay-section,
+html[data-engine="timeflow"] .departure-block,
+html[data-engine="timeflow"] .tf-skyfade {
+  border-radius: 0 0 19px 19px;
+}
+html[data-engine="timeflow"] .destination-card.tf-has-dep .stay-section {
+  overflow: hidden;
+}

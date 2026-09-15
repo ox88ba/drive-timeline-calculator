@@ -188,8 +188,20 @@
   async function capturePoster(poster) {
     if (document.fonts?.ready) { try { await document.fonts.ready; } catch { /* Fall back to the current font rendering. */ } }
     if (typeof globalThis.html2canvas !== 'function') throw new Error('长图组件未加载');
-    const canvas = await globalThis.html2canvas(poster, { backgroundColor: '#f4f5f8', useCORS: true, logging: false, scale: computeCaptureScale(poster), width: poster.scrollWidth, height: poster.scrollHeight, windowWidth: poster.scrollWidth, windowHeight: poster.scrollHeight, scrollX: 0, scrollY: 0 });
-    return canvasToBlob(canvas);
+    /* 海报宽度含 vw 表达式（min(620px, 100vw-84px)）：html2canvas 按
+       windowWidth 重新排版会把 100vw 换成捕获宽度，海报被重排得更窄，
+       右侧留下一条背景色空白带。捕获期间把宽度钉成当前实测像素。 */
+    const captureWidth = Math.max(1, Math.round(poster.getBoundingClientRect().width));
+    const captureHeight = Math.max(1, poster.scrollHeight);
+    poster.style.setProperty('--share-capture-width', `${captureWidth}px`);
+    poster.classList.add('share-poster-capturing');
+    try {
+      const canvas = await globalThis.html2canvas(poster, { backgroundColor: '#f4f5f8', useCORS: true, logging: false, scale: computeCaptureScale(poster), width: captureWidth, height: captureHeight, windowWidth: captureWidth, windowHeight: captureHeight, scrollX: 0, scrollY: 0 });
+      return await canvasToBlob(canvas);
+    } finally {
+      poster.classList.remove('share-poster-capturing');
+      poster.style.removeProperty('--share-capture-width');
+    }
   }
 
   async function prepare(model, poster, routeReady, token) {

@@ -339,6 +339,10 @@
   function centerRoutePreview() { if (amapMap && amapOverlays.length) { amapMap.setFitView(amapOverlays, true, [36, 36, 36, 36]); return; } mapCenterAction(); }
   function nextPaint() { return new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))); }
   async function captureRouteMap() {
+    /* 存储中的路线摘要不含道路几何（localStorage 配额设计），
+       回访/分享链接打开的行程直接截图会拿不到轨迹 → 先逐段补抓几何 */
+    const missingGeometry = activeLegs().filter((leg) => !(Array.isArray(leg.destination.route?.polyline) && leg.destination.route.polyline.length >= 2));
+    for (const leg of missingGeometry) await loadRoute(leg, true);
     const data = mapPreviewData();
     if (data.message) throw new Error('网页路线预览尚未完成，请先点击“刷新预览”获取道路轨迹后再生成长图。');
     if (typeof globalThis.html2canvas !== 'function') throw new Error('地图快照组件未加载。');
@@ -381,29 +385,17 @@
     });
     return marks;
   }
-  /* 单段驾驶超 2 小时：在连接条与下一站卡片之间挂内联提醒，可一键多休 20 分钟 */
+  /* 单段驾驶超 2 小时：在连接条与下一站卡片之间挂内联提醒 */
   function renderFatigueBanner(wrap, destination) {
     if (destination.isSkipped || !destination.location || destination.routeLoading) return;
     const seconds = destination.route?.durationSeconds;
     if (!Number.isFinite(seconds) || seconds <= 2 * 3600) return;
-    const card = wrap.querySelector('.destination-card');
     const banner = document.createElement('div');
     banner.className = 'fatigue-banner'; banner.dataset.legSeconds = String(seconds);
     const copy = document.createElement('span');
     copy.textContent = `连续驾驶 ${formatDuration(seconds)}，建议休息 20 分钟`;
-    const action = document.createElement('button');
-    action.type = 'button'; action.dataset.action = 'fatigue-rest'; action.dataset.index = card.dataset.index;
-    action.textContent = '到站多休 20 分钟';
-    banner.append(copy, action);
+    banner.append(copy);
     wrap.querySelector('.route-connector').after(banner);
-  }
-  function addFatigueRest(index) {
-    const destination = trip.destinations[index]; if (!destination || destination.isSkipped) return;
-    if (destination.stayMode === 'until') { showDockToast('本站使用「睡到几点」模式，请直接调整出发时刻'); return; }
-    if (destination.selectedStayButtons.includes(20)) { showDockToast('本站已加过 20 分钟休息'); return; }
-    flashSuppress.add(destination.id); /* 用户主动加的休息：本站时刻变化不 flash */
-    destination.selectedStayButtons = [...destination.selectedStayButtons, 20];
-    calculate(); persist(); render();
   }
   function flashValue(node) { node.classList.add('value-flash'); setTimeout(() => node.classList.remove('value-flash'), 1300); }
   function renderLegWarnings(card, wrap, destination) {
@@ -642,7 +634,7 @@
     } catch (error) { aiLastError = error.message || '服务请求失败，请稍后再试。'; showDockToast(`AI 分析失败：${aiLastError}`); }
     finally { aiLoading = false; aiTurnstileToken = ''; renderAiAnalysis(); }
   }
-  timelineNode.addEventListener('click', (event) => { const action = event.target.closest('[data-action]'); if (!action) return; if (action.dataset.action === 'add-via-point') { addViaPoint(Number(action.dataset.index)); return; } if (action.dataset.action === 'fatigue-rest') { addFatigueRest(Number(action.dataset.index)); return; } const card = action.closest('.destination-card'); const index = Number(card?.dataset.index); const destination = trip.destinations[index]; if (!destination) return; if (action.dataset.action === 'toggle-stay') toggleStay(destination, Number(action.dataset.minutes)); if (action.dataset.action === 'until-stay') toggleUntil(destination, action.dataset.until); if (action.dataset.action === 'toggle-skip') { flashSuppress.add(destination.id); destination.isSkipped = !destination.isSkipped; rebuildRouteGraph(); } if (action.dataset.action === 'move-up') moveDestination(index, -1); if (action.dataset.action === 'move-down') moveDestination(index, 1); if (action.dataset.action === 'remove') requestRemove(index); if (action.dataset.action === 'retry-route') rebuildRouteGraph(true); });
+  timelineNode.addEventListener('click', (event) => { const action = event.target.closest('[data-action]'); if (!action) return; if (action.dataset.action === 'add-via-point') { addViaPoint(Number(action.dataset.index)); return; } const card = action.closest('.destination-card'); const index = Number(card?.dataset.index); const destination = trip.destinations[index]; if (!destination) return; if (action.dataset.action === 'toggle-stay') toggleStay(destination, Number(action.dataset.minutes)); if (action.dataset.action === 'until-stay') toggleUntil(destination, action.dataset.until); if (action.dataset.action === 'toggle-skip') { flashSuppress.add(destination.id); destination.isSkipped = !destination.isSkipped; rebuildRouteGraph(); } if (action.dataset.action === 'move-up') moveDestination(index, -1); if (action.dataset.action === 'move-down') moveDestination(index, 1); if (action.dataset.action === 'remove') requestRemove(index); if (action.dataset.action === 'retry-route') rebuildRouteGraph(true); });
   dockNode.addEventListener('click', (event) => { const item = event.target.closest('.dock-item'); if (!item) return; if (Date.now() < dockSuppressClickUntil) { event.preventDefault(); event.stopPropagation(); return; } const anchor = item.dataset.anchor || `destination-${item.dataset.id}`; activeDockId = item.dataset.id || null; renderDock(); document.getElementById(anchor)?.scrollIntoView({ behavior: 'smooth', block: 'center' }); });
   dockNode.addEventListener('pointerdown', (event) => { const item = event.target.closest('.dock-item[data-id]'); if (!item) return; event.preventDefault(); item.setPointerCapture?.(event.pointerId); const pointer = { id: item.dataset.id, source: item, startX: event.clientX, startY: event.clientY, moved: false, armed: false, pointerId: event.pointerId, pressTimer: setTimeout(() => armDockDrag(pointer), 180) }; item.classList.add('is-pressing'); dockPointer = pointer; });
   dockNode.addEventListener('pointermove', (event) => { const pointer = dockPointer; if (!pointer || event.pointerId !== pointer.pointerId) return; const movedX = Math.abs(event.clientX - pointer.startX); const movedY = Math.abs(event.clientY - pointer.startY); if (Math.max(movedX, movedY) > 8) { pointer.moved = true; armDockDrag(pointer); } if (!pointer.armed) return; event.preventDefault(); const over = document.elementFromPoint(event.clientX, event.clientY)?.closest('.dock-item[data-id]'); dockNode.querySelectorAll('.dock-item.drag-over').forEach((node) => node.classList.remove('drag-over')); if (over && over.dataset.id !== pointer.id) { over.classList.add('drag-over'); pointer.overId = over.dataset.id; } else { pointer.overId = null; } });

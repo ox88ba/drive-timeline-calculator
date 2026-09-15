@@ -807,3 +807,9 @@ html[data-skin="gallery"] :focus-visible { outline: 2px solid rgba(255, 56, 92, 
   html[data-skin="gallery"] button:not(.dock-item) { transition: none; }
   html[data-skin="gallery"] button:not(.dock-item):not(:disabled):active { transform: none; }
 }
+
+/* 圆角对齐（14px 体系）：与引擎层 19px 修正配套，画廊卡片保持 14px 同心 */
+html[data-skin="gallery"] .destination-card.tf-has-dep .stay-section {
+  border-radius: 0 0 14px 14px;
+  overflow: hidden;
+}

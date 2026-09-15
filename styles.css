@@ -195,3 +195,6 @@
 /* 级联重算 flash：1.2s 渐隐 */
 @keyframes valueFlash { 0% { background:#fff0b8; box-shadow:0 0 0 4px rgba(255,214,90,.55); } 100% { background:transparent; box-shadow:none; } }
 .value-flash { border-radius:6px; animation:valueFlash 1.2s ease-out; }
+
+/* 捕获长图期间钉住海报宽度：防止 vw 宽度在 html2canvas 重排时收缩产生右侧空白带 */
+.share-poster.share-poster-capturing { width: var(--share-capture-width) !important; }

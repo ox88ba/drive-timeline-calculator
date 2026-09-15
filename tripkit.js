@@ -126,18 +126,26 @@
   }
 
   /* ---------- PART A：链接恢复（脚本解析时同步执行，早于 app.js） ---------- */
-  (function restoreFromHash() {
-    if (!location.hash || location.hash.indexOf(HASH_PREFIX) !== 0) return;
+  function restoreFromHash() {
+    if (!location.hash || location.hash.indexOf(HASH_PREFIX) !== 0) return false;
     try {
       var trip = expandTrip(JSON.parse(b64decode(location.hash.slice(HASH_PREFIX.length))));
-      if (trip) {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(trip));
-        try { history.replaceState(null, '', location.pathname + location.search); } catch (e) { /* noop */ }
-      }
+      if (!trip) return false;
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(trip));
+      try { history.replaceState(null, '', location.pathname + location.search); } catch (e) { /* noop */ }
+      return true;
     } catch (error) {
       console.warn('行程链接解析失败', error);
+      return false;
     }
-  })();
+  }
+  restoreFromHash();
+  /* 关键修复：已打开本站的标签页里点开分享链接只是 hash 变化，
+     浏览器不会整页重载，PART A 不会重跑 → 用户看到自己缓存的行程。
+     监听 hashchange：还原后立即 reload，让 app.js 用新行程启动。 */
+  window.addEventListener('hashchange', function () {
+    if (restoreFromHash()) location.reload();
+  });
 
   /* ---------- 以下为 UI 部分，DOM 就绪后挂载 ---------- */
   function readTrip() {
