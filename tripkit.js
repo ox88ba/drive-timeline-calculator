@@ -469,7 +469,7 @@
     }).join('');
   }
 
-  function renderSnapshots() {
+  function renderSnapshots(mode) {
     var body = snapModal.querySelector('.tk-body');
     var list = readSnapshots();
     body.innerHTML = '';
@@ -489,9 +489,9 @@
       items.unshift({ id: Date.now() + '-' + Math.random().toString(36).slice(2, 7), name: name, savedAt: new Date().toISOString(), trip: compactTrip(trip) });
       writeSnapshots(items.slice(0, 12));
       toast('已保存「' + name + '」');
-      renderSnapshots();
+      snapModal.hidden = true;
     });
-    body.append(saveRow);
+    if (mode === 'save') { body.append(saveRow); return; }
 
     if (!list.length) {
       var empty = document.createElement('p');
@@ -539,10 +539,14 @@
     });
   }
 
-  function openSnapshots() {
+  function openSnapshots(mode) {
     if (!snapModal) snapModal = buildModal('tkSnapshotModal', 'SNAPSHOTS', '方案快照');
-    renderSnapshots();
+    mode = mode === 'save' ? 'save' : 'list';
+    var heading = snapModal.querySelector('h2');
+    if (heading) heading.textContent = mode === 'save' ? '保存本方案' : '保存的行程';
+    renderSnapshots(mode);
     snapModal.hidden = false;
+    if (mode === 'save') snapModal.querySelector('input').focus();
   }
 
   /* 首访 template-first 钩子：app.js 在无历史行程时取第一套模板作为草稿 */
@@ -575,15 +579,22 @@
       snapBtn.id = 'tkSnapshotsBtn';
       snapBtn.className = 'tk-action-btn';
       snapBtn.type = 'button';
-      snapBtn.textContent = '▣ 保存本方案';
-      snapBtn.addEventListener('click', openSnapshots);
+      snapBtn.textContent = '保存本方案';
+      snapBtn.addEventListener('click', function () { openSnapshots('save'); });
+      var savedBtn = document.createElement('button');
+      savedBtn.type = 'button'; savedBtn.className = 'tk-action-btn';
+      savedBtn.textContent = '保存的行程';
+      savedBtn.addEventListener('click', function () { openSnapshots('list'); });
+      var snapshotActions = document.createElement('div');
+      snapshotActions.className = 'tk-snapshot-actions';
+      snapshotActions.append(snapBtn, savedBtn);
       var shareBtn = document.createElement('button');
       shareBtn.id = 'tkShareBtn';
       shareBtn.className = 'tk-action-btn';
       shareBtn.type = 'button';
       shareBtn.textContent = '↗ 分享';
       shareBtn.addEventListener('click', function () { var open = document.getElementById('openShare'); if (open) open.click(); });
-      actions.append(tplBtn, snapBtn, shareBtn);
+      actions.append(tplBtn, snapshotActions, shareBtn);
     }
   }
 

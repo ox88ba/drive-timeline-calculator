@@ -912,9 +912,26 @@ html[data-skin="voyage"] .undo-snackbar-action { min-height: 44px; padding: 8px 
   html[data-skin="voyage"] .undo-snackbar { background: #202735; backdrop-filter: none; -webkit-backdrop-filter: none; }
   html[data-skin="voyage"][data-theme="light"] .undo-snackbar { background: #f4f6fa; }
 }
-/* Safari owns the unsafe inset (viewport-fit=contain); paint its canvas solid. */
+/* One opaque sticky surface includes the safe inset and the Dock controls. */
 html[data-skin="voyage"] { background-color: #0b0e14; }
 html[data-skin="voyage"][data-theme="light"] { background-color: #f7f8fa; }
 @media (max-width: 760px) {
-  html[data-skin="voyage"] .trip-dock { border-top-left-radius: 0; border-top-right-radius: 0; padding-top: 7px; backdrop-filter: none; -webkit-backdrop-filter: none; }
+  html[data-skin="voyage"] .trip-dock {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    box-sizing: border-box;
+    margin: 0;
+    border-radius: 0;
+    border-top: 0;
+    padding: calc(7px + env(safe-area-inset-top, 0px)) max(13px, env(safe-area-inset-right, 0px)) 9px max(13px, env(safe-area-inset-left, 0px));
+    background: #0b0e14;
+    background-clip: border-box;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    transform: none;
+  }
+  html[data-skin="voyage"][data-theme="light"] .trip-dock { background: #f7f8fa; }
+  /* The in-flow header already reserves the top safe inset. */
+  html[data-skin="voyage"] .shell { padding-top: 17px; }
 }
