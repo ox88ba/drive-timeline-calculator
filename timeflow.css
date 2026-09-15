@@ -133,8 +133,8 @@ html[data-engine="timeflow"] .stay-until-buttons::before {
   color: #93a0b8;
   white-space: nowrap;
 }
-html[data-engine="timeflow"] .stay-relative-buttons::before { content: "停留时间"; }
-html[data-engine="timeflow"] .stay-until-buttons::before { content: "过夜至"; }
+html[data-engine="timeflow"] .stay-relative-buttons::before { content: "停留"; }
+html[data-engine="timeflow"] .stay-until-buttons::before { content: "过夜"; }
 html[data-engine="timeflow"] .stay-section p[data-stay-current] {
   color: #aeb9cf;
 }
