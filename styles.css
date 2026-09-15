@@ -198,3 +198,17 @@
 
 /* 捕获长图期间钉住海报宽度：防止 vw 宽度在 html2canvas 重排时收缩产生右侧空白带 */
 .share-poster.share-poster-capturing { width: var(--share-capture-width) !important; }
+
+
+/* ============================================================
+   POI 自动 AI 评价盒（Dots 联网评价）
+   ============================================================ */
+.poi-review { margin-top:12px; padding:11px 12px 10px; border:1px solid var(--line); border-radius:12px; background:var(--paper); }
+.poi-review .section-label { letter-spacing:.12em; }
+.poi-review-title { margin:5px 0 6px; font-size:13px; font-weight:600; letter-spacing:-.01em; }
+.poi-review-body p { margin:0; font-size:11px; line-height:1.75; white-space:pre-line; }
+.poi-review-loading { animation:poiReviewPulse 1.4s ease-in-out infinite; }
+@keyframes poiReviewPulse { 0%,100% { opacity:.45; } 50% { opacity:1; } }
+.poi-review-meta { display:block; margin-top:8px; color:var(--muted); font-size:9px; line-height:1.5; }
+.poi-review-error { color:#c2452f; }
+.poi-review-retry { margin-top:7px; padding:4px 11px; border:1px solid var(--line); border-radius:999px; color:var(--ink); background:transparent; font-size:10px; cursor:pointer; }

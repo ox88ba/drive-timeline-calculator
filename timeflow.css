@@ -417,6 +417,14 @@ html[data-engine="timeflow"] .tf-rhythm-warn {
   font-size: 11px;
   line-height: 1.5;
 }
+/* 当日风险：直接标注在当日节律条旁 */
+html[data-engine="timeflow"] .tf-rhythm-day-warn {
+  display: block;
+  margin-top: 3px;
+  color: #ff98a0;
+  font: 600 9px/1.45 "Noto Sans SC", sans-serif;
+  font-style: normal;
+}
 @media (prefers-reduced-motion: reduce) {
   html[data-engine="timeflow"] .tf-rb-latenight { animation: none; }
 }
@@ -590,4 +598,28 @@ html[data-engine="timeflow"] .tf-skyfade {
 }
 html[data-engine="timeflow"] .destination-card.tf-has-dep .stay-section {
   overflow: hidden;
+}
+
+/* ---------- POI 自动 AI 评价：随天空墨色自适应 ---------- */
+html[data-engine="timeflow"] .destination-card[data-sky-a] .poi-review {
+  border-color: color-mix(in srgb, var(--tf-a-ink) 20%, transparent);
+  background: color-mix(in srgb, var(--tf-a-ink) 8%, transparent);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+html[data-engine="timeflow"] .destination-card[data-sky-a] .poi-review .section-label {
+  color: color-mix(in srgb, var(--tf-a-ink) 68%, transparent);
+}
+html[data-engine="timeflow"] .destination-card[data-sky-a] .poi-review-title { color: var(--tf-a-ink); }
+html[data-engine="timeflow"] .destination-card[data-sky-a] .poi-review-body p {
+  color: color-mix(in srgb, var(--tf-a-ink) 90%, transparent);
+}
+html[data-engine="timeflow"] .destination-card[data-sky-a] .poi-review-meta {
+  color: color-mix(in srgb, var(--tf-a-ink) 60%, transparent);
+}
+html[data-engine="timeflow"] .destination-card[data-sky-a] .poi-review-error { color: #ff9aa1; }
+html[data-engine="timeflow"] .destination-card[data-sky-a] .poi-review-retry {
+  border-color: color-mix(in srgb, var(--tf-a-ink) 42%, transparent);
+  color: var(--tf-a-ink);
+  background: color-mix(in srgb, var(--tf-a-ink) 12%, transparent);
 }

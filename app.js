@@ -443,7 +443,7 @@
         if (prevTimes.arrival !== arrival.textContent) flashValue(arrival);
         if (prevTimes.departure !== departureText && destination.hasDepartureDisplay) flashValue(departureStrong);
       }
-      if (AI_ENABLED) globalThis.ScenicAI?.mount(card, destination, requestScenic);
+      if (AI_ENABLED) globalThis.ScenicAI?.mount(card, destination, requestPoiReview);
       bindPicker(input, card.querySelector('[data-poi-results]'), destination.id); timelineNode.append(fragment);
     });
     lastTimeSnapshot = nextTimeSnapshot; flashSuppress.clear();
@@ -585,32 +585,76 @@
     if (aiResultForCurrentTrip()) { showDockToast('当前行程已有 AI 分析；调整行程后会提示重新生成'); return; }
     resetAiChallenge(); $('#aiModal').hidden = false; renderAiTurnstile();
   }
-  let scenicRequest = null;
-  function requestScenic(location) {
+  /* ---------- POI 自动 AI 评价：隐形 Turnstile + 串行队列（无需用户操作） ---------- */
+  let autoTurnstileId = null;
+  let autoTurnstileWaiter = null;
+  const poiQueue = [];
+  let poiQueueRunning = false;
+  function ensureAutoTurnstile() {
     return new Promise((resolve, reject) => {
-      if (scenicRequest) { reject(new Error('请先完成当前请求')); return; }
-      scenicRequest = {location, resolve, reject};
-      $('#aiModalTitle').textContent = '生成景区参考？';
-      $('#aiModal .section-label').textContent = 'DOTS / 景区参考';
-      $('#aiModal p').textContent = '将向 Dots 发送此地点的名称、地址与坐标，一次生成“景区 AI 建议”和“小红书说”。内容由 AI 生成，并非实时用户评论汇总；门票与运营信息以景区公告为准。';
-      resetAiChallenge(); $('#aiModal').hidden = false; renderAiTurnstile();
+      if (autoTurnstileId) { resolve(autoTurnstileId); return; }
+      const sitekey = String(globalThis.DRIVE_TURNSTILE_SITE_KEY || '').trim();
+      if (!sitekey) { reject(new Error('人机验证未配置')); return; }
+      let attempts = 0;
+      const timer = setInterval(() => {
+        if (!globalThis.turnstile && ++attempts <= 80) return;
+        clearInterval(timer);
+        if (!globalThis.turnstile) { reject(new Error('人机验证加载失败')); return; }
+        const host = document.createElement('div');
+        /* appearance:execute 只在挑战期间现身；必须放在可见位置，
+           否则需要交互的挑战会永远无法完成 */
+        host.style.cssText = 'position:fixed;right:10px;bottom:10px;z-index:60;';
+        document.body.append(host);
+        try {
+          autoTurnstileId = globalThis.turnstile.render(host, {
+            sitekey, action: 'ai_analysis', appearance: 'execute', size: 'compact',
+            callback: (token) => { const w = autoTurnstileWaiter; autoTurnstileWaiter = null; if (w) { clearTimeout(w.timer); w.resolve(token); } },
+            'expired-callback': () => {},
+            'error-callback': () => { const w = autoTurnstileWaiter; autoTurnstileWaiter = null; if (w) { clearTimeout(w.timer); w.reject(new Error('人机验证未通过')); } }
+          });
+          resolve(autoTurnstileId);
+        } catch { reject(new Error('人机验证初始化失败')); }
+      }, 250);
     });
+  }
+  function acquireAutoToken() {
+    return ensureAutoTurnstile().then((id) => new Promise((resolve, reject) => {
+      const timer = setTimeout(() => { autoTurnstileWaiter = null; reject(new Error('人机验证超时')); }, 30000);
+      autoTurnstileWaiter = { resolve, reject, timer };
+      try { globalThis.turnstile.reset(id); globalThis.turnstile.execute(id); } catch { clearTimeout(timer); autoTurnstileWaiter = null; reject(new Error('人机验证执行失败')); }
+    }));
+  }
+  function requestPoiReview(location, category) {
+    return new Promise((resolve, reject) => { poiQueue.push({ location, category, resolve, reject }); runPoiQueue(); });
+  }
+  async function runPoiQueue() {
+    if (poiQueueRunning) return;
+    poiQueueRunning = true;
+    while (poiQueue.length) {
+      const job = poiQueue.shift();
+      try {
+        const token = await acquireAutoToken();
+        try {
+          job.resolve(await postJson('/api/scenic-analysis', { location: job.location, category: job.category, turnstileToken: token }));
+        } catch (error) {
+          /* 触发 Worker 每分钟限流时自动排队重试一次 */
+          if (/频繁|较多|429/.test(String(error?.message))) {
+            await new Promise((r) => setTimeout(r, 20000));
+            const retryToken = await acquireAutoToken();
+            job.resolve(await postJson('/api/scenic-analysis', { location: job.location, category: job.category, turnstileToken: retryToken }));
+          } else throw error;
+        }
+      } catch (error) { job.reject(error); }
+      await new Promise((r) => setTimeout(r, 1200)); /* 配合 Worker 6 次/分 限流，串行慢发 */
+    }
+    poiQueueRunning = false;
   }
   function closeAiModal() {
     $('#aiModal').hidden = true;
-    if (scenicRequest) { scenicRequest.reject(new Error('已取消生成')); scenicRequest = null; }
-    $('#aiModalTitle').textContent = '生成行程总评？';
-    $('#aiModal .section-label').textContent = 'KIMI / 行程总评';
-    $('#aiModal p').textContent = '将发送当前行程的地点名称、导航数据、时间、停留与海拔信息，用于分析驾驶强度、停留安排、夜间抵达及高原节点。AI 不会修改你的行程。';
   }
   async function confirmAiAnalysis() {
     const token = aiTurnstileToken || (globalThis.turnstile && aiTurnstileWidgetId ? globalThis.turnstile.getResponse(aiTurnstileWidgetId) : ''); const tripPayload = buildAiTrip();
     if (!token) return;
-    if (scenicRequest) {
-      const job = scenicRequest; scenicRequest = null; closeAiModal(); aiTurnstileToken = '';
-      try { job.resolve(await postJson('/api/scenic-analysis', {location: job.location, turnstileToken: token})); } catch (error) { job.reject(error); }
-      return;
-    }
     if (!tripPayload) return;
     const source = aiTripSource(tripPayload); const confirm = $('#aiConfirm'); confirm.disabled = true; $('#aiHumanStatus').textContent = '正在提交行程事实…';
     aiLoading = true; aiLastError = ''; closeAiModal(); renderAiAnalysis();

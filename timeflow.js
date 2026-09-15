@@ -381,7 +381,6 @@
     var firstDay = Math.floor(abs0 / 1440);
     var lastDay = Math.floor((lastEnd - 1) / 1440);
     var rows = '';
-    var warns = [];
     for (var day = firstDay; day <= lastDay; day++) {
       var blocks = '';
       var lateMin = 0;
@@ -411,10 +410,11 @@
       }
       var date = new Date(day * 86400000);
       var label = (date.getUTCMonth() + 1) + '/' + date.getUTCDate() + ' ' + WEEK[date.getUTCDay()];
+      /* 当日风险直接标注在当日节律条旁 */
+      var warn = lateMin > 0 ? '<em class="tf-rhythm-day-warn">⚠ 凌晨驾驶 ' + fmtDur(lateMin) + '</em>' : '';
       rows += '<div class="tf-rhythm-row"><div class="tf-rhythm-day"><b>Day ' +
-        (day - firstDay + 1) + '</b><span>' + label + '</span></div>' +
+        (day - firstDay + 1) + '</b><span>' + label + '</span>' + warn + '</div>' +
         '<div class="tf-rhythm-bar">' + blocks + '</div></div>';
-      if (lateMin > 0) warns.push('Day ' + (day - firstDay + 1) + ' 凌晨驾驶 ' + fmtDur(lateMin));
     }
 
     host.innerHTML =
@@ -424,8 +424,7 @@
       '<span><i class="tf-rb-stay"></i>停留</span>' +
       '<span><i class="tf-rb-overnight"></i>过夜</span>' +
       '<span><i class="tf-rb-latenight"></i>凌晨驾驶</span>' +
-      '</div></div>' + rows +
-      (warns.length ? '<p class="tf-rhythm-warn">⚠ ' + warns.join('；') + '，注意轮换休息</p>' : '');
+      '</div></div>' + rows;
     host.hidden = false;
   }
 

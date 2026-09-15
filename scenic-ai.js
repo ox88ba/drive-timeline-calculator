@@ -1,15 +1,30 @@
+/* ============================================================
+   POI 自动 AI 评价（Dots 联网搜索）
+   - 识别 景区 / 酒店·民宿 / 餐馆 三类目的地
+   - 卡片渲染即自动请求，无需用户操作
+   - localStorage 缓存 7 天，键只与 POI 身份有关（停留时长变化不重新请求）
+   ============================================================ */
 (function (root) {
   'use strict';
-  const KEY = 'drive-scenic-ai-v2';
-  const pending = new Set();
+  const KEY = 'drive-poi-review-v1';
+  const TTL = 7 * 86400000;
+  const MAX_ENTRIES = 60;
+  const pending = new Map(); // id -> Promise（跨卡片去重）
   let cache = {};
   try { cache = JSON.parse(localStorage.getItem(KEY) || '{}'); } catch {}
-  function scenic(location) {
-    if (!location) return false;
+
+  const CATEGORY_LABEL = { scenic: '景区', hotel: '酒店 / 民宿', restaurant: '餐馆' };
+
+  function categoryOf(location) {
+    if (!location) return null;
     const name = String(location.name || '');
-    const type = String(location.type || '') + String(location.typecode || '');
-    return /风景名胜|110\d{3}|景区|景点/.test(type) || /景区|景点|公园|古镇|古城|博物馆|纪念馆|遗址|寺庙|寺院|国家森林|湿地|观景|游客中心|旅游服务中心|售票处|售票中心/.test(name) || /(?:湖|山|峡谷|雅丹|草原|沙漠|瀑布|盐湖|寺|景区|公园).*(?:停车场|[东南西北]门|入口|出口)/.test(name);
+    const type = String(location.type || '') + '|' + String(location.typecode || '');
+    if (/风景名胜|110\d{3}/.test(type) || /景区|景点|公园|古镇|古城|博物馆|纪念馆|遗址|寺庙|寺院|国家森林|湿地|观景|游客中心|旅游服务中心|售票处|售票中心/.test(name) || /(?:湖|山|峡谷|雅丹|草原|沙漠|瀑布|盐湖|寺|景区|公园).*(?:停车场|[东南西北]门|入口|出口)/.test(name)) return 'scenic';
+    if (/住宿服务|100\d{3}/.test(type) || /酒店|宾馆|民宿|客栈|旅馆|青旅|招待所|度假村|公寓式酒店/.test(name)) return 'hotel';
+    if (/餐饮服务|050\d{3}/.test(type) || /餐厅|餐馆|饭店|食府|小吃|火锅|烧烤|面馆|米粉|川菜|湘菜|粤菜|咖啡|茶饮|快餐|美食|羊肉|牛肉|烤鱼|串串|拉面|菜馆|酒楼|酒家/.test(name)) return 'restaurant';
+    return null;
   }
+
   function visitContext(destination) {
     return {
       arrivalTime: destination.arrivalTime || null,
@@ -20,45 +35,67 @@
       sunsetAt: destination.arrivalPhoto?.sunsetAt || null
     };
   }
-  function key(location, visit = {}) { return JSON.stringify([location.poiId, location.name, location.address, location.latitude, location.longitude, visit.arrivalTime, visit.departureTime, visit.stayMinutes]); }
-  function node(tag, text, cls) { const n = document.createElement(tag); n.textContent = text; if (cls) n.className = cls; return n; }
-  function mount(card, destination, request) {
-    if (destination.isSkipped || !scenic(destination.location)) return;
-    const location = {...destination.location}; const visit = visitContext(destination); const id = key(location, visit);
-    const box = node('section', '', 'scenic-ai');
-    box.dataset.scenicKey = id;
-    const sections = [['景区 AI 建议', 'advice', '门票、观光车、游览、入口与停车。动态信息以景区公告为准。'], ['小红书说', 'review', 'Dots AI 综合评价参考，非实时用户评论汇总。']];
-    sections.forEach(([title, field, disclaimer]) => {
-      const detail = document.createElement('details'); detail.append(node('summary', title));
-      const body = node('div', '', 'scenic-ai-body'); body.append(node('small', disclaimer)); detail.append(body);
-      const paint = () => {
-        body.replaceChildren(node('small', disclaimer));
-        const entry = cache[id];
-        if (entry && Date.now() - entry.createdAt < 7 * 86400000) {
-          body.append(node('p', entry.analysis[field]));
-          body.append(node('small', 'AI 生成 · Dots · ' + new Date(entry.createdAt).toISOString().slice(0,10)));
-          return;
-        }
-        const button = node('button', pending.has(id) ? '正在生成…' : '生成景区参考'); button.type = 'button'; button.disabled = pending.has(id);
-        body.append(button);
-        button.onclick = async () => {
-          if (pending.has(id)) return;
-          pending.add(id); box.querySelectorAll('button').forEach(b => { b.disabled = true; b.textContent = '正在生成…'; });
-          try {
-            const result = await request({...location, visit});
-            if (!result?.analysis?.advice || !result?.analysis?.review) throw new Error('未返回可用的景区参考');
-            cache[id] = {analysis: result.analysis, createdAt: Date.now()};
-            cache = Object.fromEntries(Object.entries(cache).sort((a,b) => b[1].createdAt-a[1].createdAt).slice(0,60));
-            try { localStorage.setItem(KEY, JSON.stringify(cache)); } catch {}
-            document.querySelectorAll('.scenic-ai').forEach(current => { if (current.dataset.scenicKey === id) current.dispatchEvent(new Event('updated')); });
-          } catch (error) { body.append(node('p', error.message || '生成失败，请重试', 'scenic-ai-error')); }
-          finally { pending.delete(id); document.querySelectorAll('.scenic-ai').forEach(current => { if (current.dataset.scenicKey === id) current.querySelectorAll('button').forEach(b => { b.disabled = false; b.textContent = '重新尝试'; }); }); }
-        };
-      };
-      box.addEventListener('updated', paint); paint(); box.append(detail);
-    });
-    card.querySelector('.stay-section').before(box);
+
+  /* 缓存键只含 POI 身份：调整停留/时刻不重打 AI */
+  function key(location) { return JSON.stringify([location.poiId || '', location.name || '', location.address || '', Number(location.latitude).toFixed(4), Number(location.longitude).toFixed(4)]); }
+
+  function save() {
+    cache = Object.fromEntries(Object.entries(cache).filter(([, v]) => Date.now() - v.createdAt < TTL).sort((a, b) => b[1].createdAt - a[1].createdAt).slice(0, MAX_ENTRIES));
+    try { localStorage.setItem(KEY, JSON.stringify(cache)); } catch {}
   }
-  root.ScenicAI = {scenic, key, mount};
-  if (typeof module !== 'undefined') module.exports = {scenic, key};
+  function node(tag, text, cls) { const n = document.createElement(tag); n.textContent = text; if (cls) n.className = cls; return n; }
+
+  function paint(box, id, category, location, visit, request) {
+    box.replaceChildren();
+    box.append(node('span', 'DOTS / AI 评价', 'section-label'));
+    const title = node('h4', `${CATEGORY_LABEL[category] || '地点'} · ${location.name}`.slice(0, 40), 'poi-review-title');
+    box.append(title);
+    const body = node('div', '', 'poi-review-body');
+    box.append(body);
+    const entry = cache[id];
+    if (entry && Date.now() - entry.createdAt < TTL) {
+      body.append(node('p', entry.review));
+      box.append(node('small', 'Dots AI 联网评价 · ' + new Date(entry.createdAt).toISOString().slice(0, 10) + ' · 信息可能变化，出发前请核实', 'poi-review-meta'));
+      return;
+    }
+    body.append(node('p', '正在联网搜索并生成评价…', 'poi-review-loading'));
+    if (!pending.has(id)) {
+      pending.set(id, request({ ...location, visit }, category).then((result) => {
+        const review = String(result?.analysis?.review || '').trim();
+        if (!review) throw new Error('未返回可用评价');
+        cache[id] = { review, category, createdAt: Date.now() };
+        save();
+        return true;
+      }).catch((error) => ({ error: error?.message || '生成失败' })).finally(() => {
+        setTimeout(() => pending.delete(id), 3000); /* 失败后短暂冷却，避免渲染循环重打 */
+      }));
+    }
+    pending.get(id).then((outcome) => {
+      if (!box.isConnected || box.dataset.poiKey !== id) return;
+      if (outcome === true) { paint(box, id, category, location, visit, request); return; }
+      body.replaceChildren(node('p', `AI 评价暂时不可用${outcome?.error ? `：${outcome.error}` : ''}`, 'poi-review-error'));
+      const retry = node('button', '重新生成', 'poi-review-retry');
+      retry.type = 'button';
+      retry.onclick = () => { pending.delete(id); paint(box, id, category, location, visit, request); };
+      body.append(retry);
+    });
+  }
+
+  function mount(card, destination, request) {
+    if (destination.isSkipped || !destination.location) return;
+    const category = categoryOf(destination.location);
+    if (!category) return;
+    const location = { ...destination.location };
+    const id = key(location);
+    const old = card.querySelector('.poi-review');
+    if (old && old.dataset.poiKey === id && old.querySelector('.poi-review-body p:not(.poi-review-loading)')) return; /* 已有内容，重渲染不重来 */
+    old?.remove();
+    const box = node('section', '', 'poi-review');
+    box.dataset.poiKey = id;
+    card.querySelector('.stay-section').before(box);
+    paint(box, id, category, location, visitContext(destination), request);
+  }
+
+  root.ScenicAI = { categoryOf, key, mount };
+  if (typeof module !== 'undefined') module.exports = { categoryOf, key };
 })(globalThis);
