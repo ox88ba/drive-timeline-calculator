@@ -134,6 +134,22 @@ async function verifyTurnstileToken(request, env, token, expectedAction) {
   return null;
 }
 
+/* dots 常在 JSON 字符串值里直接输出未转义的真实换行，严格 JSON.parse 会失败；
+   这里把字符串字面量内的裸换行/回车转义后再解析，其余结构不动 */
+function parseLooseJson(text) {
+  try { return JSON.parse(text); } catch {}
+  let out = ''; let inStr = false; let esc = false;
+  for (const ch of String(text)) {
+    if (esc) { out += ch; esc = false; continue; }
+    if (ch === '\\') { out += ch; esc = true; continue; }
+    if (ch === '"') { inStr = !inStr; out += ch; continue; }
+    if (inStr && ch === '\n') { out += '\\n'; continue; }
+    if (inStr && ch === '\r') { continue; }
+    out += ch;
+  }
+  try { return JSON.parse(out); } catch { return null; }
+}
+
 async function verifyTurnstile(request, env) {
   let payload;
   try { payload = await request.json(); } catch { return error(400, 'INVALID_TURNSTILE_REQUEST', '人机验证请求无效。'); }
@@ -223,12 +239,10 @@ async function aiAnalysis(request, env) {
     if (response.status === 401) return error(503, 'AI_AUTH_FAILED', 'AI 服务凭据未正确配置。');
     return error(502, 'AI_PROVIDER_FAILED', 'AI 分析服务暂时不可用，请稍后重试。');
   }
-  let parsed;
   const aiContent = String(data?.choices?.[0]?.message?.content || '').replace(/^```(?:json)?\s*|\s*```$/g, '').trim();
-  try { parsed = JSON.parse(aiContent); } catch {
-    try { const match = aiContent.match(/\{[\s\S]*\}/); parsed = match ? JSON.parse(match[0]) : null; } catch { parsed = null; }
-    if (!parsed) return error(502, 'AI_INVALID_RESPONSE', 'AI 分析未返回可用结果，请重试。');
-  }
+  let parsed = parseLooseJson(aiContent);
+  if (!parsed) { const match = aiContent.match(/\{[\s\S]*\}/); parsed = match ? parseLooseJson(match[0]) : null; }
+  if (!parsed) return error(502, 'AI_INVALID_RESPONSE', 'AI 分析未返回可用结果，请重试。');
   const analysis = normaliseAiResult(parsed, trip);
   if (!analysis) return error(502, 'AI_INVALID_RESPONSE', 'AI 分析结果格式异常，请重试。');
   return json({ fingerprint, analysis });
@@ -282,8 +296,9 @@ ${category.brief}
     const raw = String(data?.choices?.[0]?.message?.content || '').trim();
     /* dots 是笔记式搜索模型，可能返回围栏 JSON、内嵌 JSON 或直接返回散文，逐级兜底解析 */
     let review = '';
-    try { const parsed = JSON.parse(raw.replace(/^```(?:json)?\s*|\s*```$/g, '').trim()); if (typeof parsed?.review === 'string') review = parsed.review.trim(); } catch {}
-    if (!review) { const match = raw.match(/\{[\s\S]*\}/); if (match) { try { const parsed = JSON.parse(match[0]); if (typeof parsed?.review === 'string') review = parsed.review.trim(); } catch {} } }
+    const parsed = parseLooseJson(raw.replace(/^```(?:json)?\s*|\s*```$/g, '').trim());
+    if (typeof parsed?.review === 'string') review = parsed.review.trim();
+    if (!review) { const match = raw.match(/\{[\s\S]*\}/); if (match) { const inner = parseLooseJson(match[0]); if (typeof inner?.review === 'string') review = inner.review.trim(); } }
     if (!review && raw.length >= 40 && !/^[{<]/.test(raw)) review = raw;
     return {review};
   }
