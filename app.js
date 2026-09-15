@@ -640,7 +640,6 @@
   let autoTurnstileWaiter = null;
   const poiQueue = [];
   let poiQueueRunning = false;
-  function setAutoHostVisible(visible) { if (autoTurnstileHost) autoTurnstileHost.style.display = visible ? '' : 'none'; }
   function teardownAutoTurnstile() {
     /* 挑战失败/出错时整个摘掉：否则挂件会以错误状态永远卡在右下角 */
     if (autoTurnstileId && globalThis.turnstile) { try { globalThis.turnstile.remove(autoTurnstileId); } catch { /* 忽略 */ } }
@@ -658,15 +657,15 @@
         clearInterval(timer);
         if (!globalThis.turnstile) { reject(new Error('人机验证加载失败')); return; }
         const host = document.createElement('div');
-        /* 平时隐藏，仅 execute 挑战期间现身（交互挑战需要可见位置） */
-        host.style.cssText = 'position:fixed;right:10px;bottom:10px;z-index:60;display:none;';
+        /* appearance:execute 空闲时 Cloudflare 自动隐藏挂件；出错则由 error-callback 整体摘除 */
+        host.style.cssText = 'position:fixed;right:10px;bottom:10px;z-index:60;';
         document.body.append(host);
         autoTurnstileHost = host;
         try {
           autoTurnstileId = globalThis.turnstile.render(host, {
             sitekey, action: 'ai_analysis', appearance: 'execute', size: 'compact',
-            callback: (token) => { setAutoHostVisible(false); const w = autoTurnstileWaiter; autoTurnstileWaiter = null; if (w) { clearTimeout(w.timer); w.resolve(token); } },
-            'expired-callback': () => { setAutoHostVisible(false); },
+            callback: (token) => { const w = autoTurnstileWaiter; autoTurnstileWaiter = null; if (w) { clearTimeout(w.timer); w.resolve(token); } },
+            'expired-callback': () => {},
             'error-callback': () => { const w = autoTurnstileWaiter; autoTurnstileWaiter = null; teardownAutoTurnstile(); if (w) { clearTimeout(w.timer); w.reject(new Error('人机验证未通过')); } }
           });
           resolve(autoTurnstileId);
@@ -676,9 +675,9 @@
   }
   function acquireAutoToken() {
     return ensureAutoTurnstile().then((id) => new Promise((resolve, reject) => {
-      const timer = setTimeout(() => { autoTurnstileWaiter = null; setAutoHostVisible(false); reject(new Error('人机验证超时')); }, 30000);
+      const timer = setTimeout(() => { autoTurnstileWaiter = null; reject(new Error('人机验证超时')); }, 30000);
       autoTurnstileWaiter = { resolve, reject, timer };
-      try { setAutoHostVisible(true); globalThis.turnstile.reset(id); globalThis.turnstile.execute(id); } catch { clearTimeout(timer); autoTurnstileWaiter = null; setAutoHostVisible(false); reject(new Error('人机验证执行失败')); }
+      try { globalThis.turnstile.reset(id); globalThis.turnstile.execute(id); } catch { clearTimeout(timer); autoTurnstileWaiter = null; reject(new Error('人机验证执行失败')); }
     }));
   }
   function requestPoiReview(location, category) {
