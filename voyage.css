@@ -279,6 +279,14 @@ html[data-skin="voyage"] .date-divider::before,
 html[data-skin="voyage"] .date-divider::after {
   background: linear-gradient(90deg, transparent, rgba(240, 179, 94, .38), transparent);
 }
+/* 公路虚线延长穿过日期分隔带：用 padding 吃掉原 margin，背景画到 padding 区直达下一张卡片 */
+html[data-skin="voyage"] .date-divider {
+  margin-bottom: 0;
+  padding-bottom: 11px;
+  background: repeating-linear-gradient(180deg, rgba(240, 179, 94, .75) 0 4px, transparent 4px 10px) 20px 0 / 1px 100% no-repeat;
+  animation: vg-road-flow-y 1.8s linear infinite;
+}
+@keyframes vg-road-flow-y { to { background-position-y: 10px; } }
 html[data-skin="voyage"] .add-via-point {
   border-color: rgba(240, 179, 94, .32);
   color: #eacb9a;
@@ -528,6 +536,7 @@ html[data-skin="voyage"] :focus-visible {
 /* ---------- 减少动态偏好 ---------- */
 @media (prefers-reduced-motion: reduce) {
   html[data-skin="voyage"] .route-connector::before { animation: none; }
+  html[data-skin="voyage"] .date-divider { animation: none; }
   html[data-skin="voyage"] .summary-arrival strong { animation: none; }
   html[data-skin="voyage"] .icon-button:hover,
   html[data-skin="voyage"] .add-destination:hover,
@@ -666,7 +675,7 @@ html[data-skin="voyage"][data-theme="light"] .skipped-connector { color: #9aa1b2
 html[data-skin="voyage"][data-theme="light"] .skipped-connector::before {
   background: repeating-linear-gradient(180deg, rgba(24, 32, 54, .18) 0 4px, transparent 4px 10px);
 }
-html[data-skin="voyage"][data-theme="light"] .date-divider { color: #a4742c; }
+html[data-skin="voyage"][data-theme="light"] .date-divider { color: #a4742c; background-image: repeating-linear-gradient(180deg, rgba(185, 116, 15, .7) 0 4px, transparent 4px 10px); }
 html[data-skin="voyage"][data-theme="light"] .date-divider::before,
 html[data-skin="voyage"][data-theme="light"] .date-divider::after {
   background: linear-gradient(90deg, transparent, rgba(185, 116, 15, .4), transparent);

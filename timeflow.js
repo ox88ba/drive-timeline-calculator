@@ -410,11 +410,11 @@
       }
       var date = new Date(day * 86400000);
       var label = (date.getUTCMonth() + 1) + '/' + date.getUTCDate() + ' ' + WEEK[date.getUTCDay()];
-      /* 当日风险直接标注在当日节律条旁 */
+      /* 当日风险：独占一行居中显示在节律条下方，避免挤在 Day 标签列里频繁换行 */
       var warn = lateMin > 0 ? '<em class="tf-rhythm-day-warn">⚠ 凌晨驾驶 ' + fmtDur(lateMin) + '</em>' : '';
       rows += '<div class="tf-rhythm-row"><div class="tf-rhythm-day"><b>Day ' +
-        (day - firstDay + 1) + '</b><span>' + label + '</span>' + warn + '</div>' +
-        '<div class="tf-rhythm-bar">' + blocks + '</div></div>';
+        (day - firstDay + 1) + '</b><span>' + label + '</span></div>' +
+        '<div class="tf-rhythm-bar">' + blocks + '</div>' + warn + '</div>';
     }
 
     host.innerHTML =

@@ -418,13 +418,15 @@ html[data-engine="timeflow"] .tf-rhythm-warn {
   font-size: 11px;
   line-height: 1.5;
 }
-/* 当日风险：直接标注在当日节律条旁 */
+/* 当日风险：独占一行居中显示在当天节律条下方 */
 html[data-engine="timeflow"] .tf-rhythm-day-warn {
   display: block;
-  margin-top: 3px;
+  grid-column: 1 / -1;
+  margin-top: -3px;
   color: #ff98a0;
-  font: 600 9px/1.45 "Noto Sans SC", sans-serif;
+  font: 600 10px/1.45 "Noto Sans SC", sans-serif;
   font-style: normal;
+  text-align: center;
 }
 @media (prefers-reduced-motion: reduce) {
   html[data-engine="timeflow"] .tf-rb-latenight { animation: none; }
