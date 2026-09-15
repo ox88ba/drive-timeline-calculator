@@ -68,7 +68,7 @@
     return {
       v: 1,
       s: (s && num(s.latitude) != null && num(s.longitude) != null)
-        ? { n: s.name || '', a: s.address || '', la: num(s.latitude), lo: num(s.longitude), p: s.poiId || '' }
+        ? { n: s.name || '', a: s.address || '', la: num(s.latitude), lo: num(s.longitude), p: s.poiId || '', t: s.type || '', tc: s.typecode || '' }
         : null,
       st: trip.startSearchText || '',
       dep: trip.initialDepartureTime,
@@ -79,6 +79,8 @@
         return {
           n: hasLoc ? (loc.name || '') : '',
           a: hasLoc ? (loc.address || '') : '',
+          t: hasLoc ? (loc.type || '') : '',
+          tc: hasLoc ? (loc.typecode || '') : '',
           la: hasLoc ? num(loc.latitude) : null,
           lo: hasLoc ? num(loc.longitude) : null,
           p: hasLoc ? (loc.poiId || '') : '',
@@ -101,7 +103,7 @@
     if (!c || c.v !== 1 || !c.dep || !Array.isArray(c.d)) return null;
     var start = null;
     if (c.s && num(c.s.la) != null && num(c.s.lo) != null) {
-      start = { name: c.s.n || '', address: c.s.a || '', latitude: num(c.s.la), longitude: num(c.s.lo), poiId: c.s.p || '' };
+      start = { name: c.s.n || '', address: c.s.a || '', latitude: num(c.s.la), longitude: num(c.s.lo), poiId: c.s.p || '', type: c.s.t || '', typecode: c.s.tc || '' };
     }
     return {
       startLocation: start,
@@ -110,7 +112,7 @@
       destinations: c.d.map(function (d) {
         var hasLoc = d && num(d.la) != null && num(d.lo) != null;
         return {
-          location: hasLoc ? { name: d.n || '', address: d.a || '', latitude: num(d.la), longitude: num(d.lo), poiId: d.p || '' } : null,
+          location: hasLoc ? { name: d.n || '', address: d.a || '', latitude: num(d.la), longitude: num(d.lo), poiId: d.p || '', type: d.t || '', typecode: d.tc || '' } : null,
           searchText: (d && d.st) || (hasLoc ? d.n : ''),
           route: (d && d.r && num(d.r.dur) != null)
             ? { distanceMeters: num(d.r.ds) || 0, durationSeconds: num(d.r.dur), strategy: d.r.str || 'highway' }

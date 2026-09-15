@@ -421,6 +421,7 @@ html[data-engine="timeflow"] .tf-rhythm-warn {
   font-size: 11px;
   line-height: 1.5;
 }
+.tf-rhythm-stay-hint { margin: 12px 0 0; color: var(--muted); font-size: 11px; line-height: 1.6; text-align: left; }
 /* 当日风险：独占一行，左对齐 */
 html[data-engine="timeflow"] .tf-rhythm-day-warn {
   display: block;

@@ -10,6 +10,7 @@
   const TTL = 7 * 86400000;
   const MAX_ENTRIES = 60;
   const pending = new Map(); // id -> Promise（跨卡片去重）
+  const manualCategories = new Map();
   let cache = {};
   try { cache = JSON.parse(localStorage.getItem(KEY) || '{}'); } catch {}
 
@@ -22,6 +23,9 @@
     if (/风景名胜|110\d{3}/.test(type) || /景区|景点|公园|古镇|古城|博物馆|纪念馆|遗址|寺庙|寺院|国家森林|湿地|观景|游客中心|旅游服务中心|售票处|售票中心/.test(name) || /(?:湖|山|峡谷|雅丹|草原|沙漠|瀑布|盐湖|寺|景区|公园).*(?:停车场|[东南西北]门|入口|出口)/.test(name)) return 'scenic';
     if (/住宿服务|100\d{3}/.test(type) || /酒店|宾馆|民宿|客栈|旅馆|青旅|招待所|度假村|公寓式酒店/.test(name)) return 'hotel';
     if (/餐饮服务|050\d{3}/.test(type) || /餐厅|餐馆|饭店|食府|小吃|火锅|烧烤|面馆|米粉|川菜|湘菜|粤菜|咖啡|茶饮|快餐|美食|羊肉|牛肉|烤鱼|串串|拉面|菜馆|酒楼|酒家/.test(name)) return 'restaurant';
+    // Legacy/shared POIs may lack provider categories. Match natural attraction
+    // names only after hotel/restaurant checks, not every name containing 湖/山.
+    if (/(?:翡翠湖|盐湖|峡谷|雅丹|草原|沙漠|瀑布|国家公园)(?:景区|风景区|旅游区)?$/.test(name) || /(?:湖|山).*(?:风景区|旅游区)$/.test(name)) return 'scenic';
     return null;
   }
 
@@ -118,8 +122,23 @@
 
   function mount(card, destination, request) {
     if (destination.isSkipped || !destination.location) return;
-    const category = categoryOf(destination.location);
-    if (!category) return;
+    const cached = cache[key(destination.location)];
+    const category = categoryOf(destination.location) || manualCategories.get(key(destination.location)) || (cached && cached.category);
+    if (!category) {
+      if (card.querySelector('.poi-review-manual')) return;
+      const manual = node('button', '这是景区？生成 AI 评价', 'poi-review-retry poi-review-manual');
+      manual.type = 'button';
+      manual.onclick = () => {
+        const location = { ...destination.location };
+        const id = key(location);
+        manualCategories.set(id, 'scenic');
+        const box = node('section', '', 'poi-review'); box.dataset.poiKey = id;
+        manual.replaceWith(box);
+        paint(box, id, 'scenic', location, visitContext(destination), request);
+      };
+      card.querySelector('.stay-section').before(manual);
+      return;
+    }
     const location = { ...destination.location };
     const id = key(location);
     const old = card.querySelector('.poi-review');

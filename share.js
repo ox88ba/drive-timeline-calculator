@@ -146,7 +146,7 @@
   function buildLeg(route) {
     const leg = document.createElement('div'); leg.className = 'share-leg';
     const line = document.createElement('div'); line.className = 'share-leg-line'; leg.append(line);
-    text(leg, 'p', 'share-leg-route', `${route?.distance || '待导航'} · ${route?.duration || '待导航'}`);
+    text(leg, 'p', 'share-leg-route', `${route?.distance || '待导航'} · ${route?.duration || '待导航'} · 平均时速 ${route?.averageSpeed || '待导航'}`);
     if (route?.warning) text(leg, 'span', `share-drive-warning is-${route.warningLevel || 'orange'}`, route.warning);
     text(leg, 'span', 'share-leg-arrow', '↓');
     return leg;
@@ -161,6 +161,16 @@
     const timeline = document.createElement('section'); timeline.className = 'share-timeline'; text(timeline, 'span', 'share-section-label', '行程时间轴'); timeline.append(buildStation(model.start, true));
     model.destinations.forEach((destination) => { timeline.append(buildLeg(destination.routeFromPrevious), buildStation(destination)); });
     poster.append(timeline);
+    const bottom = document.createElement('section'); bottom.className = 'share-summary share-bottom-summary';
+    [['总里程', model.summary.distance], ['驾驶时间', model.summary.drive], ['停留时间', model.summary.stay], ['总行程', model.summary.duration], ['平均时速', model.summary.averageSpeed], ['出发时间', model.departureText], ['最终抵达', model.summary.finalArrival]].forEach(([label, value], index) => {
+      const item = document.createElement('div');
+      if (index === 4) item.className = 'share-speed-row';
+      if (index > 4) item.className = 'share-date-cell';
+      text(item, 'span', '', label); text(item, 'strong', '', value || '待导航');
+      if (index === 4) text(item, 'small', '', '该时速为总里程/驾驶时间得到，仅供验证长途驾驶可行性');
+      bottom.append(item);
+    });
+    poster.append(bottom);
     const footer = document.createElement('footer'); footer.className = 'share-footer'; text(footer, 'strong', '', '自驾时间计算器'); text(footer, 'span', '', '基于官方导航数据生成'); poster.append(footer);
     return { poster, routeReady: routeOverview.ready, cleanup: routeOverview.cleanup };
   }

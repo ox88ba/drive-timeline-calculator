@@ -372,6 +372,7 @@
 
     /* 沿卡片链推导 驾驶/停留 段 */
     var segs = [];
+    var needsStayHint = false;
     var prev = abs0;
     var lastEnd = abs0;
     var cards = document.querySelectorAll('#timeline .destination-card');
@@ -388,7 +389,13 @@
       var depBlock = card.querySelector('[data-departure-block]');
       var depEl = card.querySelector('[data-departure]');
       var dd = (depBlock && !depBlock.hidden && depEl) ? parseDT(depEl.textContent) : null;
-      if (!dd) break;
+      if (!dd) {
+        // Only explain a stay-related stop when there are later active cards.
+        needsStayHint = Array.prototype.slice.call(cards, i + 1).some(function (next) {
+          return !next.classList.contains('is-skipped');
+        });
+        break;
+      }
       var dAbs = absOf(year, dd.day, dd.minutes, day0);
       if (dAbs <= aAbs) break;
       segs.push({ type: 'stay', from: aAbs, to: dAbs });
@@ -444,7 +451,8 @@
       '<span><i class="tf-rb-stay"></i>停留</span>' +
       '<span><i class="tf-rb-overnight"></i>过夜</span>' +
       '<span><i class="tf-rb-latenight"></i>凌晨驾驶</span>' +
-      '</div></div>' + rows;
+      '</div></div>' + rows + (needsStayHint
+        ? '<p class="tf-rhythm-stay-hint" role="status">勾选目的地停留时间后显示</p>' : '');
     host.hidden = false;
   }
 
