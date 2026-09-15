@@ -178,10 +178,10 @@
 
 /* ===== 产品逻辑层通用钩子（20260913-ab1）：结构/文案归 app.js，皮肤层只做视觉覆盖 ===== */
 /* Undo Snackbar：可逆操作的统一撤销入口，挂 body，两新皮肤各自重绘 */
-.undo-snackbar { position:fixed; z-index:60; bottom:calc(20px + env(safe-area-inset-bottom)); left:50%; display:flex; align-items:center; gap:12px; max-width:min(92vw,400px); padding:10px 12px 10px 16px; border:1px solid #d8deee; border-radius:14px; color:var(--ink); background:#fff; box-shadow:0 14px 34px rgba(30,37,54,.18); font-size:12px; transform:translateX(-50%); }
+.undo-snackbar { position:fixed; z-index:60; top:62%; bottom:auto; left:50%; display:flex; align-items:center; gap:16px; max-width:min(92vw,460px); padding:16px 16px 16px 22px; border:1px solid #d8deee; border-radius:18px; color:#171c28; background:#fff; box-shadow:0 18px 44px rgba(10,14,26,.38); font-size:15px; transform:translateX(-50%); }
 .undo-snackbar[hidden] { display:none; }
-.undo-snackbar-text { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.undo-snackbar-action { flex:0 0 auto; padding:6px 12px; border:0; border-radius:9px; color:#fff; background:var(--accent); font-weight:600; }
+.undo-snackbar-text { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-weight:600; }
+.undo-snackbar-action { flex:0 0 auto; padding:12px 22px; border:0; border-radius:12px; color:#fff; background:var(--accent); font-size:15px; font-weight:700; }
 /* persist 失败内联提示条 */
 .persist-warning { margin:0 0 14px; padding:10px 14px; border:1px solid #f3c2c7; border-radius:12px; color:#b42332; background:#fff1f2; font-size:12px; }
 /* 卡片 flags 行：过夜徽章 + derived 微标签 */
