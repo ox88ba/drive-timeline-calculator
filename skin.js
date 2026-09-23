@@ -4,6 +4,8 @@
    - data-skin="voyage" 与 data-engine="timeflow" 恒定；data-theme 控制昼夜
    - 本脚本在 <head> 内同步执行，只设置 <html> 属性，避免换肤闪烁 */
 (function () {
+  // 暂停夜间主题；保留历史偏好，方便未来恢复，不影响天空时段效果。
+  var NIGHT_MODE_ENABLED = false;
   var THEME_KEY = 'drive-theme';
   var root = document.documentElement;
   root.dataset.skin = 'voyage';
@@ -15,7 +17,7 @@
   function stored() {
     try { var t = localStorage.getItem(THEME_KEY); return t === 'light' || t === 'dark' ? t : null; } catch (e) { return null; }
   }
-  function effective() { return stored() || (media && !media.matches ? 'light' : 'dark'); }
+  function effective() { return NIGHT_MODE_ENABLED ? (stored() || (media && !media.matches ? 'light' : 'dark')) : 'light'; }
   function apply() {
     var theme = effective();
     root.dataset.theme = theme;
@@ -30,6 +32,7 @@
   document.addEventListener('DOMContentLoaded', function () {
     var btn = document.getElementById('themeToggle');
     if (!btn) return;
+    if (!NIGHT_MODE_ENABLED) { btn.hidden = true; return; }
     function render() {
       var dark = effective() === 'dark';
       btn.textContent = dark ? '☀' : '☾';
