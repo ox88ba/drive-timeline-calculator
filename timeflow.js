@@ -488,6 +488,17 @@
     return p.hour * 60 + p.minute;
   }
 
+  // Export shares the editor's solar boundaries and palettes, without API calls.
+  globalThis.RoadbookSky = {
+    forTime: function (iso, location) {
+      if (!iso || !Number.isFinite(Date.parse(iso))) return null;
+      var t = minutesOfIso(iso);
+      var sun = isValidLoc(location) ? sunTimesFor(location, iso) : {};
+      var key = periodFor(t, sun.sr, sun.ss), p = PALETTES[key];
+      return { key: key, label: p.label, ink: p.ink, background: bgFor(key, t, sun.sr, sun.ss) };
+    }
+  };
+
   function makeSkyBand(key, t, sr, ss, tall) {
     var p = PALETTES[key];
     var band = document.createElement('div');

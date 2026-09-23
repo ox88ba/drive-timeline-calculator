@@ -25,8 +25,14 @@
       if (i === 4) node(cell, 'small', '', '该时速为总里程/驾驶时间得到，仅供验证长途驾驶可行性');
     }); return box;
   }
-  function timeRow(card, label, value, period, moon, departure) {
+  function timeRow(card, label, value, period, moon, departure, iso, location) {
     const time = node(card, 'div', `rb-time ${departure ? 'rb-departure' : ''}`);
+    const sky = globalThis.RoadbookSky?.forTime(iso, location);
+    if (sky) {
+      time.classList.add('rb-sky'); time.dataset.sky = sky.key;
+      time.style.background = sky.background; time.style.setProperty('--rb-sky-ink', sky.ink);
+      period ||= sky.label;
+    }
     node(time, 'span', 'rb-caption', label);
     const line = node(time, 'div', 'rb-time-line'); node(line, 'strong', '', value || '待确认');
     if (moon) node(line, 'span', '', '🌙'); chip(line, period);
@@ -38,13 +44,13 @@
     if (stop.meta) node(card, 'p', 'rb-meta', stop.meta);
     if (stop.overnight) chip(card, `🌙 第 ${stop.overnight} 晚 · 自动推算`, 'rb-blue');
     timeRow(card, start ? '旅程出发' : '预计抵达', start ? stop.departure : stop.arrival,
-      start ? stop.departurePeriod : stop.arrivalPeriod || (stop.arrivalMoment?.label ? `黄昏 · ${stop.arrivalMoment.label}` : ''), stop.nightArrival);
+      start ? stop.departurePeriod : stop.arrivalPeriod || (stop.arrivalMoment?.label ? `黄昏 · ${stop.arrivalMoment.label}` : ''), stop.nightArrival, false, start ? stop.departureIso : stop.arrivalIso, stop.location);
     const hints = node(card, 'div', 'rb-hints'); chip(hints, stop.daylight, 'rb-blue'); chip(hints, stop.plateau || stop.altitudeWarning, 'rb-amber');
     if (!start) {
       const stay = node(card, 'div', 'rb-stay'); node(stay, 'span', '', stop.overnight ? '停留 / 过夜' : '停留安排');
       node(stay, 'strong', '', stop.stay || (stop.stayMode === 'until' ? '0分' : '未选择停留时间'));
       if (stop.untilTime) node(stay, 'span', '', `至${stop.untilTime}`);
-      if (stop.departure) timeRow(card, '预计出发', stop.departure, stop.departurePeriod || (stop.departureMoment?.label ? `黄昏 · ${stop.departureMoment.label}` : ''), false, true);
+      if (stop.departure) timeRow(card, '预计出发', stop.departure, stop.departurePeriod || (stop.departureMoment?.label ? `黄昏 · ${stop.departureMoment.label}` : ''), false, true, stop.departureIso, stop.location);
       if ($('#shareIncludeAi').checked && stop.aiReview) {
         const ai = node(card, 'div', 'rb-ai'); node(ai, 'b', '', 'AI 评价 · 已有摘要'); node(ai, 'p', '', stop.aiReview);
         node(ai, 'small', '', 'AI 生成，非实时口碑；门票、营业及停车信息请出发前核实。');
