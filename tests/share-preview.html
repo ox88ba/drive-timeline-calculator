@@ -1,0 +1,30 @@
+<!doctype html><html data-engine="timeflow" data-skin="voyage" data-theme="dark"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="stylesheet" href="../styles.css"><link rel="stylesheet" href="../timeflow.css"><link rel="stylesheet" href="../voyage.css"><link rel="stylesheet" href="../share-v2.css"></head><body>
+<button id="fixtureOpen">打开测试行程（不调用 API）</button><button id="fixtureFail">测试地图失败</button>
+<div id="shareModal" class="modal-backdrop share-backdrop" hidden><section class="share-modal">
+<button id="shareClose">关闭</button><input id="shareNameInput" placeholder="标题"><span id="shareNameCount"></span>
+<button id="shareQuickRoute"></button><button id="shareQuickStamp"></button>
+<div class="share-export-options"><label><input id="shareIncludeMap" type="checkbox">包含地图</label><label><input id="shareIncludeAi" type="checkbox">AI 摘要</label><button id="shareRetryMap">重试地图</button><button id="shareRetry">重新生成</button></div>
+<div class="share-preview"><div id="sharePosterHost"></div></div><div id="shareParts"></div><div class="share-actions"><button id="shareSystem">系统分享</button><button id="shareDownload">保存 PNG</button></div><p id="shareStatus"></p></section></div>
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script><script src="../share-layout.js"></script><script src="../share-v2.js"></script>
+<script>
+let fail = false;
+const renderCanvas = window.html2canvas;
+window.html2canvas = async (...args) => {
+  const canvas = await renderCanvas(...args);
+  const img = document.createElement('img'); img.src = canvas.toDataURL(); img.alt = `实际导出 PNG ${canvas.width}×${canvas.height}`; img.style.cssText = 'width:300px;vertical-align:top;margin:8px'; document.body.append(img);
+  return canvas;
+};
+window.DriveMapSnapshot = { capture: async () => {
+  if (fail) throw new Error('测试：地图未加载');
+  const c = document.createElement('canvas'); c.width=c.height=600; const ctx=c.getContext('2d');
+  ctx.fillStyle='#edf3ed';ctx.fillRect(0,0,600,600);ctx.fillStyle='#37556b';ctx.font='24px sans-serif';ctx.fillText('测试地图快照 · 不调用高德 API',70,70);
+  ctx.strokeStyle='#315efb';ctx.lineWidth=6;ctx.beginPath();ctx.moveTo(100,160);ctx.lineTo(440,290);ctx.lineTo(190,430);ctx.stroke();
+  return new Promise(r=>c.toBlob(r));
+} };
+const start={number:'01',name:'鹅岭公园',location:{latitude:29.5,longitude:106.5},departure:'09/30 18:00',departureIso:'2026-09-30T18:00:00+08:00'};
+const destinations=Array.from({length:12},(_,i)=>({number:String(i+2).padStart(2,'0'),name:i%2?'大柴旦光影之城景区草原野奢营地（北门游客中心停车场）':'翡翠湖',address:'青海省海西蒙古族藏族自治州大柴旦镇建设大道',arrival:'10/01 19:17',arrivalIso:new Date(Date.parse(start.departureIso)+(i+1)*86400000).toISOString(),departureIso:new Date(Date.parse(start.departureIso)+(i+1)*86400000+36000000).toISOString(),departure:'10/02 08:00',stay:'12小时43分',stayMinutes:763,stayMode:'until',untilTime:'08:00',meta:'日出 07:35 · 日落 19:22 · 海拔 3178m',arrivalPeriod:'黄昏 · 火烧云时刻',departurePeriod:'上午',nightArrival:i===0,daylight:'距日落 5分钟',plateau:'高原，爬升2389m',overnight:i+1,aiReview:'测试 AI 摘要：出发前核实门票与停车安排。',routeFromPrevious:{distance:'842.3公里',duration:'10小时',averageSpeed:'84.2km/h',warning:'驾车超8小时',warningLevel:'red'}}));
+const fixture={version:2,complete:true,title:[start.name,...destinations.map(d=>d.name)].join(' → '),start,destinations,departureText:'2026/09/30 18:00',generatedAt:new Date().toISOString(),summary:{distance:'4172.4公里',drive:'52小时17分',stay:'73小时50分',duration:'126小时7分',averageSpeed:'79.8km/h',finalArrival:'2026/10/06 00:05'}};
+document.querySelector('#fixtureOpen').onclick=()=>{fail=false;DriveShare.open(fixture);};
+document.querySelector('#fixtureFail').onclick=()=>{fail=true;DriveShare.open(fixture);};
+</script></body></html>

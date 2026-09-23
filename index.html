@@ -13,6 +13,7 @@
     <link rel="stylesheet" href="./timeflow.css?v=20260916-stay-hint" />
     <link rel="stylesheet" href="./voyage.css?v=20260916-share-daylight" />
     <link rel="stylesheet" href="./tripkit.css?v=20260916-save-split" />
+    <link rel="stylesheet" href="./share-v2.css?v=20260923-export2" />
   </head>
   <body>
     <aside class="trip-dock is-collapsed" aria-label="行程导航">
@@ -128,13 +129,20 @@
         <section class="share-name-panel" aria-label="长图命名">
           <label for="shareNameInput">长图命名 <span id="shareNameCount">0/50</span></label>
           <input id="shareNameInput" type="text" maxlength="50" autocomplete="off" placeholder="为这版长图添加名称" aria-describedby="shareNameHint" />
-          <small id="shareNameHint">用于保存 PNG 与系统分享的文件名</small>
+          <small id="shareNameHint">显示在长图顶部，并用于保存 PNG 与系统分享的文件名</small>
           <div class="share-name-shortcuts" aria-label="快捷填入名称">
             <div><button id="shareQuickRoute" type="button">—</button><button id="shareQuickStamp" type="button">DDHHMM</button></div>
             <div><button class="share-name-suffix" type="button">（酒店更新）</button><button class="share-name-suffix" type="button">（目的地更新）</button><button class="share-name-suffix" type="button">（景点更新）</button></div>
           </div>
         </section>
+        <div class="share-export-options">
+          <label><input id="shareIncludeMap" type="checkbox" checked />包含地图</label>
+          <label><input id="shareIncludeAi" type="checkbox" />包含已有 AI 评价摘要</label>
+          <button id="shareRetryMap" type="button">重试地图快照</button>
+          <button id="shareRetry" type="button">重新生成</button>
+        </div>
         <div class="share-preview"><div id="sharePosterHost"></div></div>
+        <div id="shareParts" aria-label="分图保存"></div>
         <div class="share-actions"><button id="shareSystem" type="button" disabled>系统分享</button><button id="shareDownload" type="button" disabled>保存 PNG</button></div>
         <p id="shareStatus" class="share-status" role="status" aria-live="polite">正在准备分享视图…</p>
       </section>
@@ -146,11 +154,12 @@
     <script src="./sunset.js?v=20260909-share1"></script>
     <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
     <script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" defer></script>
-    <script src="./share.js?v=20260916-share-daylight"></script>
+    <script src="./share-layout.js?v=20260923-export2"></script>
+    <script src="./share-v2.js?v=20260923-export2"></script>
     <script src="./scenic-ai.js?v=20260916-poi-category"></script>
     <script src="./tripkit.js?v=20260916-poi-category"></script>
-    <script src="./app.js?v=20260916-share-daylight"></script>
-    <script src="./timeflow.js?v=20260916-stay-hint"></script>
+    <script src="./app.js?v=20260923-export2"></script>
+    <script src="./timeflow.js?v=20260923-export2"></script>
     <script src="./voyage.js?v=20260916-contained-scroll"></script>
   </body>
 </html>

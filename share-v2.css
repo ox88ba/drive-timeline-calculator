@@ -1,0 +1,74 @@
+/* Isolated export document: never inherits the editor's sky/dark theme. */
+html #sharePoster.rb-poster {
+  width:600px!important; min-width:600px; box-sizing:border-box; padding:30px; margin:0;
+  border-radius:0; background:#f5f7fb!important; color:#1b293b!important;
+  font:400 14px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans SC",sans-serif;
+  transform-origin:top left; text-align:left; letter-spacing:0;
+}
+#sharePoster.rb-poster * { box-sizing:border-box; }
+#sharePoster.rb-poster h1,#sharePoster.rb-poster h2,#sharePoster.rb-poster h3,#sharePoster.rb-poster p { margin:0; color:inherit; }
+#sharePoster.rb-poster strong,#sharePoster.rb-poster b { color:inherit; }
+#sharePosterHost { position:relative; width:100%; overflow:hidden; }
+#shareModal .share-modal { min-width:0; width:min(760px,calc(100vw - 20px)); max-width:100%; box-sizing:border-box; overflow:hidden; }
+#shareModal .share-preview { min-width:0; max-width:100%; box-sizing:border-box; }
+#sharePoster.rb-poster h1 { font-size:30px; line-height:1.4; overflow-wrap:anywhere; }
+#sharePoster .rb-brand { margin-top:12px!important; color:#31636d!important; font-size:12px; font-weight:700; letter-spacing:2px; }
+#sharePoster .rb-subtitle { margin-top:6px!important; color:#59677b!important; }
+#sharePoster .rb-route-title { margin-top:18px!important; padding-top:16px; border-top:2px solid #dce5ec; overflow-wrap:anywhere; line-height:1.8; font-weight:600; }
+#sharePoster .rb-section { margin-top:22px; padding:20px; background:#fff; border:1px solid #dfe6ef; border-radius:16px; }
+#sharePoster .rb-section-title,#sharePoster .rb-timeline-title { font-size:18px; margin-bottom:14px!important; font-weight:700; }
+#sharePoster .rb-timeline-title { margin-top:28px!important; }
+#sharePoster .rb-stats { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); border:1px solid #e4e9f0; border-radius:10px; overflow:hidden; }
+#sharePoster .rb-stat { padding:12px 5px; text-align:center; min-width:0; border-right:1px solid #e4e9f0; }
+#sharePoster .rb-stat:nth-child(4) { border:0; }
+#sharePoster .rb-stat span { display:block; font-size:12px; color:#667287; }
+#sharePoster .rb-stat strong { display:block; font-size:15px; margin-top:5px; overflow-wrap:anywhere; font-variant-numeric:tabular-nums; }
+#sharePoster .rb-wide { grid-column:1/-1; border-top:1px solid #e4e9f0; border-bottom:1px solid #e4e9f0; border-right:0; }
+#sharePoster .rb-stat small { display:block; font-size:11px; color:#667287; margin-top:5px; }
+#sharePoster .rb-date { grid-column:span 2; }
+#sharePoster .rb-date:last-child:nth-child(6) { grid-column:1/-1; }
+#sharePoster .rb-map { width:100%; height:auto; display:block; border-radius:10px; }
+#sharePoster .rb-note { font-size:11px; color:#68788a!important; margin-top:10px!important; }
+#sharePoster .rb-notice { padding:14px 18px; margin-top:18px; border:1px solid #edce94; border-radius:12px; background:#fff8e9; color:#7d5016; font-size:13px; }
+#sharePoster .rb-date-heading { margin:14px 0!important; font-size:14px; color:#376977!important; }
+#sharePoster .rb-station { background:#fff; border:1px solid #dfe6ef; border-radius:16px; padding:22px; }
+#sharePoster .rb-station-head { display:flex; align-items:baseline; gap:12px; }
+#sharePoster .rb-number { flex-shrink:0; font-size:16px; color:#317382!important; }
+#sharePoster .rb-station-head h3 { font-size:21px; line-height:1.55; overflow-wrap:anywhere; white-space:normal; }
+#sharePoster .rb-address { margin-top:8px!important; font-size:12px; color:#68788a!important; overflow-wrap:anywhere; }
+#sharePoster .rb-meta { margin:8px 0!important; font-size:12px; color:#52647b!important; }
+#sharePoster .rb-time { margin-top:17px; }
+#sharePoster .rb-caption { display:block; font-size:12px; color:#68788a; }
+#sharePoster .rb-time-line { display:flex; align-items:center; flex-wrap:wrap; gap:8px; margin-top:4px; }
+#sharePoster .rb-time-line strong { font-size:23px; font-variant-numeric:tabular-nums; }
+#sharePoster .rb-chip { display:inline-block; padding:3px 9px; border-radius:20px; background:#eef2f7; color:#425369; font-size:12px; font-weight:600; line-height:1.6; vertical-align:middle; }
+#sharePoster .rb-blue { background:#eaf3fc; color:#2e638d; }
+#sharePoster .rb-amber { background:#fff0d9; color:#965610; }
+#sharePoster .rb-red { background:#ffeaec; color:#b12d40; }
+#sharePoster .rb-hints { display:flex; flex-wrap:wrap; align-items:center; gap:6px; margin-top:8px; }
+#sharePoster .rb-hints:empty { display:none; }
+#sharePoster .rb-stay { display:flex; gap:12px; flex-wrap:wrap; margin-top:16px; padding:12px; border-radius:8px; background:#f3f6fa; font-size:13px; }
+#sharePoster .rb-departure { padding-top:12px; border-top:1px solid #e4e9f0; }
+#sharePoster .rb-ai { padding-top:12px; margin-top:14px; border-top:1px solid #e4e9f0; font-size:13px; }
+#sharePoster .rb-ai small { display:block; margin-top:8px; font-size:11px; color:#68788a; }
+#sharePoster .rb-leg { display:flex; gap:14px; padding:17px 20px; align-items:center; font-size:14px; color:#415f75; }
+#sharePoster .rb-leg .rb-chip { margin-top:5px; }
+#sharePoster .rb-leg-arrow { font-size:24px; color:#5998a4; }
+#sharePoster .rb-footer { margin-top:24px; padding-top:18px; border-top:1px solid #dce5ec; font-size:11px; color:#68788a; }
+#sharePoster .rb-footer p { margin-top:6px!important; }
+#sharePoster .rb-legend { display:flex; gap:14px; flex-wrap:wrap; font-size:11px; color:#68788a; }
+#sharePoster .rb-legend span { display:flex; gap:5px; align-items:center; }
+#sharePoster .rb-legend i { display:inline-block; width:10px; height:10px; border-radius:3px; }
+#sharePoster .rb-block.drive { background:#e9ad58; } #sharePoster .rb-block.stay { background:#7ebfce; }
+#sharePoster .rb-block.overnight { background:#5a668c; } #sharePoster .rb-block.night-drive { background:#df7c84; }
+#sharePoster .rb-day-row { margin-top:15px; }
+#sharePoster .rb-day-label { display:flex; align-items:center; justify-content:space-between; font-size:12px; }
+#sharePoster .rb-day-label span { color:#68788a; }
+#sharePoster .rb-bar { position:relative; height:14px; margin:6px 0; background:#f0f3f7; overflow:hidden; border-radius:4px; }
+#sharePoster .rb-bar i { position:absolute; top:0; bottom:0; }
+#sharePoster .rb-day-detail { font-size:11px; color:#68788a!important; }
+#sharePoster .rb-day-warning { font-size:12px; color:#b12d40!important; text-align:left; }
+.share-export-options { display:flex; flex-wrap:wrap; gap:10px 16px; align-items:center; margin:12px 0; font-size:12px; }
+.share-export-options label { display:flex; align-items:center; gap:5px; }
+.share-export-options button,#shareParts button { padding:7px 11px; border:1px solid #cbd5e1; border-radius:9px; background:#fff; color:#354b65; }
+#shareParts { display:flex; flex-wrap:wrap; gap:8px; margin-top:10px; }

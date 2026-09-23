@@ -277,20 +277,31 @@
     const legs = activeLegs();
     if (!isValidLocation(trip.startLocation) || !legs.length) return null;
     const summary = trip.summary || {}; const chainComplete = Boolean(summary.routeChainIsComplete);
+    const overnights = overnightStays();
     const destinations = legs.map((leg, index) => {
       const destination = leg.destination; const arrivalPhoto = destination.arrivalPhoto; const departurePhoto = destination.departurePhoto;
       const meta = [arrivalPhoto?.sunriseAt ? `日出 ${formatTime(arrivalPhoto.sunriseAt)}` : null, arrivalPhoto?.sunsetAt ? `日落 ${formatTime(arrivalPhoto.sunsetAt)}` : null, Number.isFinite(destination.elevationMeters) ? `海拔 ${destination.elevationMeters}m` : null].filter(Boolean).join(' · ');
       const route = destination.route; const previousElevation = index > 0 ? legs[index - 1].destination.elevationMeters : elevationCache[elevationKey(leg.origin)]; const currentElevation = destination.elevationMeters; const nightArrival = Number.isFinite(Date.parse(destination.arrivalTime)) && Number.isFinite(Date.parse(arrivalPhoto?.sunsetAt)) && Date.parse(destination.arrivalTime) > Date.parse(arrivalPhoto.sunsetAt) + 3600000; const altitudeWarning = Number.isFinite(currentElevation) && currentElevation >= 2500 ? (Number.isFinite(previousElevation) && currentElevation > previousElevation ? `本站位于高原，海拔上升${Math.round(currentElevation - previousElevation)}m` : '本站位于高原') : '';
+      const card = document.getElementById(`destination-${destination.id}`);
       return {
+        id: destination.id, arrivalIso: destination.arrivalTime || null, departureIso: destination.departureTime || null,
+        stayMinutes: destination.stayMinutes || 0, stayMode: destination.stayMode, untilTime: destination.untilTime,
+        overnight: overnights.get(destination.id) || null,
+        arrivalPeriod: card?.querySelector('[data-arrival] .tf-moment')?.textContent || '',
+        departurePeriod: card?.querySelector('[data-departure] .tf-moment')?.textContent || '',
+        daylight: card?.querySelector('.tf-daylight')?.textContent || '',
+        plateau: card?.querySelector('.altitude-warning')?.textContent || altitudeWarning,
+        aiReview: card?.querySelector('.poi-review-lead')?.textContent || '',
+        routePending: Boolean(destination.routeLoading || !route),
         number: String(index + 2).padStart(2, '0'), name: locationText(destination.location), address: destination.location?.address || '', location: shareLocation(destination.location),
         arrival: destination.arrivalTime ? formatDateTime(destination.arrivalTime) : '等待导航数据', departure: destination.hasDepartureDisplay ? formatDateTime(destination.departureTime) : '', stay: destination.stayMinutes > 0 ? formatStay(destination.stayMinutes) : '', meta, nightArrival, altitudeWarning,
         arrivalMoment: shareMoment(arrivalPhoto), departureMoment: shareMoment(departurePhoto),
         routeFromPrevious: { averageSpeed: route?.durationSeconds > 0 ? (route.distanceMeters * 3.6 / route.durationSeconds).toFixed(1) + 'km/h' : '待导航', distance: route ? formatDistance(route.distanceMeters) : '待导航', duration: route ? formatDuration(route.durationSeconds) : '待导航', warning: route?.durationSeconds > 8 * 3600 ? '驾车超8小时' : (route?.durationSeconds > 4 * 3600 ? '驾车超4小时' : ''), warningLevel: route?.durationSeconds > 8 * 3600 ? 'red' : (route?.durationSeconds > 4 * 3600 ? 'orange' : ''), polyline: Array.isArray(route?.polyline) ? route.polyline.map((point) => [Number(point?.[0]), Number(point?.[1])]).filter(([x, y]) => Number.isFinite(x) && Number.isFinite(y)) : [] }
       };
     });
-    const start = { number: '01', name: locationText(trip.startLocation), address: trip.startLocation.address || '', location: shareLocation(trip.startLocation), departure: formatDateTime(trip.initialDepartureTime) };
+    const start = { number: '01', name: locationText(trip.startLocation), address: trip.startLocation.address || '', location: shareLocation(trip.startLocation), departure: formatDateTime(trip.initialDepartureTime), departureIso: trip.initialDepartureTime };
     const routeTitle = [start.name, ...destinations.map((destination) => destination.name)].filter(Boolean).join(' → ');
-    return { title: routeTitle, subtitle: `${destinations.length} 个目的地`, departureText: formatDateTime(trip.initialDepartureTime, true), start, destinations, summary: { averageSpeed: chainComplete && summary.drivingSeconds > 0 ? (summary.distanceMeters * 3.6 / summary.drivingSeconds).toFixed(1) + 'km/h' : '待导航', distance: chainComplete ? formatDistance(summary.distanceMeters) : '待导航', drive: chainComplete ? formatDuration(summary.drivingSeconds) : '待导航', stay: formatStay(summary.totalStayMinutes), duration: chainComplete ? formatDuration(summary.totalDurationSeconds) : '待导航', finalArrival: summary.finalArrivalTime ? formatDateTime(summary.finalArrivalTime, true) : '等待完整导航数据' } };
+    return { version: 2, generatedAt: new Date().toISOString(), complete: chainComplete, skippedCount: trip.destinations.filter(d => d.isSkipped).length, title: routeTitle, subtitle: `${destinations.length} 个目的地`, departureText: formatDateTime(trip.initialDepartureTime, true), start, destinations, summary: { averageSpeed: chainComplete && summary.drivingSeconds > 0 ? (summary.distanceMeters * 3.6 / summary.drivingSeconds).toFixed(1) + 'km/h' : '待导航', distance: chainComplete ? formatDistance(summary.distanceMeters) : '待导航', drive: chainComplete ? formatDuration(summary.drivingSeconds) : '待导航', stay: formatStay(summary.totalStayMinutes), duration: chainComplete ? formatDuration(summary.totalDurationSeconds) : '待导航', finalArrival: summary.finalArrivalTime ? formatDateTime(summary.finalArrivalTime, true) : '等待完整导航数据' } };
   }
   function routeConnector(destination, index) { const node = document.createElement('div'); node.className = 'route-connector'; const routeInfo = document.createElement('span'); if (destination.isSkipped) { node.classList.add('skipped-connector'); routeInfo.textContent = '此站已跳过'; } else if (!destination.location) { routeInfo.textContent = '选择具体 POI 后获取导航'; } else if (destination.routeLoading) { routeInfo.innerHTML = '<span class="route-loading"><i class="spinner"></i>正在获取导航数据…</span>'; } else if (destination.route) { node.classList.add('connector-route'); const avgSpeed = destination.route.durationSeconds > 0 ? Math.round(destination.route.distanceMeters / 1000 / (destination.route.durationSeconds / 3600)) : 0; routeInfo.textContent = `${formatDistance(destination.route.distanceMeters)} · ${formatDuration(destination.route.durationSeconds)}${avgSpeed > 0 ? ` · 平均${avgSpeed}km/h` : ''}`; } else { routeInfo.textContent = '导航数据待获取'; } node.append(routeInfo); const addVia = document.createElement('button'); addVia.type = 'button'; addVia.className = 'add-via-point'; addVia.dataset.action = 'add-via-point'; addVia.dataset.index = String(index); addVia.textContent = '添加途径点'; node.append(addVia); return node; }
   function routeStatus(destination, index) { const node = document.createElement('div'); node.className = 'route-status'; if (destination.isSkipped) { node.textContent = '已跳过，不参与导航、时间与汇总计算。'; return node; } if (!destination.location) { node.textContent = '选择候选地点后，才会调用官方导航服务。'; return node; } if (!isValidLocation(trip.startLocation)) { node.textContent = '请先搜索并选择出发点 POI。'; return node; } if (destination.routeLoading) { node.innerHTML = '<span class="route-loading"><i class="spinner"></i>正在获取导航数据…</span>'; return node; } if (destination.routeError) { node.classList.add('error'); node.append('导航数据获取失败，'); const retry = document.createElement('button'); retry.className = 'retry'; retry.dataset.action = 'retry-route'; retry.dataset.index = index; retry.textContent = '点击重新计算'; node.append(retry); return node; } if (destination.route) { /* 路线就绪后不再显示「起点 → 终点」标签，减少信息噪音；该条只是状态占位 */ node.hidden = true; return node; } node.textContent = '正在等待可用的起终点坐标。'; return node; }
@@ -390,18 +401,16 @@
   function centerRoutePreview() { if (amapMap && amapOverlays.length) { amapMap.setFitView(amapOverlays, true, [36, 36, 36, 36]); return; } mapCenterAction(); }
   function nextPaint() { return new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))); }
   async function captureRouteMap() {
-    /* 存储中的路线摘要不含道路几何（localStorage 配额设计），
-       回访/分享链接打开的行程直接截图会拿不到轨迹 → 先逐段补抓几何 */
+    /* 存储摘要可能不含道路几何；导出不隐式重算导航。 */
     const missingGeometry = activeLegs().filter((leg) => !(Array.isArray(leg.destination.route?.polyline) && leg.destination.route.polyline.length >= 2));
-    mapBatchDepth++;
-    try { for (const leg of missingGeometry) await loadRoute(leg, true); }
-    finally { mapBatchDepth--; renderMap(); }
+    // Export must not silently spend navigation quota or change the trip after
+    // its share model has been frozen. Ask for an explicit preview refresh.
+    if (missingGeometry.length) throw new Error('部分道路轨迹尚未加载，请先刷新网页路线预览，或选择不含地图导出。');
     if (mapBatchDepth) throw new Error('导航路线仍在加载，请完成后再生成长图。');
     const data = mapPreviewData();
     if (data.message) throw new Error('网页路线预览尚未完成，请先点击“刷新预览”获取道路轨迹后再生成长图。');
     if (typeof globalThis.html2canvas !== 'function') throw new Error('地图快照组件未加载。');
     await mapReadyPromise;
-    centerRoutePreview();
     if (amapMap) {
       await new Promise((resolve) => {
         let settled = false; let timer;

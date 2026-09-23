@@ -525,7 +525,7 @@
   function decoratePoster() {
     var host = document.getElementById('sharePosterHost');
     var poster = host ? host.querySelector('.share-poster') : null;
-    if (!poster || poster.dataset.tfDone === '1') return;
+    if (!poster || poster.dataset.exportVersion === '2' || poster.dataset.tfDone === '1') return;
     var raw = null;
     try { raw = JSON.parse(localStorage.getItem(TRIP_STORAGE_KEY)); } catch (e) { /* noop */ }
     if (!raw || !raw.initialDepartureTime ||
