@@ -51,6 +51,8 @@ html #sharePoster.rb-poster {
 #sharePoster .rb-departure { padding-top:12px; border-top:1px solid #e4e9f0; }
 #sharePoster .rb-time.rb-sky { padding:18px; border:0; border-radius:12px; color:var(--rb-sky-ink); }
 #sharePoster .rb-sky .rb-caption { color:inherit; }
+/* Outrank the legacy timeflow poster's blanket dark strong-text rule. */
+html #sharePoster.rb-poster .rb-sky .rb-time-line strong { color:var(--rb-sky-ink); }
 #sharePoster .rb-sky .rb-chip { color:inherit; background:rgba(255,255,255,.16); border:1px solid currentColor; }
 #sharePoster .rb-ai { padding-top:12px; margin-top:14px; border-top:1px solid #e4e9f0; font-size:13px; }
 #sharePoster .rb-ai small { display:block; margin-top:8px; font-size:11px; color:#68788a; }

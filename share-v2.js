@@ -150,7 +150,7 @@
       queue = queue.catch(() => {}).then(async () => {
         if (token !== revision || !model) return;
         try {
-          if ($('#shareIncludeMap').checked) { await mapPromise; if (token !== revision) return; if (!mapUrl) throw new Error(`${mapError || '地图尚未准备好'}。可重试地图或取消“包含地图”继续导出。`); }
+          if ($('#shareIncludeMap').checked) { mapPromise ||= loadMap(session); await mapPromise; if (token !== revision) return; if (!mapUrl) throw new Error(`${mapError || '地图尚未准备好'}。可重试地图或取消“包含地图”继续导出。`); }
           const poster = build(); $('#sharePosterHost').replaceChildren(poster);
           const blobs = await capture(poster, token); if (token !== revision || !blobs) return;
           files = blobs; fit(); enabled(true);
@@ -180,8 +180,8 @@
     close(); model = structuredClone(value); model.generatedAt ||= new Date().toISOString(); $('#shareModal').hidden = false;
     $('#shareNameInput').value = ''; $('#shareNameCount').textContent = '0/50'; $('#shareQuickRoute').textContent = `${model.start.name}→${model.destinations.at(-1).name}`;
     const now = new Date(); $('#shareQuickStamp').textContent = [now.getDate(), now.getHours(), now.getMinutes()].map(v => String(v).padStart(2, '0')).join('');
-    $('#shareIncludeMap').checked = true; $('#shareIncludeAi').checked = false; $('#shareIncludeAi').disabled = !model.destinations.some(s => s.aiReview);
-    mapPromise = loadMap(session); schedule();
+    $('#shareIncludeMap').checked = false; $('#shareIncludeAi').checked = false; $('#shareIncludeAi').disabled = !model.destinations.some(s => s.aiReview);
+    schedule();
   }
   $('#shareClose').onclick = close; $('#shareModal').addEventListener('click', e => { if (e.target === e.currentTarget) close(); });
   $('#shareSystem').onclick = share; $('#shareDownload').onclick = () => download(0); $('#shareNameInput').addEventListener('input', updateName);

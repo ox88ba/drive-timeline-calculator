@@ -16,4 +16,13 @@ for (const [hour, key] of [[2,'night'],[6,'dawn'],[9,'morning'],[12,'noon'],[15,
 }
 assert.equal(sky.forTime(null), null);
 assert.equal(sky.forTime('bad-date'), null);
+// Export times must retain light sky ink instead of the legacy dark strong rule.
+assert.equal(sky.forTime('2026-09-26T02:14:00+08:00').ink, '#e9edf6');
+const css = fs.readFileSync(require.resolve('../share-v2.css'), 'utf8');
+assert.match(css, /html #sharePoster\.rb-poster \.rb-sky \.rb-time-line strong\s*\{\s*color:var\(--rb-sky-ink\)/);
+const html = fs.readFileSync(require.resolve('../index.html'), 'utf8');
+assert.doesNotMatch(html.match(/<input id="shareIncludeMap"[^>]*>/)[0], /\bchecked\b/);
+const share = fs.readFileSync(require.resolve('../share-v2.js'), 'utf8');
+assert.match(share, /\$\('#shareIncludeMap'\)\.checked = false/);
+assert.doesNotMatch(share, /\$\('#shareIncludeMap'\)\.checked = true/);
 console.log('share-sky: all tests passed');
