@@ -1,6 +1,6 @@
+const ALLOWED_ORIGINS = new Set(['https://road.ox88.work', 'https://ox88ba.github.io', 'https://www.wxy.org.cn', 'http://www.wxy.org.cn']);
+const ALLOWED_HOSTNAMES = new Set(['road.ox88.work', 'ox88ba.github.io', 'www.wxy.org.cn']);
 const CORS_HEADERS = {
-  // The public H5 is hosted on this Pages origin. Do not reflect arbitrary Origins.
-  'access-control-allow-origin': 'https://ox88ba.github.io',
   'access-control-allow-methods': 'GET, POST, OPTIONS',
   'access-control-allow-headers': 'content-type',
   'vary': 'Origin'
@@ -128,7 +128,7 @@ async function verifyTurnstileToken(request, env, token, expectedAction) {
     });
   } catch { return error(502, 'TURNSTILE_UNAVAILABLE', '人机验证服务暂时不可用，请稍后重试。'); }
   const result = await response.json().catch(() => ({}));
-  if (!response.ok || !result.success || result.hostname !== 'ox88ba.github.io' || result.action !== expectedAction) {
+  if (!response.ok || !result.success || !ALLOWED_HOSTNAMES.has(result.hostname) || result.action !== expectedAction) {
     return error(403, 'TURNSTILE_FAILED', '人机验证未通过，请重新验证。');
   }
   return null;
@@ -368,14 +368,14 @@ async function staticMap(url, env) {
   }
 }
 
-export default {
+const handler = {
   async fetch(request, env) {
     const url = new URL(request.url);
     if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS_HEADERS });
     if (request.method !== 'GET' && !(request.method === 'POST' && ['/api/verify-turnstile', '/api/ai-analysis', '/api/scenic-analysis'].includes(url.pathname))) return error(405, 'METHOD_NOT_ALLOWED', '请求方法不受支持。');
     if (['/api/ai-analysis', '/api/scenic-analysis'].includes(url.pathname)) {
       if (request.method !== 'POST') return error(405, 'METHOD_NOT_ALLOWED', '请使用 POST 请求。');
-      if (request.headers.get('origin') !== 'https://ox88ba.github.io') return error(403, 'ORIGIN_DENIED', '请求来源无效。');
+      if (!ALLOWED_ORIGINS.has(request.headers.get('origin'))) return error(403, 'ORIGIN_DENIED', '请求来源无效。');
       if (!env.AI_RATE_LIMITER) return error(503, 'LIMITER_NOT_CONFIGURED', 'AI 服务正在配置中，请稍后再试。');
       const limit = await env.AI_RATE_LIMITER.limit({key: request.headers.get('CF-Connecting-IP') || 'unknown'});
       if (!limit.success) return error(429, 'RATE_LIMITED', '请求过于频繁，请稍后再试。');
@@ -401,5 +401,21 @@ export default {
     // Cloudflare Worker only serves the API, which is what GitHub Pages calls.
     if (env.ASSETS && typeof env.ASSETS.fetch === 'function') return env.ASSETS.fetch(request);
     return error(404, 'NOT_FOUND', '接口不存在。');
+  }
+};
+
+export default {
+  async fetch(request, env) {
+    const response = await handler.fetch(request, env);
+    // Keep CORS request-local: concurrent callers must never share origin state.
+    const headers = new Headers(response.headers);
+    const origin = request.headers.get('origin');
+    headers.delete('access-control-allow-origin');
+    if (ALLOWED_ORIGINS.has(origin)) headers.set('access-control-allow-origin', origin);
+    const vary = headers.get('vary');
+    if (!vary?.split(',').some(value => value.trim().toLowerCase() === 'origin' || value.trim() === '*')) {
+      headers.set('vary', vary ? `${vary}, Origin` : 'Origin');
+    }
+    return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
   }
 };
