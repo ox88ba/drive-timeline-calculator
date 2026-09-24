@@ -13,6 +13,8 @@ for (const [hour, key] of [[2,'night'],[6,'dawn'],[9,'morning'],[12,'noon'],[15,
   assert.equal(result.key, key);
   assert.ok(result.background.includes('linear-gradient'));
   assert.ok(result.ink);
+  assert.doesNotMatch(result.background, /transparent 70%/);
+  assert.match(result.background, /rgba\([\d,]+,0\) 70%/);
 }
 assert.equal(sky.forTime(null), null);
 assert.equal(sky.forTime('bad-date'), null);

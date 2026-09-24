@@ -96,7 +96,9 @@
       var pos = celPos(t, sr, ss, key);
       layers.push('radial-gradient(circle ' + p.cel.size + 'px at ' +
         pos.x.toFixed(1) + '% ' + pos.y.toFixed(1) + '%, ' +
-        p.cel.core + ', ' + p.cel.glow + ' 46%, transparent 70%)');
+        // Preserve the glow RGB at zero alpha. The PNG renderer interpolates
+        // bare `transparent` through black, producing a dark ring.
+        p.cel.core + ', ' + p.cel.glow + ' 46%, ' + p.cel.glow.replace(/,[^,]+\)$/, ',0)') + ' 70%)');
     }
     if (p.stars) layers.push(STARFIELD);
     layers.push('linear-gradient(180deg, ' + p.top + ', ' + p.bot + ')');

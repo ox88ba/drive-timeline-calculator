@@ -226,3 +226,24 @@
 }
 /* 日期分隔带：连接线延长穿过分隔带直达下一张卡片（背景覆盖 padding 区） */
 .date-divider { padding-bottom:11px; margin-bottom:0; background:linear-gradient(#ccd2df,#ccd2df) 21px 0 / 1px 100% no-repeat; }
+
+/* Raise the enclosing stacking contexts, not just the dropdown: glass cards
+   and entry animations otherwise trap POI results below subsequent stops.
+   Keep below the itinerary dock (20) and modal backdrops (30+). */
+html .start-card:has(.poi-results:not([hidden])),
+html .destination-wrap:has(.poi-results:not([hidden])) {
+  position:relative;
+  z-index:10;
+}
+html .destination-card:has(.poi-results:not([hidden])),
+html .place-picker:has(.poi-results:not([hidden])) {
+  position:relative;
+  z-index:10;
+  overflow:visible;
+}
+html .poi-results:not([hidden]) {
+  max-height:min(360px, 45vh);
+  max-height:min(360px, 45dvh);
+  overflow-y:auto;
+  overscroll-behavior:contain;
+}
