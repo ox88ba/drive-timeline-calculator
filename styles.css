@@ -247,3 +247,5 @@ html .poi-results:not([hidden]) {
   overflow-y:auto;
   overscroll-behavior:contain;
 }
+
+.poi-review-close { float:right; margin:0 0 8px 10px; padding:5px 9px; border:1px solid #b8c2cf; border-radius:999px; background:#fff; color:#9c3544; font-size:12px; cursor:pointer; }

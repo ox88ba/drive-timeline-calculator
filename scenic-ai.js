@@ -11,6 +11,7 @@
   const MAX_ENTRIES = 60;
   const pending = new Map(); // id -> Promise（跨卡片去重）
   const manualCategories = new Map();
+  const dismissed = new Set();
   let cache = {};
   try { cache = JSON.parse(localStorage.getItem(KEY) || '{}'); } catch {}
 
@@ -88,6 +89,20 @@
   function paint(box, id, category, location, visit, request) {
     box.replaceChildren();
     box.append(node('span', 'AI 评价', 'section-label'));
+    const close = node('button', '关闭并清除', 'poi-review-close');
+    close.type = 'button';
+    close.setAttribute('aria-label', '关闭 AI 评价并清除该地点的缓存');
+    close.onclick = () => {
+      dismissed.add(id);
+      manualCategories.delete(id);
+      delete cache[id];
+      pending.delete(id); // Invalidate in-flight responses as well as saved data.
+      save();
+      document.querySelectorAll('.poi-review').forEach(el => {
+        if (el.dataset.poiKey === id) el.remove();
+      });
+    };
+    box.append(close);
     const title = node('h4', `${CATEGORY_LABEL[category] || '地点'} · ${location.name}`.slice(0, 40), 'poi-review-title');
     box.append(title);
     const body = node('div', '', 'poi-review-body');
@@ -99,18 +114,20 @@
     }
     body.append(node('p', '正在联网搜索并生成评价…', 'poi-review-loading'));
     if (!pending.has(id)) {
-      pending.set(id, request({ ...location, visit }, category).then((result) => {
+      const job = request({ ...location, visit }, category).then((result) => {
+        if (pending.get(id) !== job || dismissed.has(id)) return false;
         const review = String(result?.analysis?.review || '').trim();
         if (!review) throw new Error('未返回可用评价');
         cache[id] = { review, category, createdAt: Date.now() };
         save();
         return true;
       }).catch((error) => ({ error: error?.message || '生成失败' })).finally(() => {
-        setTimeout(() => pending.delete(id), 3000); /* 失败后短暂冷却，避免渲染循环重打 */
-      }));
+        setTimeout(() => { if (pending.get(id) === job) pending.delete(id); }, 3000); /* 失败后短暂冷却，避免渲染循环重打 */
+      });
+      pending.set(id, job);
     }
     pending.get(id).then((outcome) => {
-      if (!box.isConnected || box.dataset.poiKey !== id) return;
+      if (!box.isConnected || box.dataset.poiKey !== id || dismissed.has(id)) return;
       if (outcome === true) { paint(box, id, category, location, visit, request); return; }
       body.replaceChildren(node('p', `AI 评价暂时不可用${outcome?.error ? `：${outcome.error}` : ''}`, 'poi-review-error'));
       const retry = node('button', '重新生成', 'poi-review-retry');
@@ -121,16 +138,22 @@
   }
 
   function mount(card, destination, request) {
+    const currentId = destination.location ? key(destination.location) : null;
+    card.querySelectorAll('.poi-review, .poi-review-manual').forEach(el => {
+      if (destination.isSkipped || !currentId || el.dataset.poiKey !== currentId) el.remove();
+    });
     if (destination.isSkipped || !destination.location) return;
     const cached = cache[key(destination.location)];
-    const category = categoryOf(destination.location) || manualCategories.get(key(destination.location)) || (cached && cached.category);
+    const category = dismissed.has(currentId) ? null : categoryOf(destination.location) || manualCategories.get(currentId) || (cached && cached.category);
     if (!category) {
       if (card.querySelector('.poi-review-manual')) return;
       const manual = node('button', '这是景区？生成 AI 评价', 'poi-review-retry poi-review-manual');
       manual.type = 'button';
+      manual.dataset.poiKey = currentId;
       manual.onclick = () => {
         const location = { ...destination.location };
         const id = key(location);
+        dismissed.delete(id);
         manualCategories.set(id, 'scenic');
         const box = node('section', '', 'poi-review'); box.dataset.poiKey = id;
         manual.replaceWith(box);
