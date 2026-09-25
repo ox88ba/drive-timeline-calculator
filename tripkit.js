@@ -59,7 +59,7 @@
     return decodeURIComponent(escape(atob(s)));
   }
 
-  function num(value) { var n = Number(value); return Number.isFinite(n) ? n : null; }
+  function num(value) { if (value === null || value === undefined || value === '') return null; var n = Number(value); return Number.isFinite(n) ? n : null; }
 
   /* 行程 → 紧凑对象（剥离 id / 计算缓存 / 路线几何，只留规划事实） */
   function compactTrip(trip) {
@@ -90,6 +90,7 @@
           until: /^(08|09|10):00$/.test(item.untilTime || '') ? item.untilTime : null,
           skip: item.isSkipped ? 1 : 0,
           ret: item.isReturnToOrigin ? 1 : 0,
+          lodging: item.lodgingPlanned ? 1 : 0,
           r: (r && num(r.durationSeconds) != null)
             ? { ds: num(r.distanceMeters) || 0, dur: num(r.durationSeconds), str: r.strategy || 'highway' }
             : null
@@ -100,7 +101,7 @@
 
   /* 紧凑对象 → app.js 存储结构（id 由 validTrip 重新生成） */
   function expandTrip(c) {
-    if (!c || c.v !== 1 || !c.dep || !Array.isArray(c.d)) return null;
+    if (!c || c.v !== 1 || !Number.isFinite(Date.parse(c.dep)) || !Array.isArray(c.d) || c.d.length > 200) return null;
     var start = null;
     if (c.s && num(c.s.la) != null && num(c.s.lo) != null) {
       start = { name: c.s.n || '', address: c.s.a || '', latitude: num(c.s.la), longitude: num(c.s.lo), poiId: c.s.p || '', type: c.s.t || '', typecode: c.s.tc || '' };
@@ -121,6 +122,7 @@
           stayMode: d && d.mode === 'until' ? 'until' : 'duration',
           untilTime: d && /^(08|09|10):00$/.test(d.until || '') ? d.until : null,
           isSkipped: !!(d && d.skip),
+          lodgingPlanned: !!(d && d.lodging),
           isReturnToOrigin: !!(d && d.ret)
         };
       })
@@ -131,10 +133,11 @@
   function restoreFromHash() {
     if (!location.hash || location.hash.indexOf(HASH_PREFIX) !== 0) return false;
     try {
-      var trip = expandTrip(JSON.parse(b64decode(location.hash.slice(HASH_PREFIX.length))));
+      var compact = JSON.parse(b64decode(location.hash.slice(HASH_PREFIX.length)));
+      var trip = expandTrip(compact);
       if (!trip) return false;
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(trip));
-      try { history.replaceState(null, '', location.pathname + location.search); } catch (e) { /* noop */ }
+      globalThis.DriveSharedPreview = trip;
+      globalThis.DriveSharedPreviewKind = compact.kind === 'sample' ? 'sample' : 'shared';
       return true;
     } catch (error) {
       console.warn('行程链接解析失败', error);
@@ -151,6 +154,7 @@
 
   /* ---------- 以下为 UI 部分，DOM 就绪后挂载 ---------- */
   function readTrip() {
+    if (globalThis.DriveSharedPreview) return globalThis.DriveSharedPreview;
     try { return JSON.parse(localStorage.getItem(STORAGE_KEY)); } catch (e) { return null; }
   }
 
@@ -308,18 +312,21 @@
     try {
       var raw = localStorage.getItem(STORAGE_KEY);
       if (raw) localStorage.setItem(LOAD_UNDO_KEY, JSON.stringify({ trip: raw, label: label || '模板/快照', at: Date.now() }));
-    } catch (e) { /* 存储满时放弃撤销能力，不影响载入 */ }
+      return true;
+    } catch (e) { toast('无法备份当前行程，未替换。请释放本地存储空间。'); return false; }
   }
 
   function applyTrip(trip, message, undoLabel) {
-    stashLoadUndo(undoLabel);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(trip));
+    if (!trip || !stashLoadUndo(undoLabel)) return;
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(trip)); } catch (e) { toast('保存失败，当前行程未替换'); return; }
+    history.replaceState(null, '', location.pathname + location.search);
     toast(message || '行程已更新，正在载入…');
     setTimeout(function () { location.reload(); }, 450);
   }
 
   function loadTemplate(tpl) {
-    applyTrip(templateTrip(tpl), '正在载入「' + tpl.name + '」…', '模板「' + tpl.name + '」');
+    var compact = compactTrip(templateTrip(tpl)); compact.kind = 'sample';
+    location.hash = HASH_PREFIX + b64encode(JSON.stringify(compact));
   }
 
   /* reload 后检测暂存的旧行程：显示「已载入模板/快照 · 撤销」 */
@@ -327,18 +334,13 @@
     var rec = null;
     try { rec = JSON.parse(localStorage.getItem(LOAD_UNDO_KEY)); } catch (e) { /* noop */ }
     if (!rec || !rec.trip) return;
-    if (Date.now() - Number(rec.at || 0) > 10 * 60 * 1000) {
-      try { localStorage.removeItem(LOAD_UNDO_KEY); } catch (e) { /* noop */ }
-      return; /* 暂存过期，避免陈旧的撤销提示长期滞留 */
-    }
+    try { if (sessionStorage.getItem('roadbook-undo-shown') === String(rec.at)) return; sessionStorage.setItem('roadbook-undo-shown', String(rec.at)); } catch (e) {}
     showUndoSnackbar('已载入' + (rec.label || '模板/快照'), function () {
       try {
         localStorage.setItem(STORAGE_KEY, rec.trip);
         localStorage.removeItem(LOAD_UNDO_KEY);
-      } catch (e) { /* noop */ }
+      } catch (e) { toast('恢复失败，请检查本地存储空间'); return; }
       location.reload();
-    }, function () {
-      try { localStorage.removeItem(LOAD_UNDO_KEY); } catch (e) { /* noop */ }
     });
   }
 
@@ -347,7 +349,7 @@
     try { return JSON.parse(localStorage.getItem(SNAPSHOT_KEY)) || []; } catch (e) { return []; }
   }
   function writeSnapshots(list) {
-    try { localStorage.setItem(SNAPSHOT_KEY, JSON.stringify(list)); } catch (e) { toast('快照保存失败：本地存储空间不足'); }
+    try { localStorage.setItem(SNAPSHOT_KEY, JSON.stringify(list)); return true; } catch (e) { toast('快照保存失败：本地存储空间不足'); return false; }
   }
 
   /* 凌晨驾驶分钟：驾驶段与 23:00–06:00（北京时间）窗口的重叠 */
@@ -433,7 +435,7 @@
       var body = tplModal.querySelector('.tk-body');
       var note = document.createElement('p');
       note.className = 'tk-note';
-      note.textContent = '一键载入经典路线作为起点，站点坐标为景区大致位置，载入后可在卡片中重新搜索精确 POI、调整停留与顺序。';
+      note.textContent = '先只读预览示例，不替换当前行程、不请求导航或 AI。采用后可搜索精确 POI，调整停留与顺序。';
       body.append(note);
       TEMPLATES.forEach(function (tpl) {
         var card = document.createElement('button');
@@ -483,17 +485,31 @@
       '<button type="button" class="tk-primary">保存当前行程</button>';
     var input = saveRow.querySelector('input');
     input.value = '方案 ' + String.fromCharCode(65 + (list.length % 26));
+    var target = document.createElement('select'); target.setAttribute('aria-label', '新建或替换已保存方案');
+    var fresh = document.createElement('option'); fresh.value = ''; fresh.textContent = '另存为新方案'; target.append(fresh);
+    list.forEach(function (snap) { var option = document.createElement('option'); option.value = snap.id; option.textContent = '替换：' + snap.name; target.append(option); });
+    saveRow.append(target);
     saveRow.querySelector('button').addEventListener('click', function () {
       var trip = readTrip();
       if (!trip || !trip.destinations || !trip.destinations.length) { toast('当前行程为空，先添加目的地'); return; }
       var name = input.value.trim() || '未命名方案';
       var items = readSnapshots();
-      items.unshift({ id: Date.now() + '-' + Math.random().toString(36).slice(2, 7), name: name, savedAt: new Date().toISOString(), trip: compactTrip(trip) });
-      writeSnapshots(items.slice(0, 12));
-      toast('已保存「' + name + '」');
+      if (!target.value && items.length >= 12) { toast('已保存 12 份行程，请在下方选择要替换的方案，或先删除不需要的版本'); return; }
+      var entry = { id: target.value || Date.now() + '-' + Math.random().toString(36).slice(2, 7), name: name, savedAt: new Date().toISOString(), trip: compactTrip(trip) };
+      if (target.value) { var index = items.findIndex(function (snap) { return snap.id === target.value; }); if (index < 0) { toast('原方案已改变，请重新打开保存窗口'); return; } items[index] = entry; } else items.unshift(entry);
+      if (!writeSnapshots(items)) return;
+      toast('已保存「' + name + '」' + (globalThis.DriveSharedPreview ? '副本，当前草稿未变' : '，仅存于当前浏览器'));
       snapModal.hidden = true;
     });
     if (mode === 'save') { body.append(saveRow); return; }
+    try {
+      var backup = JSON.parse(localStorage.getItem(LOAD_UNDO_KEY));
+      if (backup && backup.trip) {
+        var recover = document.createElement('button'); recover.type = 'button'; recover.textContent = '恢复上次替换前的行程';
+        recover.onclick = function () { if (confirm('恢复备份并替换当前行程？')) applyTrip(JSON.parse(backup.trip), '正在恢复备份', '恢复前的行程'); };
+        body.append(recover);
+      }
+    } catch (e) {}
 
     if (!list.length) {
       var empty = document.createElement('p');
@@ -522,7 +538,7 @@
           (m.nightMinutes >= 30 ? ' · 凌晨驾驶 ' + fmtMin(m.nightMinutes) : '')
         : '导航数据不足，载入后将重新计算';
       card.querySelector('[data-x="del"]').addEventListener('click', function () {
-        writeSnapshots(readSnapshots().filter(function (x) { return x.id !== snap.id; }));
+        if (!writeSnapshots(readSnapshots().filter(function (x) { return x.id !== snap.id; }))) return;
         renderSnapshots();
       });
       card.querySelector('[data-x="load"]').addEventListener('click', function () {
@@ -533,8 +549,9 @@
         if (!panel.hidden) { panel.hidden = true; return; }
         var now = metricsFor(compactTrip(readTrip()));
         panel.innerHTML =
-          '<table class="tk-table"><thead><tr><th>指标</th><th>当前行程</th><th>' + snap.name + '</th></tr></thead>' +
+          '<table class="tk-table"><thead><tr><th>指标</th><th>当前行程</th><th></th></tr></thead>' +
           '<tbody>' + metricRows(now, m) + '</tbody></table>';
+        panel.querySelector('thead tr').lastElementChild.textContent = snap.name;
         panel.hidden = false;
       });
       body.append(card);
@@ -548,7 +565,6 @@
     if (heading) heading.textContent = mode === 'save' ? '保存本方案' : '保存的行程';
     renderSnapshots(mode);
     snapModal.hidden = false;
-    if (mode === 'save') snapModal.querySelector('input').focus();
   }
 
   /* 首访 template-first 钩子：app.js 在无历史行程时取第一套模板作为草稿 */
@@ -556,6 +572,17 @@
 
   /* ---------- 挂载入口 ---------- */
   function mount() {
+    if (globalThis.DriveSharedPreview) {
+      var banner = document.createElement('section'); banner.className = 'shared-preview-banner';
+      banner.innerHTML = '<h2>正在预览分享的行程</h2><p>你的原行程未改变。链接中的导航为保存时的数据，接纳后可重新获取。</p><button type="button" data-copy>保存副本</button><button type="button" data-replace>替换当前行程</button><button type="button" data-exit>返回我的行程</button>';
+      if (globalThis.DriveSharedPreviewKind === 'sample') { banner.querySelector('h2').textContent = '示例路线 · 只读预览'; banner.querySelector('p').textContent = '此示例尚未获取实时导航。采用后才会获取路线，你的原行程将先备份。'; banner.querySelector('[data-replace]').textContent = '采用示例'; }
+      document.querySelector('.hero').after(banner);
+      banner.querySelector('[data-copy]').onclick = function () { openSnapshots('save'); };
+      banner.querySelector('[data-replace]').onclick = function () { if (confirm('替换当前行程？将先备份当前行程，载入后可撤销。')) applyTrip(globalThis.DriveSharedPreview, '正在载入分享行程', '分享行程'); };
+      banner.querySelector('[data-exit]').onclick = function () { history.replaceState(null, '', location.pathname + location.search); location.reload(); };
+      document.querySelectorAll('.shell input, .shell button').forEach(function (el) { if (!banner.contains(el) && el.id !== 'backToTop') el.disabled = true; });
+      return;
+    }
     checkLoadUndo();
     /* 分享弹窗里使用系统链接分享；不支持时提供明确的复制后备入口。 */
     var shareActions = document.querySelector('.share-actions');

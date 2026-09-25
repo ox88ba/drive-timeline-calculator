@@ -362,6 +362,7 @@
       host.setAttribute('aria-label', '行程节律');
       summary.parentNode.insertBefore(host, summary.nextSibling);
     }
+    var wasExpanded = !!host.querySelector('details[open]');
     host.hidden = true;
     host.innerHTML = '';
 
@@ -386,7 +387,7 @@
       if (!a) break; /* 导航未完成，链条到此为止 */
       var aAbs = absOf(year, a.day, a.minutes, day0);
       if (aAbs <= prev) break;
-      segs.push({ type: 'drive', from: prev, to: aAbs });
+      segs.push({ type: 'drive', from: prev, to: aAbs, name: card.querySelector('[data-place-input]').value, meters: Number(card.dataset.routeMeters) || 0 });
       lastEnd = aAbs;
       var depBlock = card.querySelector('[data-departure-block]');
       var depEl = card.querySelector('[data-departure]');
@@ -409,15 +410,20 @@
     /* 按天切片并分类：白天驾驶/停留、凌晨驾驶（警示）、过夜 */
     var firstDay = Math.floor(abs0 / 1440);
     var lastDay = Math.floor((lastEnd - 1) / 1440);
-    var rows = '';
+    var rows = '', dailyFacts = [];
     for (var day = firstDay; day <= lastDay; day++) {
       var blocks = '';
       var lateMin = 0;
+      var driveMin = 0, stayMin = 0;
+      var distance = 0, names = [], firstMinute = 1440, lastMinute = 0;
       for (var s = 0; s < segs.length; s++) {
         var seg = segs[s];
         var from = Math.max(seg.from, day * 1440) - day * 1440;
         var to = Math.min(seg.to, (day + 1) * 1440) - day * 1440;
         if (to <= from) continue;
+        firstMinute = Math.min(firstMinute, from); lastMinute = Math.max(lastMinute, to);
+        if (seg.type === 'drive') { distance += seg.meters * (to - from) / (seg.to - seg.from); names.push(seg.name); }
+        if (seg.type === 'drive') driveMin += to - from; else stayMin += to - from;
         /* 按 06:00 / 23:00 边界切出夜间部分 */
         var cuts = [[from, Math.min(to, NIGHT_END), true],
                     [Math.max(from, NIGHT_END), Math.min(to, NIGHT_START), false],
@@ -439,11 +445,12 @@
       }
       var date = new Date(day * 86400000);
       var label = (date.getUTCMonth() + 1) + '/' + date.getUTCDate() + ' ' + WEEK[date.getUTCDay()];
+      dailyFacts.push({ label:label, drive:driveMin, stay:stayMin, km:Math.round(distance / 1000), names:names, first:firstMinute, last:lastMinute });
       /* 当日风险：独占一行居中显示在节律条下方，避免挤在 Day 标签列里频繁换行 */
       var warn = lateMin > 0 ? '<em class="tf-rhythm-day-warn">⚠ 凌晨驾驶 ' + fmtDur(lateMin) + '</em>' : '';
-      rows += '<div class="tf-rhythm-row"><div class="tf-rhythm-day"><b>Day ' +
-        (day - firstDay + 1) + '</b><span>' + label + '</span></div>' +
-        '<div class="tf-rhythm-bar">' + blocks + '</div>' + warn + '</div>';
+      rows += '<div class="tf-rhythm-row"><div class="tf-rhythm-day"><b>第 ' +
+        (day - firstDay + 1) + ' 天</b><span>' + label + '</span></div>' +
+        '<div class="tf-rhythm-bar">' + blocks + '</div><p class="daily-facts">驾驶 ' + fmtDur(driveMin) + ' · 停留 ' + fmtDur(stayMin) + '</p>' + warn + '</div>';
     }
 
     host.innerHTML =
@@ -451,11 +458,26 @@
       '<div class="tf-rhythm-legend">' +
       '<span><i class="tf-rb-drive"></i>驾驶</span>' +
       '<span><i class="tf-rb-stay"></i>停留</span>' +
-      '<span><i class="tf-rb-overnight"></i>过夜</span>' +
+      '<span><i class="tf-rb-overnight"></i>夜间停留</span>' +
       '<span><i class="tf-rb-latenight"></i>凌晨驾驶</span>' +
       '</div></div>' + rows + (needsStayHint
         ? '<p class="tf-rhythm-stay-hint" role="status">勾选目的地停留时间后显示</p>' : '');
-    host.hidden = false;
+    var warnings = [...host.querySelectorAll('.tf-rhythm-day-warn')].map(function (el) { return el.parentElement.querySelector('.tf-rhythm-day span').textContent + '：' + el.textContent; });
+    var details = document.createElement('details'); details.className = 'tf-rhythm-details'; details.open = wasExpanded;
+    var summaryToggle = document.createElement('summary'); summaryToggle.textContent = '展开每日节律'; details.append(summaryToggle);
+    [...host.querySelectorAll('.tf-rhythm-row')].forEach(function (row) { details.append(row); });
+    if (warnings.length) { var risks = document.createElement('p'); risks.className = 'rhythm-risk-summary'; risks.textContent = warnings.join('；'); host.append(risks); }
+    var facts = document.createElement('div'); facts.className = 'compact-daily-facts';
+    dailyFacts.forEach(function (day) {
+      var entry = document.createElement('details'), heading = document.createElement('summary');
+      heading.textContent = day.label + ' · 驾驶 ' + fmtDur(day.drive); entry.append(heading);
+      var detail = document.createElement('p');
+      var clock = function (m) { return String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(Math.round(m % 60)).padStart(2, '0'); };
+      detail.textContent = (day.names.length ? '途经 / 抵达：' + day.names.join(' → ') + '。' : '') + '当日已安排 ' + clock(day.first) + '–' + clock(day.last) + '，停留 ' + fmtDur(day.stay) + '，里程约 ' + day.km + ' 公里（跨日路段按驾驶时间分摊估算）。';
+      entry.append(detail); facts.append(entry);
+    });
+    host.append(facts);
+    host.append(details); host.hidden = false;
   }
 
   /* ---------- 时光版分享长图 ----------

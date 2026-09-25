@@ -1,0 +1,34 @@
+/* Real html2canvas, mocked navigation/AI, never the user's browser/profile. */
+const {chromium}=require('playwright'), fs=require('node:fs'), path=require('node:path'), assert=require('node:assert/strict');
+const root=path.join(__dirname,'..'), lib=process.env.HTML2CANVAS_PATH||'/tmp/roadbook-html2canvas-1.4.1.min.js';
+const start={name:'测试起点',latitude:29,longitude:106,poiId:'origin'};
+const trip={startLocation:start,startSearchText:start.name,initialDepartureTime:'2030-09-30T10:00:00Z',destinations:Array.from({length:8},(_,i)=>({id:'stop'+i,location:{name:'测试公园'+i,address:'用于回归测试的长地址',latitude:30+i/10,longitude:107+i/10,poiId:'poi'+i},elevationMeters:3000,route:{durationSeconds:18000,distanceMeters:300000,strategy:'highway'},selectedStayButtons:[480],stayMode:'duration'}))};
+(async()=>{ const browser=await chromium.launch({channel:'chrome',headless:true});
+ try {const context=await browser.newContext({viewport:{width:393,height:844},serviceWorkers:'block'}),page=await context.newPage(),errors=[];
+ page.on('pageerror',e=>errors.push(e.message));
+ await context.addInitScript(trip=>localStorage.setItem('drive-timeline-trip-v1',JSON.stringify(trip)),trip);
+ await context.route('**/*',async r=>{const u=new URL(r.request().url());
+  if(u.href.includes('html2canvas@1.4.1/')) return r.fulfill({body:fs.readFileSync(lib),contentType:'application/javascript'});
+  if(u.hostname!=='local.test') return r.abort();
+  if(u.pathname==='/config.js')return r.fulfill({body:'globalThis.DRIVE_AI_ENABLED=false;',contentType:'application/javascript'});
+  if(u.pathname.startsWith('/api/'))return r.fulfill({json:{elevationMeters:100}});
+  const file=path.join(root,u.pathname==='/'?'index.html':u.pathname.slice(1)); if(!fs.existsSync(file))return r.abort();
+  return r.fulfill({body:fs.readFileSync(file),contentType:file.endsWith('.js')?'application/javascript':file.endsWith('.css')?'text/css':'text/html'});
+ });
+ await page.goto('https://local.test/');await page.locator('#openShare').click();
+ await page.waitForFunction(()=>!document.querySelector('#shareDownload').disabled,{},{timeout:60000});
+ assert.equal(await page.locator('#shareIncludeMap').isChecked(),false);
+ assert.ok(await page.locator('#shareParts button').count()>1,'long itinerary split into pages');
+ assert.equal(await page.locator('#sharePoster .rb-station').count(),9);
+ const download=page.waitForEvent('download');await page.locator('#shareDownload').click();await (await download).saveAs('/tmp/roadbook-export-1.png');
+ const png=fs.readFileSync('/tmp/roadbook-export-1.png');assert.equal(png.readUInt32BE(16),1200);assert.ok(png.readUInt32BE(20)<=7244);
+ await page.getByRole('button',{name:'放大阅读',exact:true}).click();
+ assert.equal(await page.locator('#sharePoster').evaluate(el=>getComputedStyle(el).transform),'matrix(1, 0, 0, 1, 0, 0)');
+ const reach=await page.locator('.share-preview').evaluate(el=>{el.scrollLeft=el.scrollWidth;el.scrollTop=el.scrollHeight;return {left:el.scrollLeft,top:el.scrollTop,w:el.scrollWidth-el.clientWidth,h:el.scrollHeight-el.clientHeight}});
+ assert.ok(reach.left>0);assert.ok(reach.top>0);assert.ok(Math.abs(reach.left-reach.w)<2);assert.ok(Math.abs(reach.top-reach.h)<2);
+ await page.getByRole('button',{name:'适应宽度',exact:true}).click();assert.equal(await page.locator('#shareDownload').isDisabled(),false);
+ await page.locator('#shareNameInput').fill('新版长图');await page.locator('#shareClose').click();await page.locator('#openShare').click();
+ await page.waitForFunction(()=>!document.querySelector('#shareDownload').disabled,{},{timeout:60000});assert.equal(await page.locator('#sharePoster h1').innerText(),'我的自驾行程');
+ assert.deepEqual(errors,[]); console.log('PASS real PNG: 8 stops, multi-page, 1200px, zoom four edges, latest-session cancellation');
+ } finally {await browser.close();}
+})().catch(e=>{console.error(e);process.exitCode=1;});

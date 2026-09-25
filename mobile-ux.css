@@ -1,0 +1,96 @@
+/* Last-layer mobile layout. Export (.rb-*) deliberately excluded. */
+html .shell button, html .shell summary, html .dock-head button, html .modal-backdrop button { min-height:44px; }
+html .shell input, html .modal-backdrop input { font-size:16px; }
+html .modal-backdrop select { font-size:16px; min-height:44px; min-width:0; max-width:100%; }
+html .tk-save-row { flex-wrap:wrap; }
+html .tk-save-row select { flex-basis:100%; width:100%; padding:10px; border:1px solid #b8c4d2; border-radius:12px; }
+.planning-help,.privacy-note { font-size:14px; line-height:1.65; color:#526075; }
+.ai-data-note { font-size:12px; line-height:1.65; color:#526075; margin-top:8px; }
+.planning-shortcuts { display:flex; flex-wrap:wrap; gap:8px; margin:8px 0; }
+.planning-shortcuts button { padding:8px 12px; border:1px solid #b8c4d2; border-radius:16px; background:#fff; color:#34465e; font-size:14px; }
+html .place-name { display:block; width:100%; padding:8px 0; text-align:left; color:inherit; background:none; border:0; border-radius:0; font:inherit; font-size:20px; font-weight:700; line-height:1.5; white-space:normal; overflow-wrap:anywhere; }
+.place-picker.has-place:not(.is-editing) > input, .place-picker.has-place:not(.is-editing) > .search-mark { display:none; }
+.place-picker.is-editing > .place-name { display:none; }
+html .poi-cancel { position:absolute; right:0; top:0; z-index:12; margin:0; padding:8px; font-size:14px; color:#25354b; background:#fff; border-radius:12px; border:1px solid #aab5c4; }
+html .place-picker:has(.poi-cancel) > input { padding-right:100px; }
+html .place-picker:has(.poi-cancel) > .search-mark { display:none; }
+html .poi-results { min-width:min(320px, calc(100vw - 64px)); max-width:calc(100vw - 64px); }
+html .poi-option { white-space:normal; }
+.card-more { margin-left:auto; position:relative; }
+html .card-more summary { cursor:pointer; padding:10px 16px; font-size:14px; border-radius:16px; background:rgba(255,255,255,.22); }
+html .card-more .card-actions { position:absolute; top:100%; right:0; min-width:160px; display:grid; z-index:12; padding:8px; border-radius:16px; background:#fff; box-shadow:0 8px 28px #17283c33; }
+html .card-more .card-actions button { color:#26374b; font-size:16px; }
+html .card-more .card-actions [data-action="remove"] { color:#ad2532; }
+html .destination-wrap:has(.card-more[open]),html .destination-card:has(.card-more[open]) { z-index:11; position:relative; overflow:visible; }
+.stay-editor { width:100%; }
+html .stay-editor summary { cursor:pointer; padding:10px 0; color:inherit; font-size:16px; font-weight:600; }
+.lodging-control { display:flex; align-items:center; gap:8px; min-height:44px; font-size:14px; }
+.lodging-control input { width:20px; height:20px; }
+.stay-editor small { display:block; font-size:12px; margin:4px 0; }
+html .tf-daylight-row, html[data-engine="timeflow"] .arrival-hints { flex-wrap:wrap!important; align-items:center!important; }
+html[data-engine="timeflow"] .stay-until-buttons::before { content:"出发至"; }
+html[data-engine="timeflow"] .destination-card[data-overnight] [data-stay-current]::after { content:" · 🌙 夜间停留"; }
+html .card-more .card-actions [data-action="remove"] { border-top:1px solid #d9e0ea; border-radius:0 0 8px 8px; margin-top:8px; padding-top:8px; }
+html[data-engine="timeflow"] .destination-card[data-sky-a] .place-name,
+html[data-engine="timeflow"] .destination-card[data-sky-a] .card-more > summary { color:var(--tf-a-ink); }
+html[data-engine="timeflow"] .destination-card .stay-editor { color:#edf2fc; }
+html[data-engine="timeflow"] .destination-card .stay-editor > summary,
+html[data-engine="timeflow"] .destination-card .stay-editor .lodging-control,
+html[data-engine="timeflow"] .destination-card .stay-editor > small { color:#edf2fc; }
+html[data-engine="timeflow"] .destination-card[data-sky-a] .card-more .card-actions button { color:#26374b; background:#f3f6fa; }
+html[data-engine="timeflow"] .destination-card[data-sky-a] .card-more .card-actions [data-action="remove"] { color:#ad2532; background:#fff; }
+html .card-more .card-actions button:disabled { opacity:.5; }
+html :focus-visible { outline:3px solid #2371ca!important; outline-offset:3px; }
+html[data-engine="timeflow"] .destination-card[data-tf-overnight] [data-stay-current]::after { content:" · 🌙 夜间停留"; }
+html .altitude-warning,html .tf-daylight { white-space:normal!important; font-size:13px!important; line-height:1.5!important; }
+html .map-readonly #routeMap { pointer-events:none; touch-action:pan-y; }
+html .map-readonly { touch-action:pan-y; }
+.map-interaction-toggle { margin:0 0 12px; }
+html .map-interaction-toggle,html .dock-sort { padding:8px 12px; border:1px solid #b8c4d2; border-radius:16px; background:#f5f7fb; color:#34465e; font:500 14px/1.5 sans-serif; cursor:pointer; }
+.shared-preview-banner { background:#fff5d9; color:#3f3420; padding:16px; border-radius:20px; }
+.shared-preview-banner button { margin:4px; }
+.dock-sort { font-size:14px; margin-left:8px; }
+html .trip-dock:not(.sorting) .dock-item { touch-action:pan-x pan-y; }
+html .modal-backdrop { overflow-y:auto; overscroll-behavior:contain; padding-bottom:calc(16px + env(safe-area-inset-bottom)); }
+.tf-rhythm-details summary { cursor:pointer; padding:10px 0; font-size:14px; }
+.rhythm-risk-summary { color:#a52c38; font-size:14px; line-height:1.6; }
+.daily-facts { grid-column:1/-1; font-size:14px; margin:6px 0; color:#526075; }
+.compact-daily-facts { max-height:220px; overflow:auto; overscroll-behavior:contain; }
+.compact-daily-facts summary { min-height:44px; padding:10px 0; font-size:14px; cursor:pointer; }
+.compact-daily-facts p { font-size:14px; line-height:1.7; color:#526075; }
+html[data-engine="timeflow"] .tf-rhythm-row { grid-template-columns:max-content minmax(0,1fr); }
+html[data-engine="timeflow"] .tf-rhythm-day { width:auto; min-width:74px; }
+html[data-engine="timeflow"] .tf-rhythm-day > span { white-space:normal; font-size:12px; }
+html[data-engine="timeflow"] .tf-rhythm-day > b { font-size:14px; }
+html[data-engine="timeflow"] .destination-card .stay-section { background:#182338; }
+html[data-engine="timeflow"] .destination-card .stay-buttons button { font-size:14px; }
+html .stay-until-buttons button small { display:block; font-size:12px; line-height:1.6; font-weight:400; }
+html #shareModal.preview-zoomed .share-preview { overflow:auto; max-height:65dvh; }
+html #shareModal.preview-zoomed #sharePosterHost { min-width:600px; }
+@media(max-width:600px) {
+ html .start-card { grid-template-columns:max-content minmax(0,1fr); }
+ html .start-copy { min-width:0; }
+ html .start-card .date-field,html .start-card .time-field { grid-column:1/-1; font-size:14px; gap:6px; }
+ html .start-card .date-field input,html .start-card .time-field input { width:100%; min-height:44px; padding:6px; font-size:16px; }
+ html .quick-starts { grid-column:1/-1; flex-wrap:wrap; }
+ html .quick-starts > span { flex-basis:100%; }
+ html .hero { padding-top:8px; margin-bottom:16px; }
+ html .hero h1 { font-size:32px; }
+ html .hero p { font-size:13px; line-height:1.6; }
+ html .summary { grid-template-columns:repeat(2,minmax(0,1fr)); }
+ html .summary > div { min-width:0; padding:14px 8px; }
+ html .summary strong,html .preview-summary strong { white-space:normal!important; overflow:visible!important; text-overflow:clip!important; font-size:16px!important; overflow-wrap:anywhere; }
+ html .summary-arrival { grid-column:1/-1; }
+ html .destination-card { padding:18px 16px 0; }
+ html .place-address,html .place-meta { font-size:14px; line-height:1.6; }
+ html .time-grid strong { font-size:24px!important; flex-wrap:wrap; }
+ html .card-topline { gap:8px; margin-bottom:12px; }
+ html .poi-review-manual { font-size:14px; margin:12px 0; }
+ html .poi-review { padding:14px; }
+ html .route-connector { font-size:14px; line-height:1.7; }
+ html .stay-section { margin-top:16px; }
+ html .ai-analysis { padding:16px; }
+ html .ai-analysis-head { flex-wrap:wrap; gap:8px; }
+ html .ai-analysis h2 { font-size:20px; }
+ html .ai-analysis-hint { font-size:14px; }
+}

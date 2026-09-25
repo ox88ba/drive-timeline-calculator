@@ -14,6 +14,7 @@
     <link rel="stylesheet" href="./voyage.css?v=20260916-share-daylight" />
     <link rel="stylesheet" href="./tripkit.css?v=20260916-save-split" />
     <link rel="stylesheet" href="./share-v2.css?v=20260923-export-sky" />
+    <link rel="stylesheet" href="./mobile-ux.css?v=20260925" />
   </head>
   <body>
     <aside class="trip-dock is-collapsed" aria-label="行程导航">
@@ -46,6 +47,7 @@
       <section id="aiAnalysis" class="ai-analysis" aria-labelledby="aiAnalysisTitle">
         <div class="ai-analysis-head"><div><h2 id="aiAnalysisTitle">AI 行程总评</h2></div><button id="openAiAnalysis" type="button">分析当前行程</button></div>
         <p id="aiAnalysisHint" class="ai-analysis-hint">完成全部官方导航后，可生成按天摘要、风险提醒与调整建议。</p>
+        <p class="ai-data-note">住宿标记仅用于本地行程与分享，AI 总评暂不读取该标记；夜间停留不代表已安排住宿。</p>
         <div id="aiAnalysisResult" class="ai-analysis-result" hidden></div>
       </section>
 
@@ -54,7 +56,7 @@
         <div class="start-copy">
           <span class="section-label">出发点</span>
           <div class="place-picker start-place-picker">
-            <input id="startPlaceInput" type="search" autocomplete="off" placeholder="搜索出发地点，如：重庆市" />
+            <input id="startPlaceInput" type="search" autocomplete="off" aria-label="搜索出发地点" placeholder="搜索出发地点，如：重庆市" />
             <span class="search-mark">⌕</span>
             <div id="startPoiResults" class="poi-results" hidden></div>
           </div>
@@ -137,6 +139,7 @@
         <div class="share-export-options">
           <label><input id="shareIncludeMap" type="checkbox" />包含地图</label>
           <label><input id="shareIncludeAi" type="checkbox" />包含已有 AI 评价摘要</label>
+          <label><input id="shareIncludeAddress" type="checkbox" />包含详细地址</label>
           <button id="shareRetryMap" type="button">重试地图快照</button>
           <button id="shareRetry" type="button">重新生成</button>
         </div>
@@ -154,11 +157,12 @@
     <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
     <script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" defer></script>
     <script src="./share-layout.js?v=20260923-export2"></script>
-    <script src="./share-v2.js?v=20260923-export-sky"></script>
-    <script src="./scenic-ai.js?v=20260916-poi-category"></script>
-    <script src="./tripkit.js?v=20260916-poi-category"></script>
-    <script src="./app.js?v=20260923-export2"></script>
-    <script src="./timeflow.js?v=20260923-export-sky"></script>
+    <script src="./share-v2.js?v=20260925"></script>
+    <script src="./scenic-ai.js?v=20260925"></script>
+    <script src="./tripkit.js?v=20260925"></script>
+    <script src="./app.js?v=20260925"></script>
+    <script src="./timeflow.js?v=20260925"></script>
     <script src="./voyage.js?v=20260916-contained-scroll"></script>
+    <script src="./mobile-ux.js?v=20260925"></script>
   </body>
 </html>

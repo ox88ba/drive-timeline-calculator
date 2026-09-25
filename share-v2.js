@@ -40,16 +40,17 @@
   function station(stop, start) {
     const card = node(null, 'section', 'rb-station'), head = node(card, 'div', 'rb-station-head');
     node(head, 'b', 'rb-number', stop.number); node(head, 'h3', '', stop.name);
-    if (stop.address) node(card, 'p', 'rb-address', stop.address);
+    if (stop.address && $('#shareIncludeAddress').checked) node(card, 'p', 'rb-address', stop.address);
     if (stop.meta) node(card, 'p', 'rb-meta', stop.meta);
-    if (stop.overnight) chip(card, `🌙 第 ${stop.overnight} 晚 · 自动推算`, 'rb-blue');
+    if (stop.overnight) chip(card, `🌙 夜间停留 · 第 ${stop.overnight} 次（非住宿确认）`, 'rb-blue');
+    if (stop.lodgingPlanned) chip(card, '已安排住宿（用户标记）', 'rb-blue');
     timeRow(card, start ? '旅程出发' : '预计抵达', start ? stop.departure : stop.arrival,
       start ? stop.departurePeriod : stop.arrivalPeriod || (stop.arrivalMoment?.label ? `黄昏 · ${stop.arrivalMoment.label}` : ''), stop.nightArrival, false, start ? stop.departureIso : stop.arrivalIso, stop.location);
     const hints = node(card, 'div', 'rb-hints'); chip(hints, stop.daylight, 'rb-blue'); chip(hints, stop.plateau || stop.altitudeWarning, 'rb-amber');
     if (!start) {
-      const stay = node(card, 'div', 'rb-stay'); node(stay, 'span', '', stop.overnight ? '停留 / 过夜' : '停留安排');
+      const stay = node(card, 'div', 'rb-stay'); node(stay, 'span', '', '停留安排');
       node(stay, 'strong', '', stop.stay || (stop.stayMode === 'until' ? '0分' : '未选择停留时间'));
-      if (stop.untilTime) node(stay, 'span', '', `至${stop.untilTime}`);
+      if (stop.untilTime) node(stay, 'span', '', `至 ${stop.departureIso ? L.dateTime(stop.departureIso) : stop.untilTime}`);
       if (stop.departure) timeRow(card, '预计出发', stop.departure, stop.departurePeriod || (stop.departureMoment?.label ? `黄昏 · ${stop.departureMoment.label}` : ''), false, true, stop.departureIso, stop.location);
       if ($('#shareIncludeAi').checked && stop.aiReview) {
         const ai = node(card, 'div', 'rb-ai'); node(ai, 'b', '', 'AI 评价 · 已有摘要'); node(ai, 'p', '', stop.aiReview);
@@ -65,7 +66,7 @@
   }
   function rhythm() {
     const box = section('每日节律'), legend = node(box, 'div', 'rb-legend');
-    [['drive', '驾驶'], ['stay', '停留'], ['overnight', '过夜'], ['night-drive', '夜间驾驶']].forEach(([kind, label]) => {
+    [['drive', '驾驶'], ['stay', '停留'], ['overnight', '夜间停留'], ['night-drive', '夜间驾驶']].forEach(([kind, label]) => {
       const item = node(legend, 'span', ''); node(item, 'i', `rb-block ${kind}`); item.append(label);
     });
     const days = L.daily(model);
@@ -121,7 +122,7 @@
   async function capture(poster, token) {
     if (typeof globalThis.html2canvas !== 'function') throw new Error('长图组件未加载，请检查网络后重试');
     await Promise.race([document.fonts?.ready || Promise.resolve(), new Promise(r => setTimeout(r, 3000))]);
-    await Promise.all([...poster.querySelectorAll('img')].map(img => img.decode()));
+    await Promise.race([Promise.all([...poster.querySelectorAll('img')].map(img => img.decode())), new Promise((_, reject) => setTimeout(() => reject(new Error('图片加载超时，请重试或取消包含地图')), 15000))]);
     const rect = poster.getBoundingClientRect(), height = poster.scrollHeight;
     const breaks = [...poster.children].map(el => el.getBoundingClientRect().top - rect.top - 8);
     const ranges = L.pageRanges(height, breaks), blobs = [];
@@ -136,13 +137,18 @@
           }
         }
       });
-      blobs.push(await toBlob(canvas)); canvas.width = canvas.height = 1;
+      const paged = document.createElement('canvas'); paged.width = canvas.width; paged.height = canvas.height + 44;
+      const ctx = paged.getContext('2d'); ctx.drawImage(canvas, 0, 0);
+      ctx.fillStyle = '#f5f7fb'; ctx.fillRect(0, canvas.height, canvas.width, 44);
+      ctx.fillStyle = '#526075'; ctx.font = '22px sans-serif'; ctx.textAlign = 'center';
+      ctx.fillText(`时光路书 · 第 ${i + 1}/${ranges.length} 张 · ${model.departureText}`, paged.width / 2, paged.height - 14);
+      blobs.push(await toBlob(paged)); canvas.width = canvas.height = paged.width = paged.height = 1;
     } return blobs;
   }
   function filename(i) { return `roadbook_${L.filename(name() || `${model.start.name}→${model.destinations.at(-1).name}`)}${files.length > 1 ? `_${String(i + 1).padStart(2, '0')}` : ''}.png`; }
   function fit() {
     const host = $('#sharePosterHost'), poster = host.firstElementChild; if (!poster) return;
-    const scale = Math.min(1, host.clientWidth / 600); poster.style.transform = `scale(${scale})`; host.style.height = `${poster.scrollHeight * scale}px`;
+    const scale = $('#shareModal').classList.contains('preview-zoomed') ? 1 : Math.min(1, host.clientWidth / 600); poster.style.transform = `scale(${scale})`; host.style.height = `${poster.scrollHeight * scale}px`;
   }
   function schedule() {
     clearTimeout(timer); enabled(false); files = []; $('#shareParts').replaceChildren(); const token = ++revision; status('正在准备新版长图…');
@@ -180,14 +186,17 @@
     close(); model = structuredClone(value); model.generatedAt ||= new Date().toISOString(); $('#shareModal').hidden = false;
     $('#shareNameInput').value = ''; $('#shareNameCount').textContent = '0/50'; $('#shareQuickRoute').textContent = `${model.start.name}→${model.destinations.at(-1).name}`;
     const now = new Date(); $('#shareQuickStamp').textContent = [now.getDate(), now.getHours(), now.getMinutes()].map(v => String(v).padStart(2, '0')).join('');
-    $('#shareIncludeMap').checked = false; $('#shareIncludeAi').checked = false; $('#shareIncludeAi').disabled = !model.destinations.some(s => s.aiReview);
+    $('#shareIncludeMap').checked = false; $('#shareIncludeAi').checked = false; $('#shareIncludeAddress').checked = false; $('#shareIncludeAi').disabled = !model.destinations.some(s => s.aiReview);
     schedule();
   }
   $('#shareClose').onclick = close; $('#shareModal').addEventListener('click', e => { if (e.target === e.currentTarget) close(); });
+  const zoom = node($('.share-export-options'), 'button', '', '放大阅读'); zoom.type = 'button';
+  zoom.onclick = () => { const enlarged = $('#shareModal').classList.toggle('preview-zoomed'); zoom.textContent = enlarged ? '适应宽度' : '放大阅读'; zoom.setAttribute('aria-pressed', String(enlarged)); fit(); };
   $('#shareSystem').onclick = share; $('#shareDownload').onclick = () => download(0); $('#shareNameInput').addEventListener('input', updateName);
   $('#shareQuickRoute').onclick = () => appendName($('#shareQuickRoute').textContent); $('#shareQuickStamp').onclick = () => appendName($('#shareQuickStamp').textContent);
   document.querySelectorAll('.share-name-suffix').forEach(b => { b.onclick = () => appendName(b.textContent); });
   $('#shareIncludeMap').onchange = schedule; $('#shareIncludeAi').onchange = schedule; $('#shareRetry').onclick = schedule;
+  $('#shareIncludeAddress').onchange = schedule;
   $('#shareRetryMap').onclick = () => { if (!model) return; const id = session; mapPromise = (mapPromise || Promise.resolve()).then(() => id === session ? loadMap(id) : undefined); schedule(); };
   document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('#shareModal').hidden) close(); });
   new ResizeObserver(() => { if (!$('#shareSystem').disabled) fit(); }).observe($('#sharePosterHost'));

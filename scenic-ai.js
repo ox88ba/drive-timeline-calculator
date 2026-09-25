@@ -1,7 +1,7 @@
 /* ============================================================
-   POI 自动 AI 评价（Dots 联网搜索）
+   POI 按需 AI 评价（Dots 联网搜索）
    - 识别 景区 / 酒店·民宿 / 餐馆 三类目的地
-   - 卡片渲染即自动请求，无需用户操作
+   - 用户点击后才请求；关闭偏好持久化，取消未发送队列
    - localStorage 缓存 7 天，键只与 POI 身份有关（停留时长变化不重新请求）
    ============================================================ */
 (function (root) {
@@ -11,7 +11,11 @@
   const MAX_ENTRIES = 60;
   const pending = new Map(); // id -> Promise（跨卡片去重）
   const manualCategories = new Map();
-  const dismissed = new Set();
+  const DISMISSED_KEY = 'drive-poi-review-dismissed-v1';
+  const controllers = new Map(), requested = new Set();
+  let dismissed = new Set();
+  try { dismissed = new Set(JSON.parse(localStorage.getItem(DISMISSED_KEY) || '[]')); } catch {}
+  function saveDismissed() { try { localStorage.setItem(DISMISSED_KEY, JSON.stringify([...dismissed])); } catch {} }
   let cache = {};
   try { cache = JSON.parse(localStorage.getItem(KEY) || '{}'); } catch {}
 
@@ -83,7 +87,7 @@
       };
       body.append(toggle);
     }
-    box.append(node('small', 'Dots AI 联网评价 · ' + new Date(entry.createdAt).toISOString().slice(0, 10) + ' · 信息可能变化，出发前请核实', 'poi-review-meta'));
+    box.append(node('small', 'AI 生成 · 地点通用参考 · ' + new Date(entry.createdAt).toISOString().slice(0, 10) + ' · 不代表实时口碑或本次到访情况，请出发前核实', 'poi-review-meta'));
   }
 
   function paint(box, id, category, location, visit, request) {
@@ -94,6 +98,7 @@
     close.setAttribute('aria-label', '关闭 AI 评价并清除该地点的缓存');
     close.onclick = () => {
       dismissed.add(id);
+      saveDismissed(); requested.delete(id); controllers.get(id)?.abort(); controllers.delete(id);
       manualCategories.delete(id);
       delete cache[id];
       pending.delete(id); // Invalidate in-flight responses as well as saved data.
@@ -108,20 +113,22 @@
     const body = node('div', '', 'poi-review-body');
     box.append(body);
     const entry = cache[id];
-    if (entry && Date.now() - entry.createdAt < TTL) {
+    if (entry?.generic && Date.now() - entry.createdAt < TTL) {
       renderReview(body, box, entry);
       return;
     }
     body.append(node('p', '正在联网搜索并生成评价…', 'poi-review-loading'));
     if (!pending.has(id)) {
-      const job = request({ ...location, visit }, category).then((result) => {
+      const controller = new AbortController(); controllers.set(id, controller);
+      const job = request(location, category, controller.signal).then((result) => {
         if (pending.get(id) !== job || dismissed.has(id)) return false;
         const review = String(result?.analysis?.review || '').trim();
         if (!review) throw new Error('未返回可用评价');
-        cache[id] = { review, category, createdAt: Date.now() };
+        cache[id] = { review, category, generic: true, createdAt: Date.now() };
+        requested.delete(id);
         save();
         return true;
-      }).catch((error) => ({ error: error?.message || '生成失败' })).finally(() => {
+      }).catch((error) => { if (pending.get(id) === job) requested.delete(id); return { error: error?.message || '生成失败' }; }).finally(() => {
         setTimeout(() => { if (pending.get(id) === job) pending.delete(id); }, 3000); /* 失败后短暂冷却，避免渲染循环重打 */
       });
       pending.set(id, job);
@@ -132,12 +139,13 @@
       body.replaceChildren(node('p', `AI 评价暂时不可用${outcome?.error ? `：${outcome.error}` : ''}`, 'poi-review-error'));
       const retry = node('button', '重新生成', 'poi-review-retry');
       retry.type = 'button';
-      retry.onclick = () => { pending.delete(id); paint(box, id, category, location, visit, request); };
+      retry.onclick = () => { requested.add(id); pending.delete(id); paint(box, id, category, location, visit, request); };
       body.append(retry);
     });
   }
 
   function mount(card, destination, request) {
+    if (root.DriveSharedPreview) return;
     const currentId = destination.location ? key(destination.location) : null;
     card.querySelectorAll('.poi-review, .poi-review-manual').forEach(el => {
       if (destination.isSkipped || !currentId || el.dataset.poiKey !== currentId) el.remove();
@@ -145,19 +153,21 @@
     if (destination.isSkipped || !destination.location) return;
     const cached = cache[key(destination.location)];
     const category = dismissed.has(currentId) ? null : categoryOf(destination.location) || manualCategories.get(currentId) || (cached && cached.category);
-    if (!category) {
+    if (!category || (!requested.has(currentId) && !(cached?.generic && Date.now() - cached.createdAt < TTL))) {
       if (card.querySelector('.poi-review-manual')) return;
-      const manual = node('button', '这是景区？生成 AI 评价', 'poi-review-retry poi-review-manual');
+      const manual = node('button', category ? `生成${CATEGORY_LABEL[category]} AI 评价` : '这是景区？生成 AI 评价', 'poi-review-retry poi-review-manual');
       manual.type = 'button';
       manual.dataset.poiKey = currentId;
       manual.onclick = () => {
         const location = { ...destination.location };
         const id = key(location);
         dismissed.delete(id);
-        manualCategories.set(id, 'scenic');
+        controllers.get(id)?.abort(); pending.delete(id);
+        saveDismissed(); requested.add(id);
+        manualCategories.set(id, category || 'scenic');
         const box = node('section', '', 'poi-review'); box.dataset.poiKey = id;
         manual.replaceWith(box);
-        paint(box, id, 'scenic', location, visitContext(destination), request);
+        paint(box, id, category || 'scenic', location, {}, request);
       };
       card.querySelector('.stay-section').before(manual);
       return;
