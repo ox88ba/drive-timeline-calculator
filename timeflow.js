@@ -207,56 +207,8 @@
       if (a && d.day !== a.day) card.dataset.tfOvernight = '1';
     }
 
-    /* ---------- 动效层 ---------- */
-    var cid = card.id || card.dataset.id || '';
-
-    /* ① 滚动即时间流逝：未入视口的卡片先以「熄灯」态等待，
-       进入视口后天空苏醒（filter 可插值，天然渐变） */
-    card.classList.remove('tf-preroll', 'tf-inview');
-    if (!io || inviewIds.has(cid)) {
-      card.classList.add('tf-inview');
-    } else {
-      card.classList.add('tf-preroll');
-      io.observe(card);
-    }
-
-    /* ② 添加目的地：新站生长入场（只认首见 id，避免重渲染反复播） */
-    if (cid && !seenIds.has(cid)) {
-      seenIds.add(cid);
-      var wrap = card.closest('.destination-wrap');
-      if (wrap) {
-        var idx = Number(card.dataset.index) || 0;
-        wrap.style.animationDelay = Math.min(idx, 8) * 70 + 'ms';
-        wrap.classList.add('tf-enter');
-        setTimeout(function () {
-          wrap.classList.remove('tf-enter');
-          wrap.style.animationDelay = '';
-        }, 900 + Math.min(idx, 8) * 70);
-      }
-    }
-
-    /* ③ 改停留时间：出发片天空用「幽灵层」交叉淡化到新时刻，
-       时间数字同步弹跳（渐变背景不可 transition，故用淡出叠层） */
-    if (d && depBlock) {
-      var newKey = d.day + '-' + d.minutes;
-      var prev = prevDep.get(cid);
-      var newBg = card.style.getPropertyValue('--tf-b-bg');
-      if (prev && prev.key && prev.key !== newKey && prev.bg && prev.bg !== newBg) {
-        var ghost = document.createElement('div');
-        ghost.className = 'tf-skyfade';
-        ghost.style.background = prev.bg;
-        depBlock.append(ghost);
-        depEl.classList.add('tf-pop');
-        requestAnimationFrame(function () { ghost.classList.add('tf-out'); });
-        setTimeout(function () {
-          ghost.remove();
-          depEl.classList.remove('tf-pop');
-        }, 700);
-      }
-      prevDep.set(cid, { key: newKey, bg: newBg });
-    } else if (cid) {
-      prevDep.delete(cid);
-    }
+    // Functional itinerary content is always visible. Repeated edits update
+    // times immediately; no scroll reveal, stagger, or foreground ghost layer.
   }
 
   /* ---------- 出发点卡片：按出发时刻渲染天空 ---------- */
@@ -642,10 +594,6 @@
 
   /* app.js 每次 render() 都会重建 #timeline，用 rAF 节流批量处理 */
   var timelineObserver = null;
-  var io = null;
-  var seenIds = new Set();   /* 已做过入场动画的卡片 id */
-  var inviewIds = new Set(); /* 已进入过视口的卡片 id */
-  var prevDep = new Map();   /* id -> { key, bg } 上一次的出发时刻与天空 */
   var scheduled = false;
   function schedule() {
     if (scheduled) return;
@@ -658,19 +606,6 @@
 
   function boot() {
     if (timelineObserver) return; /* 幂等 */
-    if ('IntersectionObserver' in window) {
-      io = new IntersectionObserver(function (entries) {
-        entries.forEach(function (en) {
-          if (!en.isIntersecting) return;
-          var c = en.target;
-          var id = c.id || c.dataset.id || '';
-          inviewIds.add(id);
-          c.classList.remove('tf-preroll');
-          c.classList.add('tf-inview');
-          io.unobserve(c);
-        });
-      }, { rootMargin: '0px 0px -6% 0px' });
-    }
     processAll();
     var timeline = document.getElementById('timeline');
     if (timeline) {
@@ -688,13 +623,6 @@
       timelineObserver.disconnect();
       timelineObserver = null;
     }
-    if (io) {
-      io.disconnect();
-      io = null;
-    }
-    seenIds.clear();
-    inviewIds.clear();
-    prevDep.clear();
     var rhythm = document.getElementById('tfRhythm');
     if (rhythm) rhythm.remove();
     var whatif = document.getElementById('tfWhatif');

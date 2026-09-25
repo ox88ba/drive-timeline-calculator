@@ -7,7 +7,7 @@
   intro.textContent = '选择出发点 → 添加目的地 → 设置每站停留。导航时间不含休息、排队及临时交通变化。';
   start.before(intro);
   const shortcuts = document.createElement('div'); shortcuts.className = 'planning-shortcuts';
-  for (const [label, action] of [['添加下一站', () => $('#addDestination').click()], ['查看地图', () => $('.route-preview').scrollIntoView({behavior:'smooth',block:'start'})], ['预览示例', () => $('#tkTemplatesBtn')?.click()]]) {
+  for (const [label, action] of [['添加下一站', () => $('#addDestination').click()], ['查看地图', () => $('.route-preview').scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth',block:'start'})], ['预览示例', () => $('#tkTemplatesBtn')?.click()]]) {
     const button = document.createElement('button'); button.type = 'button'; button.textContent = label; button.onclick = action; shortcuts.append(button);
   }
   intro.after(shortcuts);

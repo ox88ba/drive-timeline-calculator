@@ -18,7 +18,9 @@
 
   /* ---------- 共享 Undo Snackbar（app.js 复用，皮肤层负责重绘 .undo-snackbar） ---------- */
   var snackTimer = null;
+  var snackCleanup = function () {};
   function showUndoSnackbar(message, onUndo, onDismiss) {
+    snackCleanup();
     var node = document.getElementById('undoSnackbar');
     if (!node) {
       node = document.createElement('div');
@@ -35,15 +37,46 @@
     text.textContent = message;
     node.hidden = false;
     clearTimeout(snackTimer);
+    var remaining = 6000, started = 0, hovering = false, alive = true;
+    var focused = node.contains(document.activeElement);
+    function pause() {
+      if (started) remaining = Math.max(0, remaining - (Date.now() - started));
+      started = 0; clearTimeout(snackTimer);
+    }
+    function resume() {
+      if (!alive) return;
+      pause();
+      if (document.hidden || hovering || focused || node.hidden) return;
+      started = Date.now();
+      snackTimer = setTimeout(function () {
+        snackCleanup(); node.hidden = true;
+        if (typeof onDismiss === 'function') onDismiss();
+      }, remaining);
+    }
+    function enter(event) { if (event.pointerType === 'mouse') { hovering = true; pause(); } }
+    function leave() { hovering = false; resume(); }
+    function focusEntered() { focused = true; pause(); }
+    function focusLeft(event) { focused = node.contains(event.relatedTarget); resume(); }
+    node.addEventListener('pointerenter', enter);
+    node.addEventListener('pointerleave', leave);
+    node.addEventListener('focusin', focusEntered);
+    node.addEventListener('focusout', focusLeft);
+    document.addEventListener('visibilitychange', resume);
+    snackCleanup = function () {
+      alive = false;
+      pause();
+      node.removeEventListener('pointerenter', enter);
+      node.removeEventListener('pointerleave', leave);
+      node.removeEventListener('focusin', focusEntered);
+      node.removeEventListener('focusout', focusLeft);
+      document.removeEventListener('visibilitychange', resume);
+    };
     btn.onclick = function () {
-      clearTimeout(snackTimer);
+      snackCleanup();
       node.hidden = true;
       if (typeof onUndo === 'function') onUndo();
     };
-    snackTimer = setTimeout(function () {
-      node.hidden = true;
-      if (typeof onDismiss === 'function') onDismiss();
-    }, 6000);
+    resume();
     return node;
   }
   globalThis.DriveUndoSnackbar = showUndoSnackbar;

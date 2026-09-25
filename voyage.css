@@ -110,10 +110,12 @@ html[data-skin="voyage"] .icon-button {
   -webkit-backdrop-filter: blur(12px);
   transition: transform .18s ease, border-color .18s ease, color .18s ease, box-shadow .18s ease;
 }
+@media (hover: hover) and (pointer: fine) {
 html[data-skin="voyage"] .icon-button:hover {
   transform: translateY(-1px);
   border-color: rgba(240, 179, 94, .4);
   color: var(--accent);
+}
 }
 html[data-skin="voyage"] .icon-button:active {
   transform: translateY(0);
@@ -140,10 +142,12 @@ html[data-skin="voyage"] .hero-text-button {
   font-weight: 500;
   transition: transform .18s ease, border-color .18s ease, color .18s ease, box-shadow .18s ease;
 }
+@media (hover: hover) and (pointer: fine) {
 html[data-skin="voyage"] .hero-text-button:hover {
   transform: translateY(-1px);
   border-color: rgba(240, 179, 94, .4);
   color: var(--accent);
+}
 }
 html[data-skin="voyage"] .hero-text-button:active {
   transform: translateY(0);
@@ -238,8 +242,10 @@ html[data-skin="voyage"] .stay-buttons button {
   background: rgba(255, 255, 255, .05);
   transition: transform .15s ease, box-shadow .15s ease;
 }
+@media (hover: hover) and (pointer: fine) {
 html[data-skin="voyage"] .quick-starts button:hover,
 html[data-skin="voyage"] .stay-buttons button:hover { transform: translateY(-1px); }
+}
 html[data-skin="voyage"] .quick-starts button.active,
 html[data-skin="voyage"] .stay-buttons button.active {
   border-color: transparent;
@@ -319,8 +325,10 @@ html[data-skin="voyage"] .poi-results {
   -webkit-backdrop-filter: blur(20px);
 }
 html[data-skin="voyage"] .poi-option { color: var(--ink); border-bottom-color: rgba(255, 255, 255, .06); }
+@media (hover: hover) and (pointer: fine) {
 html[data-skin="voyage"] .poi-option:active,
 html[data-skin="voyage"] .poi-option:hover { background: rgba(240, 179, 94, .09); }
+}
 
 /* ---------- 卡片数据与状态 ---------- */
 html[data-skin="voyage"] .time-grid strong { color: var(--ink); }
@@ -333,7 +341,9 @@ html[data-skin="voyage"] .card-actions button {
   background: rgba(255, 255, 255, .055);
   transition: transform .15s ease;
 }
+@media (hover: hover) and (pointer: fine) {
 html[data-skin="voyage"] .card-actions button:hover { transform: translateY(-1px); }
+}
 html[data-skin="voyage"] .card-actions button:last-child { color: #ff858d; }
 html[data-skin="voyage"] .photo-badge.golden { color: #ffd98c; background: rgba(255, 190, 90, .15); }
 html[data-skin="voyage"] .photo-badge.sunset { color: #ffb08a; background: rgba(255, 130, 80, .15); }
@@ -356,7 +366,9 @@ html[data-skin="voyage"] .add-destination {
   background: rgba(240, 179, 94, .045);
   transition: background .18s ease, box-shadow .18s ease, transform .18s ease;
 }
+@media (hover: hover) and (pointer: fine) {
 html[data-skin="voyage"] .add-destination:hover { transform: translateY(-1px); }
+}
 html[data-skin="voyage"] .add-destination:active {
   background: rgba(240, 179, 94, .11);
   box-shadow: 0 0 24px rgba(240, 179, 94, .18);
@@ -538,11 +550,13 @@ html[data-skin="voyage"] :focus-visible {
   html[data-skin="voyage"] .route-connector::before { animation: none; }
   html[data-skin="voyage"] .date-divider { animation: none; }
   html[data-skin="voyage"] .summary-arrival strong { animation: none; }
+@media (hover: hover) and (pointer: fine) {
   html[data-skin="voyage"] .icon-button:hover,
   html[data-skin="voyage"] .add-destination:hover,
   html[data-skin="voyage"] .quick-starts button:hover,
   html[data-skin="voyage"] .stay-buttons button:hover,
   html[data-skin="voyage"] .card-actions button:hover { transform: none; }
+}
 }
 
 /* 移动端吸顶时实色遮住刘海/灵动岛区域（安全区内边距由 styles.css 统一处理） */
@@ -601,10 +615,12 @@ html[data-skin="voyage"][data-theme="light"] .hero-text-button {
   color: #5d6579;
   background: rgba(255, 255, 255, .6);
 }
+@media (hover: hover) and (pointer: fine) {
 html[data-skin="voyage"][data-theme="light"] .icon-button:hover,
 html[data-skin="voyage"][data-theme="light"] .hero-text-button:hover {
   border-color: rgba(185, 116, 15, .45);
   color: var(--accent);
+}
 }
 html[data-skin="voyage"][data-theme="light"] .icon-button:active,
 html[data-skin="voyage"][data-theme="light"] .hero-text-button:active {
@@ -702,8 +718,10 @@ html[data-skin="voyage"][data-theme="light"] .poi-results {
   box-shadow: 0 20px 46px rgba(28, 36, 60, .16);
 }
 html[data-skin="voyage"][data-theme="light"] .poi-option { border-bottom-color: rgba(24, 32, 54, .06); }
+@media (hover: hover) and (pointer: fine) {
 html[data-skin="voyage"][data-theme="light"] .poi-option:active,
 html[data-skin="voyage"][data-theme="light"] .poi-option:hover { background: rgba(200, 140, 40, .1); }
+}
 
 /* ---------- 卡片数据与状态 ---------- */
 html[data-skin="voyage"][data-theme="light"] .route-status { color: #5d6579; background: rgba(24, 32, 54, .05); }

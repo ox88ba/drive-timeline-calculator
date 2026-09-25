@@ -13,7 +13,9 @@
   font: 600 13px "Noto Sans SC", sans-serif; cursor: pointer;
   transition: transform .18s ease, box-shadow .18s ease;
 }
+@media (hover: hover) and (pointer: fine) {
 .tk-action-btn:hover { transform: translateY(-1px); box-shadow: 0 8px 22px rgba(30, 37, 54, .10); }
+}
 
 /* ---------- 弹窗 ---------- */
 .tk-backdrop { z-index: 70; }
@@ -36,7 +38,9 @@
   background: #f7f8fb; color: inherit; text-align: left; cursor: pointer;
   transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
 }
+@media (hover: hover) and (pointer: fine) {
 .tk-tpl-card:hover { transform: translateY(-1px); border-color: var(--accent, #4a6cf7); box-shadow: 0 10px 26px rgba(30, 37, 54, .10); }
+}
 .tk-tpl-top { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
 .tk-tpl-top b { font-size: 15px; }
 .tk-tpl-top span { color: var(--muted, #7a8394); font: 500 10px "DM Mono", monospace; white-space: nowrap; }
@@ -63,8 +67,12 @@
   padding: 7px 12px; border: 1px solid var(--line, #d9dde6); border-radius: 999px;
   background: #fff; color: var(--ink, #1c2331); font: 500 11px "Noto Sans SC", sans-serif; cursor: pointer;
 }
+@media (hover: hover) and (pointer: fine) {
 .tk-snap-actions button:hover { border-color: var(--accent, #4a6cf7); color: var(--accent, #4a6cf7); }
+}
+@media (hover: hover) and (pointer: fine) {
 .tk-snap-actions .tk-danger:hover { border-color: #d9534f; color: #d9534f; }
+}
 .tk-compare { margin-top: 12px; overflow-x: auto; }
 .tk-table { width: 100%; border-collapse: collapse; font-size: 11px; }
 .tk-table th, .tk-table td { padding: 7px 9px; border-top: 1px solid var(--line, #e3e6ee); text-align: left; white-space: nowrap; }
@@ -101,8 +109,10 @@ html[data-theme="dark"] .tk-tpl-card,
 html[data-theme="dark"] .tk-snap-card {
   border-color: rgba(255, 255, 255, .10); background: rgba(255, 255, 255, .05);
 }
+@media (hover: hover) and (pointer: fine) {
 html[data-theme="dark"] .tk-tpl-card:hover,
 html[data-theme="dark"] .tk-tpl-card:hover { border-color: rgba(255, 209, 138, .55); box-shadow: 0 12px 30px rgba(0, 0, 0, .35); }
+}
 html[data-theme="dark"] .tk-note, html[data-theme="dark"] .tk-tpl-desc,
 html[data-theme="dark"] .tk-snap-meta, html[data-theme="dark"] .tk-snap-head span,
 html[data-theme="dark"] .tk-tpl-top span,
@@ -121,8 +131,10 @@ html[data-theme="dark"] .tk-snap-actions button,
 html[data-theme="dark"] .tk-snap-actions button {
   border-color: rgba(255, 255, 255, .16); background: rgba(255, 255, 255, .06); color: #e9edf6;
 }
+@media (hover: hover) and (pointer: fine) {
 html[data-theme="dark"] .tk-snap-actions button:hover,
 html[data-theme="dark"] .tk-snap-actions button:hover { border-color: rgba(255, 209, 138, .6); color: #ffd98a; }
+}
 html[data-theme="dark"] .tk-table th, html[data-theme="dark"] .tk-table td,
 html[data-theme="dark"] .tk-table th, html[data-theme="dark"] .tk-table td { border-top-color: rgba(255, 255, 255, .10); }
 html[data-theme="dark"] .tk-table thead th,

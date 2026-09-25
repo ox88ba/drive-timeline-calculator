@@ -1,4 +1,76 @@
 /* Last-layer mobile layout. Export (.rb-*) deliberately excluded. */
+:root { --ease-out:cubic-bezier(0.23,1,0.32,1); --press-duration:160ms; }
+/* Touch feedback belongs to controls, not readable addresses or exported text. */
+html { -webkit-text-size-adjust:100%; }
+html[data-skin] .shell button, html[data-skin] .modal-backdrop button, html[data-skin] .dock-head button,
+html summary, html .undo-snackbar-action {
+ touch-action:manipulation; -webkit-user-select:none; user-select:none;
+ -webkit-tap-highlight-color:transparent;
+ transition:transform var(--press-duration) var(--ease-out);
+}
+html .shell button:not(:disabled):not(.place-name):active,
+html .modal-backdrop button:not(:disabled):active,
+html .dock-head button:not(:disabled):active, html .undo-snackbar-action:active {
+ transform:scale(.97); transition-duration:100ms;
+}
+html summary:active, html .place-name:active { opacity:.78; }
+html .place-name { -webkit-user-select:text; user-select:text; }
+html[data-skin] .shell button:focus-visible, html[data-skin] .modal-backdrop button:focus-visible { transition:none; transform:none; }
+/* Numerical updates must stay readable, including keyboard-driven edits. */
+html .arrival-time, html [data-departure], html .summary strong { font-variant-numeric:tabular-nums; }
+html .value-flash { animation:none; }
+html[data-skin="voyage"] .summary-arrival strong { animation:none; }
+html .tk-modal { max-height:min(84dvh,760px); }
+html .tk-body { min-height:0; overscroll-behavior:contain; }
+html .share-preview { max-height:57dvh; overscroll-behavior:contain; }
+html .tk-toast { bottom:calc(16px + env(safe-area-inset-bottom,0px)); font-size:14px; }
+html .tk-note, html .tk-tpl-desc, html .tk-snap-meta { font-size:14px; line-height:1.65; }
+html .tk-snap-actions { flex-wrap:wrap; }
+html .tk-snap-head, html .tk-tpl-top { flex-wrap:wrap; }
+html .tk-snap-head b, html .tk-tpl-top b { overflow-wrap:anywhere; }
+html .tk-tpl-route { font-size:13px; }
+html .tk-snap-actions button { font-size:14px; }
+html .tk-close, html .share-modal-head .icon-button { min-width:44px; min-height:44px; flex-shrink:0; }
+html .card-more .card-actions { max-height:50dvh; overflow-y:auto; overscroll-behavior:contain; }
+html .poi-results { max-height:min(320px,40dvh); overflow-y:auto; overscroll-behavior:contain; }
+html .share-name-shortcuts button { font-size:13px; white-space:normal; overflow-wrap:anywhere; }
+html .share-status { font-size:13px; line-height:1.6; }
+/* Reading surfaces stay solid; glass is reserved for the surrounding chrome. */
+html[data-skin="voyage"][data-theme="light"] .tk-modal,
+html[data-skin="voyage"][data-theme="light"] .share-modal { background:#f7f8fa; }
+html .share-export-options label { min-height:44px; display:inline-flex; align-items:center; gap:8px; font-size:14px; }
+html .share-export-options input { width:20px; height:20px; flex-shrink:0; }
+html .tk-note { color:#526075; }
+html .poi-results:focus-within { outline:2px solid #2371ca; outline-offset:2px; }
+@media(max-width:600px) {
+ html .share-actions { grid-template-columns:repeat(2,minmax(0,1fr)); }
+ html .share-actions #shareSystem { grid-column:1/-1; }
+ html .share-actions button { min-height:48px; font-size:14px; }
+ html .tk-save-row { grid-template-columns:minmax(0,1fr); }
+ html .tk-save-row input, html .tk-save-row button { width:100%; }
+}
+@media(prefers-reduced-motion:reduce) {
+ html { scroll-behavior:auto!important; }
+ html .shell button, html .modal-backdrop button, html .dock-head button,
+ html .undo-snackbar-action { transition:none!important; }
+ html .shell button:not(.dock-item), html .modal-backdrop button,
+ html .dock-head button, html .undo-snackbar-action { transform:none!important; }
+ html .poi-review-loading { animation:none; }
+}
+/* Glass has a solid alternative; never make the safe-area cover translucent. */
+@media(prefers-reduced-transparency:reduce), (prefers-contrast:more) {
+ html .trip-dock, html .undo-snackbar, html .tk-modal, html .share-modal {
+  backdrop-filter:none!important; -webkit-backdrop-filter:none!important;
+  background:#f7f8fa!important; color:#182338!important;
+ }
+ html[data-theme="dark"] .trip-dock, html[data-theme="dark"] .undo-snackbar,
+ html[data-theme="dark"] .tk-modal, html[data-theme="dark"] .share-modal {
+  background:#182338!important; color:#f7f8fa!important;
+ }
+}
+@media(prefers-contrast:more) {
+ html .card-more .card-actions, html .poi-results, html .tk-modal, html .share-modal { border:2px solid #526075; }
+}
 html .shell button, html .shell summary, html .dock-head button, html .modal-backdrop button { min-height:44px; }
 html .shell input, html .modal-backdrop input { font-size:16px; }
 html .modal-backdrop select { font-size:16px; min-height:44px; min-width:0; max-width:100%; }
