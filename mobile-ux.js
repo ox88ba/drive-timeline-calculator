@@ -2,6 +2,43 @@
 (() => {
   'use strict';
   const $ = selector => document.querySelector(selector);
+  // Shared-surface morph only: no cloned inputs, no delayed focus or writes.
+  let cancelAddMorph = () => {};
+  globalThis.DriveAddMorph = (source, card) => {
+    cancelAddMorph();
+    const reduced = matchMedia('(prefers-reduced-motion: reduce)');
+    if (reduced.matches || !card.animate) return;
+    const target = card.getBoundingClientRect();
+    if (!source.width || !target.width || target.bottom < 0 || target.top > innerHeight) return;
+    const left = Math.min(source.left, target.left), top = Math.min(source.top, target.top);
+    const right = Math.max(source.right, target.right), bottom = Math.max(source.bottom, target.bottom);
+    const layer = document.createElement('div'); layer.className = 'add-destination-morph';
+    layer.setAttribute('aria-hidden', 'true');
+    const style = getComputedStyle(card);
+    Object.assign(layer.style, {position:'fixed',pointerEvents:'none',zIndex:'21',
+      left:left+'px',top:top+'px',width:(right-left)+'px',height:(bottom-top)+'px',
+      background:style.backgroundColor === 'rgba(0, 0, 0, 0)' ? '#f7f8fa' : style.backgroundColor});
+    const shape = (rect, radius) => `inset(${rect.top-top}px ${right-rect.right}px ${bottom-rect.bottom}px ${rect.left-left}px round ${radius})`;
+    document.body.append(layer);
+    const animation = layer.animate([
+      {clipPath:shape(source, source.height/2+'px'),opacity:1},
+      {clipPath:shape(target, style.borderRadius),opacity:1,offset:.8},
+      {clipPath:shape(target, style.borderRadius),opacity:0}
+    ], {duration:250,easing:getComputedStyle(document.documentElement).getPropertyValue('--ease-out').trim() || 'cubic-bezier(0.23,1,0.32,1)'});
+    const stop = () => { animation.cancel(); layer.remove();
+      window.removeEventListener('scroll',stop,true); window.removeEventListener('resize',stop);
+      document.removeEventListener('pointerdown',stop,true); document.removeEventListener('keydown',stop,true);
+      reduced.removeEventListener('change',stop);
+      if (cancelAddMorph === stop) cancelAddMorph = () => {};
+    };
+    cancelAddMorph = stop;
+    // Ignore the focus-induced scroll already queued for this frame.
+    requestAnimationFrame(() => { if (layer.isConnected) window.addEventListener('scroll',stop,true); });
+    window.addEventListener('resize',stop);
+    document.addEventListener('pointerdown',stop,true); document.addEventListener('keydown',stop,true);
+    reduced.addEventListener('change',stop);
+    animation.finished.then(stop,stop);
+  };
   const start = $('#startCard'); $('.hero').after(start);
   const intro = document.createElement('p'); intro.className = 'planning-help';
   intro.textContent = '选择出发点 → 添加目的地 → 设置每站停留。导航时间不含休息、排队及临时交通变化。';
