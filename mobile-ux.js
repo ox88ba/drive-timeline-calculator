@@ -60,8 +60,13 @@
   mapButton.onclick = () => { interactive = !interactive; updateMapMode(); }; updateMapMode();
   // Explicit reorder mode. Ordinary taps and swipes only navigate/scroll.
   const sort = document.createElement('button'); sort.type = 'button'; sort.className = 'dock-sort'; sort.textContent = '排序'; sort.setAttribute('aria-pressed', 'false');
-  $('.dock-head').append(sort); let sorting = false;
+  $('.dock-head').prepend(sort); let sorting = false;
   sort.onclick = () => { sorting = !sorting; sort.textContent = sorting ? '完成排序' : '排序'; sort.setAttribute('aria-pressed', String(sorting)); $('.trip-dock').classList.toggle('sorting', sorting); };
+  $('#dockToggle').addEventListener('click', () => {
+    if ($('.trip-dock').classList.contains('is-collapsed')) {
+      sorting = false; sort.textContent = '排序'; sort.setAttribute('aria-pressed', 'false'); $('.trip-dock').classList.remove('sorting');
+    }
+  });
   if (globalThis.DriveSharedPreview) {
     sort.disabled = true;
     const readonly = () => document.querySelectorAll('.shell input, .shell button').forEach(el => { if (!el.closest('.shared-preview-banner') && !['backToTop'].includes(el.id) && !el.classList.contains('map-interaction-toggle') && !el.disabled) el.disabled = true; });

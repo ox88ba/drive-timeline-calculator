@@ -336,7 +336,7 @@
   }
   function routeConnector(destination, index) { const node = document.createElement('div'); node.className = 'route-connector'; const routeInfo = document.createElement('span'); if (destination.isSkipped) { node.classList.add('skipped-connector'); routeInfo.textContent = '此站已跳过'; } else if (!destination.location) { routeInfo.textContent = '选择具体 POI 后获取导航'; } else if (destination.routeLoading) { routeInfo.innerHTML = '<span class="route-loading"><i class="spinner"></i>正在获取导航数据…</span>'; } else if (destination.route) { node.classList.add('connector-route'); const avgSpeed = destination.route.durationSeconds > 0 ? Math.round(destination.route.distanceMeters / 1000 / (destination.route.durationSeconds / 3600)) : 0; routeInfo.textContent = `${formatDistance(destination.route.distanceMeters)} · ${formatDuration(destination.route.durationSeconds)}${avgSpeed > 0 ? ` · 平均${avgSpeed}km/h` : ''}`; } else { routeInfo.textContent = '导航数据待获取'; } node.append(routeInfo); const addVia = document.createElement('button'); addVia.type = 'button'; addVia.className = 'add-via-point'; addVia.dataset.action = 'add-via-point'; addVia.dataset.index = String(index); addVia.textContent = '添加途径点'; node.append(addVia); return node; }
   function routeStatus(destination, index) { const node = document.createElement('div'); node.className = 'route-status'; if (destination.isSkipped) { node.textContent = '已跳过，不参与导航、时间与汇总计算。'; return node; } if (!destination.location) { node.textContent = '选择候选地点后，才会调用官方导航服务。'; return node; } if (!isValidLocation(trip.startLocation)) { node.textContent = '请先搜索并选择出发点 POI。'; return node; } if (destination.routeLoading) { node.innerHTML = '<span class="route-loading"><i class="spinner"></i>正在获取导航数据…</span>'; return node; } if (destination.routeError) { node.classList.add('error'); node.append(`${destination.routeError || '导航数据获取失败'}，`); const retry = document.createElement('button'); retry.className = 'retry'; retry.dataset.action = 'retry-route'; retry.dataset.index = index; retry.textContent = '点击重新计算'; node.append(retry); return node; } if (destination.route) { /* 路线就绪后不再显示「起点 → 终点」标签，减少信息噪音；该条只是状态占位 */ node.hidden = true; return node; } node.textContent = '正在等待可用的起终点坐标。'; return node; }
-  function setDockCollapsed(collapsed) { dockShell.classList.toggle('is-collapsed', collapsed); dockNode.hidden = collapsed; dockToggle.setAttribute('aria-expanded', String(!collapsed)); dockToggle.textContent = collapsed ? '展开' : '收起'; }
+  function setDockCollapsed(collapsed) { dockShell.classList.toggle('is-collapsed', collapsed); dockNode.hidden = collapsed; dockToggle.setAttribute('aria-expanded', String(!collapsed)); dockToggle.textContent = collapsed ? '展开行程' : '收起行程'; }
   function showDockToast(message) { let node = $('#dockToast'); if (!node) { node = document.createElement('div'); node.id = 'dockToast'; node.className = 'dock-toast'; node.setAttribute('role', 'status'); node.setAttribute('aria-live', 'polite'); document.body.append(node); } node.textContent = message; node.hidden = false; clearTimeout(dockToastTimer); dockToastTimer = setTimeout(() => { node.hidden = true; }, 2400); }
   function clearDockDragFeedback(pointer = dockPointer) { if (pointer?.pressTimer) clearTimeout(pointer.pressTimer); pointer?.source?.classList.remove('is-pressing', 'is-dragging'); dockNode.querySelectorAll('.dock-item.drag-over').forEach((node) => node.classList.remove('drag-over')); dockShell.classList.remove('is-dragging'); dockTitle.textContent = '行程'; }
   function armDockDrag(pointer) { if (!pointer || pointer.armed) return; pointer.armed = true; pointer.source.classList.remove('is-pressing'); pointer.source.classList.add('is-dragging'); dockShell.classList.add('is-dragging'); dockTitle.textContent = '拖到目标位置'; }
@@ -568,7 +568,13 @@
       picker.prepend(name); picker.classList.add('has-place');
       name.onclick = () => { picker.classList.add('is-editing'); input.focus(); input.select(); };
     }
-    const actions = card.querySelector('.card-actions'); const menu = document.createElement('details'); menu.className = 'card-more'; const title = document.createElement('summary'); title.textContent = '更多'; actions.before(menu); menu.append(title, actions);
+    const actions = card.querySelector('.card-actions');
+    if (!destination.location) {
+      actions.classList.add('card-empty-actions');
+      actions.querySelectorAll('button:not([data-action="remove"])').forEach(button => button.remove());
+    } else {
+      const menu = document.createElement('details'); menu.className = 'card-more'; const title = document.createElement('summary'); title.textContent = '更多'; actions.before(menu); menu.append(title, actions);
+    }
     const stays = card.querySelector('.stay-section'); const details = document.createElement('details'); details.className = 'stay-editor'; details.open = expandedStays.has(destination.id);
     const summary = document.createElement('summary'); summary.textContent = destination.stayMinutes > 0 ? `停留 ${formatStay(destination.stayMinutes)} · 修改` : '设置停留 / 次日出发';
     stays.prepend(details); details.append(summary);
@@ -586,7 +592,6 @@
       if (!end) return; if (end < arrival) end = new Date(+end + 86400000);
       button.textContent = `${SolarPhotography.chinaDateKey(end) === SolarPhotography.chinaDateKey(arrival) ? '当天' : '次日'} ${button.dataset.until}`;
       button.title = `停留 ${formatStay(Math.round((end - arrival) / 60000))}`;
-      const duration = document.createElement('small'); duration.textContent = button.title; button.append(duration);
     });
   }
   function bindStartPicker(input, results) {

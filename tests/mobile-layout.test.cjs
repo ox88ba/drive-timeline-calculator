@@ -19,9 +19,32 @@ function fixture(count) { return { startLocation:start, startSearchText:start.na
   assert.deepEqual(errors,[],`JS errors ${width}`);
   const measurements=await page.evaluate(()=>({ overflow:document.documentElement.scrollWidth>innerWidth+1, start:document.querySelector('#startCard').getBoundingClientRect().top, date:document.querySelector('#departureDate').getBoundingClientRect().bottom, summary:document.querySelector('.summary').getBoundingClientRect().top, menu:getComputedStyle(document.querySelector('.card-more summary')).minHeight, name:document.querySelector('.place-name').textContent, closed:!document.querySelector('.stay-editor').open, map:document.querySelector('#routeMap').inert }));
   assert.equal(measurements.overflow,false,`overflow ${width}`); assert.ok(measurements.start<measurements.summary); assert.ok(measurements.date<844,`date off first screen ${width}: ${measurements.date}`); assert.equal(measurements.closed,true); assert.equal(measurements.map,true); assert.equal(measurements.menu,'44px');
+  const typography=await page.locator('.destination-card').first().evaluate(card=>{
+    const style=s=>getComputedStyle(card.querySelector(s));
+    const meta=style('.place-meta');
+    return {address:style('.place-address').fontSize,label:style('.time-grid > div > span').fontSize,
+      hints:[...card.querySelectorAll('.arrival-hints > span')].map(el=>{const s=getComputedStyle(el);return {font:s.fontSize,family:s.fontFamily,color:s.color,border:s.borderTopWidth,bg:s.backgroundColor};}),
+      meta:{font:meta.fontSize,family:meta.fontFamily,color:meta.color}};
+  });
+  assert.equal(typography.address,typography.label);
+  const flagSizes=await page.locator('.card-flags').evaluateAll(flags=>flags.filter(f=>f.querySelector('.derived-tag')).map(f=>[getComputedStyle(f.querySelector('.derived-tag')).fontSize,getComputedStyle(f.querySelector('.overnight-badge')).fontSize]));
+  assert.ok(flagSizes.length>0);
+  for(const [derived,night] of flagSizes) assert.equal(derived,night);
+  assert.ok(typography.hints.length>=2);
+  for(const hint of typography.hints) { assert.equal(hint.font,typography.meta.font); assert.equal(hint.family,typography.meta.family); assert.equal(hint.color,typography.meta.color); assert.equal(hint.border,'0px'); assert.equal(hint.bg,'rgba(0, 0, 0, 0)'); }
+  assert.equal(await page.locator('.dock-sort').isVisible(),false);
+  assert.equal(await page.locator('#dockToggle').textContent(),'展开行程');
+  await page.locator('#dockToggle').click();
+  assert.equal(await page.locator('#dockToggle').textContent(),'收起行程');
+  assert.equal(await page.locator('.dock-sort').isVisible(),true);
+  assert.equal(await page.locator('.dock-title').isVisible(),false);
+  assert.ok((await page.locator('.dock-sort').boundingBox()).x < (await page.locator('#dockToggle').boundingBox()).x);
+  await page.locator('.dock-sort').click(); await page.locator('#dockToggle').click();
+  assert.equal(await page.locator('.dock-sort').getAttribute('aria-pressed'),'false');
   if(width===393) await page.screenshot({path:'/tmp/roadbook-mobile-top.png'});
   await page.locator('.stay-editor summary').first().click(); await page.locator('[data-action="toggle-stay"][data-minutes="60"]').first().click(); await page.waitForTimeout(100);
   assert.equal(await page.locator('.stay-editor').first().getAttribute('open'),'');
+  assert.equal(await page.locator('.stay-until-buttons small').count(),0);
   assert.match(await page.locator('.stay-editor summary').first().textContent(),/3小时/);
   await page.locator('.place-name').first().click(); await page.locator('[data-place-input]').first().fill('尚未提交的修改');
   await page.locator('.stay-editor summary').first().click();

@@ -114,7 +114,7 @@ html[data-engine="timeflow"] .destination-card[data-sky-a] .card-more .card-acti
 html .card-more .card-actions button:disabled { opacity:.5; }
 html :focus-visible { outline:3px solid #2371ca!important; outline-offset:3px; }
 html[data-engine="timeflow"] .destination-card[data-tf-overnight] [data-stay-current]::after { content:" · 🌙 夜间停留"; }
-html .altitude-warning,html .tf-daylight { white-space:normal!important; font-size:13px!important; line-height:1.5!important; }
+html .altitude-warning,html .tf-daylight { white-space:normal!important; }
 html .map-readonly #routeMap { pointer-events:none; touch-action:pan-y; }
 html .map-readonly { touch-action:pan-y; }
 .map-interaction-toggle { margin:0 0 12px; }
@@ -154,7 +154,7 @@ html #shareModal.preview-zoomed #sharePosterHost { min-width:600px; }
  html .summary strong,html .preview-summary strong { white-space:normal!important; overflow:visible!important; text-overflow:clip!important; font-size:16px!important; overflow-wrap:anywhere; }
  html .summary-arrival { grid-column:1/-1; }
  html .destination-card { padding:18px 16px 0; }
- html .place-address,html .place-meta { font-size:14px; line-height:1.6; }
+ html .place-meta { font-size:14px; line-height:1.6; }
  html .time-grid strong { font-size:24px!important; flex-wrap:wrap; }
  html .card-topline { gap:8px; margin-bottom:12px; }
  html .poi-review-manual { font-size:14px; margin:12px 0; }
@@ -166,3 +166,28 @@ html #shareModal.preview-zoomed #sharePosterHost { min-width:600px; }
  html .ai-analysis h2 { font-size:20px; }
  html .ai-analysis-hint { font-size:14px; }
 }
+/* Keep secondary information on the existing label/meta type scales. */
+html .destination-card .place-address,
+html .destination-card .time-grid > div > span { font-size:10px; line-height:1.6; }
+html .destination-card .derived-tag,
+html .destination-card .overnight-badge { font-size:10px; line-height:1.6; }
+html .destination-card { --card-meta-size:10px; --card-meta-leading:1.5; }
+@media(max-width:600px) {
+ html .destination-card { --card-meta-size:14px; --card-meta-leading:1.6; }
+}
+html .destination-card .place-meta,
+html[data-engine="timeflow"] .destination-card[data-sky-a] .arrival-hints .tf-daylight,
+html[data-engine="timeflow"] .destination-card[data-sky-a] .arrival-hints .altitude-warning {
+ font:400 var(--card-meta-size)/var(--card-meta-leading) "DM Mono",monospace;
+ letter-spacing:0;
+}
+html[data-engine="timeflow"] .destination-card[data-sky-a] .arrival-hints .tf-daylight,
+html[data-engine="timeflow"] .destination-card[data-sky-a] .arrival-hints .altitude-warning {
+ color:color-mix(in srgb,var(--tf-a-ink) 74%,transparent);
+ padding:0; margin:0; border:0; border-radius:0; background:none; box-shadow:none;
+}
+html .card-empty-actions [data-action="remove"] { padding:8px 12px; font-size:14px; color:#ad2532; background:#fff0f1; }
+html .dock-head .dock-title { display:none; }
+html .dock-head .dock-toggle { margin-left:auto; }
+html .dock-head .dock-sort { margin-left:0; }
+html .trip-dock.is-collapsed .dock-sort { display:none; }
