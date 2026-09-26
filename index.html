@@ -14,7 +14,7 @@
     <link rel="stylesheet" href="./voyage.css?v=20260925-emil" />
     <link rel="stylesheet" href="./tripkit.css?v=20260925-emil" />
     <link rel="stylesheet" href="./share-v2.css?v=20260923-export-sky" />
-    <link rel="stylesheet" href="./mobile-ux.css?v=20260926-compact" />
+    <link rel="stylesheet" href="./mobile-ux.css?v=20260926-card-layout" />
   </head>
   <body>
     <aside class="trip-dock is-collapsed" aria-label="行程导航">
@@ -62,8 +62,10 @@
           </div>
           <p id="startPlaceAddress" class="place-address">请搜索并选择具体 POI</p>
         </div>
-        <label class="date-field">出发日期<input id="departureDate" type="date" /></label>
-        <label class="time-field">时间<input id="departureTime" type="time" /></label>
+        <div class="start-schedule">
+          <label class="date-field">出发日期<input id="departureDate" type="date" /></label>
+          <label class="time-field">时间<input id="departureTime" type="time" /></label>
+        </div>
         <div class="quick-starts" aria-label="快捷出发时间">
           <span>快捷出发</span>
           <!-- 档位由 app.js buildQuickStarts() 相对当前时间动态注入，勿再硬编码日期 -->
@@ -86,12 +88,13 @@
         <div class="route-connector" data-route-connector></div>
         <div class="date-divider" hidden></div>
         <section class="destination-card">
-          <div class="card-topline"><span class="station-number" data-station-number></span><span class="section-label">目的地</span><div class="card-actions"><button type="button" data-action="retry-route" aria-label="重新获取导航数据" title="重新获取导航数据">刷新</button><button type="button" data-action="toggle-skip" aria-label="暂时跳过目的地">跳过</button><button type="button" data-action="move-up" aria-label="上移">上移</button><button type="button" data-action="move-down" aria-label="下移">下移</button><button type="button" data-action="remove" aria-label="删除">删除</button></div></div>
+          <div class="card-topline"><span class="station-number" data-station-number></span>
           <div class="place-picker">
             <input data-place-input type="search" autocomplete="off" placeholder="搜索地点，如：大柴旦翡翠湖" />
             <span class="search-mark">⌕</span>
             <div class="poi-results" data-poi-results hidden></div>
           </div>
+          <div class="card-actions"><button type="button" data-action="retry-route" aria-label="重新获取导航数据" title="重新获取导航数据">刷新</button><button type="button" data-action="toggle-skip" aria-label="暂时跳过目的地">跳过</button><button type="button" data-action="move-up" aria-label="上移">上移</button><button type="button" data-action="move-down" aria-label="下移">下移</button><button type="button" data-action="remove" aria-label="删除">删除</button></div></div>
           <p class="place-address" data-place-address>请搜索并选择具体 POI</p>
           <p class="place-meta" data-place-meta>日出 — · 日落 — · 海拔待获取</p>
           <div class="time-grid">
@@ -161,7 +164,7 @@
     <script src="./scenic-ai.js?v=20260925"></script>
     <script src="./tripkit.js?v=20260925-emil"></script>
     <script src="./app.js?v=20260926-compact"></script>
-    <script src="./timeflow.js?v=20260925-emil"></script>
+    <script src="./timeflow.js?v=20260926-card-layout"></script>
     <script src="./voyage.js?v=20260916-contained-scroll"></script>
     <script src="./mobile-ux.js?v=20260926-compact"></script>
   </body>

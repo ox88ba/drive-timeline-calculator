@@ -191,3 +191,43 @@ html .dock-head .dock-title { display:none; }
 html .dock-head .dock-toggle { margin-left:auto; }
 html .dock-head .dock-sort { margin-left:0; }
 html .trip-dock.is-collapsed .dock-sort { display:none; }
+/* Compact cards: controls remain touchable without enlarging the reading surface. */
+html[data-skin="voyage"] .start-card { grid-template-columns:max-content minmax(0,1fr); gap:8px 10px; padding:14px 16px; }
+html .start-schedule { grid-column:1/-1; display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:8px 12px; min-width:0; }
+html .start-card .start-schedule > label { grid-column:auto; min-width:0; font-size:10px; gap:2px; }
+html .start-card .start-schedule input { width:100%; min-width:0; min-height:44px; padding:4px 0; font-size:16px; }
+html[data-engine="timeflow"] .start-card .tf-whatif { margin-top:0; padding-top:0; border-top:0; }
+html .start-card .quick-starts { grid-column:1/-1; flex-wrap:wrap; gap:6px; margin-top:0; }
+html .start-card .quick-starts > span { flex-basis:auto; }
+html[data-skin="voyage"] .start-card .quick-starts button { border-radius:9px; padding:5px 8px; min-height:44px; line-height:1.3; }
+html .destination-card .card-topline { display:grid; grid-template-columns:max-content minmax(0,1fr) max-content; align-items:center; gap:8px; margin-bottom:0; }
+html .destination-card .card-topline > .place-picker { min-width:0; margin-top:0; }
+html .destination-card .card-topline .place-name { font-size:16px; line-height:1.45; padding:8px 0; border-bottom:1px solid var(--line); }
+html[data-engine="timeflow"] .destination-card[data-sky-a] .card-topline .place-name { border-bottom-color:color-mix(in srgb,var(--tf-a-ink) 30%,transparent); }
+html .destination-card .card-topline .card-more > summary { padding:8px; list-style:none; }
+html .destination-card .card-topline .card-more > summary::-webkit-details-marker { display:none; }
+html .destination-card .card-topline .card-actions { margin-left:0; }
+html .destination-card > .place-address { margin-top:6px; }
+html[data-skin="voyage"][data-engine="timeflow"] .destination-card .station-number,
+html[data-skin="voyage"][data-engine="timeflow"] .start-card .start-number {
+ font:700 15px "Sora","DM Mono",monospace; letter-spacing:.04em;
+ color:var(--tf-a-ink,var(--accent)); -webkit-text-stroke:1px rgba(240,179,94,.65); text-shadow:none;
+}
+html .destination-card .card-topline .poi-results {
+ left:0; right:auto; top:100%; width:min(320px,calc(100vw - 112px)); min-width:0; max-width:calc(100vw - 112px);
+}
+html .start-card .quick-starts { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); }
+html .start-card .quick-starts > span { grid-column:1/-1; }
+html .start-card .quick-starts button { min-width:0; white-space:normal; }
+/* Keep the isolated safe-area row; only the banner's visible surface is glass. */
+@supports ((backdrop-filter:blur(16px)) or (-webkit-backdrop-filter:blur(16px))) {
+ html[data-skin="voyage"] .trip-dock {
+  background:rgba(11,14,20,.72); backdrop-filter:blur(16px) saturate(150%); -webkit-backdrop-filter:blur(16px) saturate(150%);
+  box-shadow:0 1px 0 rgba(255,255,255,.12),0 4px 16px rgba(0,0,0,.05);
+ }
+ html[data-skin="voyage"][data-theme="light"] .trip-dock { background:rgba(247,248,250,.72); }
+}
+html[data-skin="voyage"] .trip-dock::before {
+ content:""; position:absolute; top:0; left:0; right:0; height:env(safe-area-inset-top,0px); background:#0b0e14; pointer-events:none;
+}
+html[data-skin="voyage"][data-theme="light"] .trip-dock::before { background:#f7f8fa; }
