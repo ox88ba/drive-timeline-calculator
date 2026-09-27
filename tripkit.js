@@ -229,13 +229,16 @@
   }
 
   async function shareLink(event) {
-    if (typeof navigator.share !== 'function') { copyLink(); return; }
     var trip = readTrip();
     if (!trip || !trip.destinations || !trip.destinations.length) {
       toast('请先添加目的地再分享链接'); return;
     }
     var url = tripUrl();
     if (!url) { toast('链接生成失败，请重试'); return; }
+    // Start both privileged operations in the click, without awaiting network.
+    var copied = navigator.clipboard?.writeText(url).then(function(){return true;},function(){return false;}) || Promise.resolve(false);
+    generateShareCode(compactTrip(trip));
+    if (typeof navigator.share !== 'function') { if(await copied) toast('行程链接已复制'); else window.prompt('复制行程链接：',url); return; }
     // Trip dates use Beijing time, regardless of the sharing device's timezone.
     var departureMs = Date.parse(trip.initialDepartureTime);
     var datePrefix = Number.isFinite(departureMs)
@@ -246,17 +249,48 @@
     button.disabled = true;
     try {
       // Call inside the user's click gesture; do not wait for image generation.
-      await navigator.share({ title: title, text: title, url: url });
-      toast('行程链接已分享');
+      await navigator.share({ title: title, text: title + '\n' + url, url: url });
+      toast(await copied ? '行程链接已复制，系统分享已结束' : '系统分享已结束；自动复制未获授权，请手动复制链接');
     } catch (error) {
-      if (error.name !== 'AbortError') {
+      if (error.name === 'AbortError') {
+        if(await copied)toast('已取消系统分享，行程链接仍已复制');
+      } else {
         toast('系统分享暂不可用，可点击“复制行程链接”后发送');
-        button.textContent = '复制行程链接';
-        button.removeEventListener('click', shareLink);
-        button.addEventListener('click', copyLink);
+        window.prompt('复制完整行程链接：', url);
       }
     } finally { button.disabled = false; }
   }
+
+  var shareCodeSequence=0;
+  async function generateShareCode(compact) {
+    var seq=++shareCodeSequence;
+    var box=document.getElementById('tripShareCode');
+    if(!box){box=document.createElement('p');box.id='tripShareCode';box.setAttribute('role','status');document.querySelector('.share-actions').after(box);}
+    box.textContent='正在生成分享码（7天有效，持码者可查看行程）…';
+    try {
+      var response=await fetch((globalThis.DRIVE_API_BASE_URL||'')+'/api/trip-share',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(compact),signal:AbortSignal.timeout(15000)});
+      var data=await response.json(); if(!response.ok)throw new Error(data.message||'分享码生成失败');
+      if(seq!==shareCodeSequence)return;
+      box.textContent='分享码：'+data.code+'（7天有效，请勿公开私人住址）';
+      var copy=document.createElement('button');copy.type='button';copy.textContent='复制分享码';copy.onclick=function(){if(!navigator.clipboard){window.prompt('复制分享码',data.code);return;}navigator.clipboard.writeText(data.code).then(function(){toast('分享码已复制');},function(){window.prompt('复制分享码',data.code);});};box.append(copy);
+    }catch(e){if(seq===shareCodeSequence)box.textContent='分享码暂不可用，完整行程链接仍可使用。';}
+  }
+  globalThis.DriveImportTrip = async function () {
+    var value=window.prompt('输入分享码或完整行程链接（先预览，不覆盖当前行程）：');
+    if(!value)return;
+    try {
+      var compact;
+      if(value.includes('#trip=')){compact=JSON.parse(b64decode(value.split('#trip=')[1].trim()));}
+      else {
+        var code=value.replace(/[-\s]/g,'').toUpperCase();
+        if(!/^[A-HJ-NP-Z2-9]{6}$/.test(code))throw new Error('请输入6位分享码或完整行程链接');
+        var response=await fetch((globalThis.DRIVE_API_BASE_URL||'')+'/api/trip-share?code='+code,{signal:AbortSignal.timeout(15000)});
+        var data=await response.json();if(!response.ok)throw new Error(data.message||'导入失败');compact=data.trip;
+      }
+      if(!expandTrip(compact))throw new Error('行程格式无效');
+      location.hash=HASH_PREFIX+b64encode(JSON.stringify(compact));
+    }catch(e){toast(e.message||'导入失败，请稍后重试');}
+  };
 
   /* ---------- 模板行程 ---------- */
   /* 坐标为景区公开大致位置；载入后仍可在卡片中重新搜索精确 POI */

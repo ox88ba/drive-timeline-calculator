@@ -1,3 +1,4 @@
+import { tripShare } from './trip-share.js';
 const ALLOWED_ORIGINS = new Set(['https://road.ox88.work', 'https://ox88ba.github.io', 'https://www.wxy.org.cn', 'http://www.wxy.org.cn']);
 const ALLOWED_HOSTNAMES = new Set(['road.ox88.work', 'ox88ba.github.io', 'www.wxy.org.cn']);
 const CORS_HEADERS = {
@@ -372,6 +373,7 @@ const handler = {
   async fetch(request, env) {
     const url = new URL(request.url);
     if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS_HEADERS });
+    if (url.pathname === '/api/trip-share') return tripShare(request, env);
     if (request.method !== 'GET' && !(request.method === 'POST' && ['/api/verify-turnstile', '/api/ai-analysis', '/api/scenic-analysis'].includes(url.pathname))) return error(405, 'METHOD_NOT_ALLOWED', '请求方法不受支持。');
     if (['/api/ai-analysis', '/api/scenic-analysis'].includes(url.pathname)) {
       if (request.method !== 'POST') return error(405, 'METHOD_NOT_ALLOWED', '请使用 POST 请求。');

@@ -27,6 +27,14 @@ function fixture(count) { return { startLocation:start, startSearchText:start.na
       meta:{font:meta.fontSize,family:meta.fontFamily,color:meta.color}};
   });
   assert.equal(typography.address,typography.label);
+  if(width===393) {
+    await context.route('**/api/trip-share',r=>r.fulfill({json:{code:'AB2CD3'}}));
+    await page.evaluate(()=>{window.sharedPayload=null;window.copiedLink=null;Object.defineProperty(navigator,'share',{configurable:true,value:async data=>{window.sharedPayload=data;}});Object.defineProperty(navigator,'clipboard',{configurable:true,value:{writeText:async text=>{window.copiedLink=text;}}});document.querySelector('#tkCopyLink').click();});
+    await page.waitForTimeout(100);
+    const share=await page.evaluate(()=>({data:window.sharedPayload,copy:window.copiedLink}));
+    assert.ok(share.data.url.includes('#trip='));assert.ok(share.data.text.includes(share.data.url));assert.equal(share.copy,share.data.url);
+    assert.equal(await page.getByRole('button',{name:'导入行程',exact:true}).count(),1);
+  }
   const field=await page.locator('.place-name').first().evaluate(el=>({whiteSpace:getComputedStyle(el).whiteSpace,ellipsis:getComputedStyle(el).textOverflow,title:el.title,text:el.textContent}));
   assert.equal(field.whiteSpace,'nowrap'); assert.equal(field.ellipsis,'ellipsis'); assert.equal(field.title,field.text);
   const compact=await page.evaluate(()=>{
@@ -99,6 +107,15 @@ function fixture(count) { return { startLocation:start, startSearchText:start.na
   await page.locator('#tfWhatifRange').evaluate(el=>{el.value='480';el.dispatchEvent(new Event('input',{bubbles:true}));});
   await page.waitForTimeout(180);
   assert.equal(await page.locator('#departureTime').inputValue(),'08:00','slider updates departure input during drag');
+  if(width===1280) {
+    const saved=await page.evaluate(K=>localStorage.getItem(K),K);
+    await context.route('**/api/trip-share?code=*',r=>r.fulfill({json:{trip:{v:1,dep:'2030-09-30T10:00:00Z',d:[{n:'分享码导入地点',la:30,lo:110,stay:[]}]}}}));
+    page.once('dialog',d=>d.accept('ab2-cd3'));
+    await page.getByRole('button',{name:'导入行程',exact:true}).click();
+    await page.locator('.shared-preview-banner').waitFor();
+    assert.match(await page.locator('#timeline').innerText(),/分享码导入地点/);
+    assert.equal(await page.evaluate(K=>localStorage.getItem(K),K),saved,'code import must preserve local draft');
+  }
   console.log(`PASS ${width}px mobile/layout/stay/menu/map`); await context.close();
  }
  } finally {await browser.close();}

@@ -2,6 +2,11 @@ name = "drive-timeline-api"
 main = "worker/index.js"
 compatibility_date = "2026-09-08"
 
+[[d1_databases]]
+binding = "TRIP_SHARES"
+database_name = "roadbook-trip-shares"
+database_id = "ae9cfb58-8d8c-47af-987f-9d897b1df6ef"
+
 [[ratelimits]]
 name = "AI_RATE_LIMITER"
 namespace_id = "2026091101"

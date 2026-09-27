@@ -48,6 +48,7 @@
     const button = document.createElement('button'); button.type = 'button'; button.textContent = label; button.onclick = action; shortcuts.append(button);
   }
   intro.after(shortcuts);
+  const importTrip=document.createElement('button');importTrip.type='button';importTrip.textContent='导入行程';importTrip.onclick=()=>globalThis.DriveImportTrip?.();shortcuts.append(importTrip);
   // Size arrival skies against their own reading area, not the expandable stay editor.
   const skyCards = new Set();
   const sizeSky = card => {
