@@ -564,6 +564,7 @@
     input.setAttribute('aria-label', '搜索目的地');
     if (destination.location) {
       const name = document.createElement('button'); name.type = 'button'; name.className = 'place-name'; name.textContent = destination.location.name; name.setAttribute('aria-label', `更改目的地：${destination.location.name}`);
+      name.title = destination.location.name;
       name.disabled = destination.isReturnToOrigin;
       picker.prepend(name); picker.classList.add('has-place');
       name.onclick = () => { picker.classList.add('is-editing'); input.focus(); input.select(); };
@@ -604,6 +605,7 @@
     edit.results.hidden = true; edit.input.blur(); edit.cancel.remove();
   }
   function bindPlacePicker(input, results, id) {
+    input.addEventListener('pointerenter', () => { input.title = input.value; });
     if (input.disabled) return;
     const cancel = () => { finishPicker(); render(); };
     input.addEventListener('keydown', event => { if (event.key === 'Escape') { event.preventDefault(); cancel(); } });

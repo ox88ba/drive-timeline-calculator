@@ -27,6 +27,8 @@ function fixture(count) { return { startLocation:start, startSearchText:start.na
       meta:{font:meta.fontSize,family:meta.fontFamily,color:meta.color}};
   });
   assert.equal(typography.address,typography.label);
+  const field=await page.locator('.place-name').first().evaluate(el=>({whiteSpace:getComputedStyle(el).whiteSpace,ellipsis:getComputedStyle(el).textOverflow,title:el.title,text:el.textContent}));
+  assert.equal(field.whiteSpace,'nowrap'); assert.equal(field.ellipsis,'ellipsis'); assert.equal(field.title,field.text);
   const compact=await page.evaluate(()=>{
     const rect=s=>document.querySelector(s).getBoundingClientRect();
     const card=document.querySelector('.destination-card');

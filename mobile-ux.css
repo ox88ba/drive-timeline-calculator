@@ -260,3 +260,6 @@ html .vg-route .order-open { flex-shrink:0; margin-left:8px; padding:6px 10px; b
 .order-target { outline:2px solid #b67922; outline-offset:-2px; }
 .order-dragging { opacity:.65; }
 .order-dialog [data-save] { background:#a86a0c; color:white; padding:8px 16px; }
+/* Truncate only the field display, never the stored POI name or search results. */
+html .destination-card .card-topline .place-name,
+html .place-picker input { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; overflow-wrap:normal; }
