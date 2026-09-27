@@ -44,10 +44,28 @@
   intro.textContent = '选择出发点 → 添加目的地 → 设置每站停留。导航时间不含休息、排队及临时交通变化。';
   start.before(intro);
   const shortcuts = document.createElement('div'); shortcuts.className = 'planning-shortcuts';
-  for (const [label, action] of [['添加下一站', () => $('#addDestination').click()], ['查看地图', () => $('.route-preview').scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth',block:'start'})], ['预览示例', () => $('#tkTemplatesBtn')?.click()]]) {
+  for (const [label, action] of [['查看地图', () => $('.route-preview').scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth',block:'start'})], ['预览示例', () => $('#tkTemplatesBtn')?.click()]]) {
     const button = document.createElement('button'); button.type = 'button'; button.textContent = label; button.onclick = action; shortcuts.append(button);
   }
   intro.after(shortcuts);
+  // Size arrival skies against their own reading area, not the expandable stay editor.
+  const skyCards = new Set();
+  const sizeSky = card => {
+    const stay = card.querySelector('.stay-section');
+    if (!stay || stay.hidden) return;
+    const height = Math.round(stay.getBoundingClientRect().top - card.getBoundingClientRect().top);
+    if (height > 0) card.style.setProperty('--arrival-sky-height', height + 'px');
+  };
+  const skyResize = new ResizeObserver(entries => entries.forEach(({target}) => sizeSky(target)));
+  const syncSkies = () => {
+    for (const card of skyCards) if (!card.isConnected) { skyResize.unobserve(card); skyCards.delete(card); }
+    document.querySelectorAll('.destination-card').forEach(card => {
+      if (!skyCards.has(card)) { skyCards.add(card); skyResize.observe(card); }
+      sizeSky(card);
+    });
+  };
+  new MutationObserver(syncSkies).observe($('#timeline'), {childList:true,subtree:true});
+  syncSkies();
   const privacy = document.createElement('p'); privacy.className = 'privacy-note';
   privacy.textContent = '行程和已保存方案仅存于当前浏览器，清理浏览器数据会丢失。分享链接包含地点和时间，请勿公开私人住址。AI 评价仅在点击后发送地点信息，内容仅供参考。';
   $('.footnote').after(privacy);
@@ -69,7 +87,7 @@
   });
   if (globalThis.DriveSharedPreview) {
     sort.disabled = true;
-    const readonly = () => document.querySelectorAll('.shell input, .shell button').forEach(el => { if (!el.closest('.shared-preview-banner') && !['backToTop'].includes(el.id) && !el.classList.contains('map-interaction-toggle') && !el.disabled) el.disabled = true; });
+    const readonly = () => document.querySelectorAll('.shell input, .shell button').forEach(el => { if (!el.closest('.shared-preview-banner') && !['backToTop'].includes(el.id) && !el.classList.contains('map-interaction-toggle') && !el.classList.contains('order-open') && !el.disabled) el.disabled = true; });
     readonly(); new MutationObserver(readonly).observe($('.shell'), { childList:true, subtree:true });
   }
   $('#tripDock').addEventListener('pointerdown', e => { if (!sorting) e.stopImmediatePropagation(); }, true);

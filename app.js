@@ -651,6 +651,17 @@
   function addReturnOrigin() { if (trip.destinations.at(-1)?.isReturnToOrigin || !isValidLocation(trip.startLocation)) return; trip.destinations.push({ id: newId(), location: { ...trip.startLocation }, searchText: trip.startLocation.name, route: null, elevationMeters: null, selectedStayButtons: [], stayMode: 'duration', untilTime: null, isSkipped: false, isReturnToOrigin: true }); rebuildRouteGraph(); loadElevation(trip.destinations.at(-1).id); }
   function moveDestination(index, direction) { const target = index + direction; const current = trip.destinations[index]; if (!current || current.isReturnToOrigin || target < 0 || target >= trip.destinations.length || trip.destinations[target].isReturnToOrigin) return; [trip.destinations[index], trip.destinations[target]] = [trip.destinations[target], trip.destinations[index]]; rebuildRouteGraph(); }
   function reorderByIds(fromId, toId) { const from = trip.destinations.findIndex((item) => item.id === fromId); const to = trip.destinations.findIndex((item) => item.id === toId); if (from < 0 || to < 0 || from === to || trip.destinations[from].isReturnToOrigin || trip.destinations[to].isReturnToOrigin) return; const [item] = trip.destinations.splice(from, 1); trip.destinations.splice(to, 0, item); rebuildRouteGraph(); }
+  globalThis.DriveOrder = {
+    read: () => ({start:trip.startLocation?.name || '未选择出发点', stops:trip.destinations.map(d=>({id:d.id,name:d.location?.name || d.searchText || '未命名目的地',fixed:!!d.isReturnToOrigin}))}),
+    apply: (ids, original) => {
+      if (globalThis.DriveSharedPreview || !Array.isArray(ids) || ids.length !== trip.destinations.length || new Set(ids).size !== ids.length) return false;
+      const current = trip.destinations.map(d=>d.id);
+      if (JSON.stringify(current) !== JSON.stringify(original) || ids.some(id=>!current.includes(id))) return false;
+      if (trip.destinations.some((d,i)=>d.isReturnToOrigin && ids[i]!==d.id)) return false;
+      if (ids.every((id,i)=>id===current[i])) return true;
+      finishPicker(); trip.destinations = ids.map(id=>trip.destinations.find(d=>d.id===id)); rebuildRouteGraph(); return true;
+    }
+  };
   /* ---- Undo Snackbar（共享实现由 tripkit.js 提供，此处兜底） ---- */
   const showUndoSnackbar = (message, onUndo) => {
     if (typeof globalThis.DriveUndoSnackbar === 'function') { globalThis.DriveUndoSnackbar(message, onUndo); return; }

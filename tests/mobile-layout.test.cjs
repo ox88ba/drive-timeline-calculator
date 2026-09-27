@@ -33,7 +33,7 @@ function fixture(count) { return { startLocation:start, startSearchText:start.na
     const n=getComputedStyle(card.querySelector('.station-number')),s=getComputedStyle(document.querySelector('.start-number'));
     const date=rect('.date-field'),time=rect('.time-field'),slider=rect('#tfWhatif'),quick=rect('.quick-starts');
     const row=card.querySelector('.card-topline'), picker=row.querySelector('.place-picker');
-    return {number:[n.font,s.font,n.webkitTextStroke,s.webkitTextStroke,n.textShadow,s.textShadow],dateTop:date.top,timeTop:time.top,fieldsBottom:Math.max(date.bottom,time.bottom),sliderTop:slider.top,sliderBottom:slider.bottom,quickTop:quick.top,
+    return {number:[n.font,s.font,n.webkitTextStrokeWidth,s.webkitTextStrokeWidth,n.textShadow,s.textShadow],dateTop:date.top,timeTop:time.top,fieldsBottom:Math.max(date.bottom,time.bottom),sliderTop:slider.top,sliderBottom:slider.bottom,quickTop:quick.top,
       inRow:!!picker && !!row.querySelector('.card-more'),underline:getComputedStyle(picker.querySelector('.place-name')).borderBottomWidth,
       addressBelow:card.querySelector('.place-address').getBoundingClientRect().top>=row.getBoundingClientRect().bottom,
       blur:getComputedStyle(document.querySelector('.trip-dock')).backdropFilter};
@@ -47,16 +47,27 @@ function fixture(count) { return { startLocation:start, startSearchText:start.na
   assert.ok(typography.hints.length>=2);
   for(const hint of typography.hints) { assert.equal(hint.font,typography.meta.font); assert.equal(hint.family,typography.meta.family); assert.equal(hint.color,typography.meta.color); assert.equal(hint.border,'0px'); assert.equal(hint.bg,'rgba(0, 0, 0, 0)'); }
   assert.equal(await page.locator('.dock-sort').isVisible(),false);
-  assert.equal(await page.locator('#dockToggle').textContent(),'展开行程');
-  await page.locator('#dockToggle').click();
-  assert.equal(await page.locator('#dockToggle').textContent(),'收起行程');
-  assert.equal(await page.locator('.dock-sort').isVisible(),true);
-  assert.equal(await page.locator('.dock-title').isVisible(),false);
-  assert.ok((await page.locator('.dock-sort').boundingBox()).x < (await page.locator('#dockToggle').boundingBox()).x);
-  await page.locator('.dock-sort').click(); await page.locator('#dockToggle').click();
-  assert.equal(await page.locator('.dock-sort').getAttribute('aria-pressed'),'false');
+  assert.equal(await page.locator('#dockToggle').isVisible(),false);
+  const orderBefore=await page.evaluate(()=>DriveOrder.read().stops.map(d=>d.id));
+  await page.locator('.order-open').click();
+  if(width===393) await page.screenshot({path:'/tmp/roadbook-order-dialog.png'});
+  await page.locator('.order-row[data-index="0"] button').last().click();
+  assert.deepEqual(await page.evaluate(()=>DriveOrder.read().stops.map(d=>d.id)),orderBefore,'draft must not mutate trip');
+  await page.locator('.order-dialog footer [data-close]').click();
+  assert.deepEqual(await page.evaluate(()=>DriveOrder.read().stops.map(d=>d.id)),orderBefore,'cancel must preserve order');
+  await page.locator('.order-open').click();
+  await page.locator('.order-dialog [data-save]').click();
+  assert.equal(await page.locator('.order-dialog').isVisible(),false);
   if(width===393) await page.screenshot({path:'/tmp/roadbook-mobile-top.png'});
-  await page.locator('.stay-editor summary').first().click(); await page.locator('[data-action="toggle-stay"][data-minutes="60"]').first().click(); await page.waitForTimeout(100);
+  const skyBefore=await page.locator('.destination-card').first().evaluate(el=>getComputedStyle(el).backgroundSize);
+  await page.locator('.stay-editor summary').first().click();
+  await page.waitForTimeout(80);
+  assert.equal(await page.locator('.destination-card').first().evaluate(el=>getComputedStyle(el).backgroundSize),skyBefore,'opening stay editor must not move arrival sky');
+  assert.equal(await page.locator('.tf-whatif-head').count(),0);
+  assert.equal(await page.getByRole('button',{name:'添加下一站',exact:true}).count(),0);
+  assert.equal(await page.locator('.station-number').first().evaluate(el=>getComputedStyle(el).webkitTextStrokeWidth),'0px');
+  assert.equal(await page.locator('.route-connector').first().evaluate(el=>getComputedStyle(el,'::before').content),'none');
+  await page.locator('[data-action="toggle-stay"][data-minutes="60"]').first().click(); await page.waitForTimeout(100);
   assert.equal(await page.locator('.stay-editor').first().getAttribute('open'),'');
   assert.equal(await page.locator('.stay-until-buttons small').count(),0);
   assert.match(await page.locator('.stay-editor summary').first().textContent(),/3小时/);
@@ -78,6 +89,14 @@ function fixture(count) { return { startLocation:start, startSearchText:start.na
       assert.match(await page.locator('.place-name').first().innerText(),/三十个字/);
     }
   }
+  const beforeSave=await page.evaluate(()=>DriveOrder.read().stops.map(d=>d.id));
+  await page.locator('.order-open').click();
+  await page.locator('.order-row[data-index="0"] button').last().click();
+  await page.locator('.order-dialog [data-save]').click();
+  assert.deepEqual((await page.evaluate(()=>DriveOrder.read().stops.map(d=>d.id))).slice(0,2),[beforeSave[1],beforeSave[0]],'save applies draft');
+  await page.locator('#tfWhatifRange').evaluate(el=>{el.value='480';el.dispatchEvent(new Event('input',{bubbles:true}));});
+  await page.waitForTimeout(180);
+  assert.equal(await page.locator('#departureTime').inputValue(),'08:00','slider updates departure input during drag');
   console.log(`PASS ${width}px mobile/layout/stay/menu/map`); await context.close();
  }
  } finally {await browser.close();}

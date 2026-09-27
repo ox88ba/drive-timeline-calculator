@@ -231,3 +231,32 @@ html[data-skin="voyage"] .trip-dock::before {
  content:""; position:absolute; top:0; left:0; right:0; height:env(safe-area-inset-top,0px); background:#0b0e14; pointer-events:none;
 }
 html[data-skin="voyage"][data-theme="light"] .trip-dock::before { background:#f7f8fa; }
+html[data-skin="voyage"] .route-connector::before,
+html[data-skin="voyage"] .route-connector::after { content:none; animation:none; }
+html .date-divider { background:none; }
+html .route-connector { align-items:center; }
+html .route-connector .add-via-point { margin-top:0; }
+html[data-skin="voyage"][data-engine="timeflow"] .destination-card .station-number,
+html[data-skin="voyage"][data-engine="timeflow"] .start-card .start-number { -webkit-text-stroke:0; text-shadow:none; }
+html[data-engine="timeflow"] .destination-card[data-sky-a] {
+ background-size:100% var(--arrival-sky-height,100%); background-repeat:no-repeat; background-color:#182338; transition:box-shadow .3s ease;
+}
+html.order-dialog-enabled .trip-dock > * { display:none!important; }
+html.order-dialog-enabled .trip-dock { height:env(safe-area-inset-top,0px); min-height:0; padding:0; border:0; box-shadow:none; background:#0b0e14; }
+html.order-dialog-enabled[data-theme="light"] .trip-dock { background:#f7f8fa; }
+html .vg-route .order-open { flex-shrink:0; margin-left:8px; padding:6px 10px; border:0; border-radius:10px; color:var(--accent); background:rgba(180,120,30,.1); font-size:13px; }
+.order-dialog { width:min(540px,calc(100vw - 24px)); max-height:85dvh; margin:auto; padding:18px; border:1px solid #cbd3df; border-radius:22px; background:#f7f8fa; color:#182338; }
+.order-dialog::backdrop { background:rgba(15,23,40,.4); backdrop-filter:blur(5px); }
+.order-dialog header,.order-dialog footer { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+.order-dialog h2 { font-size:20px; }
+.order-dialog p { font-size:13px; line-height:1.6; margin:10px 0; }
+.order-list { max-height:55dvh; overflow:auto; overscroll-behavior:contain; }
+.order-row { display:flex; gap:6px; align-items:center; border-bottom:1px solid #dce1e8; padding:6px 0; }
+.order-row span { flex:1; min-width:0; overflow-wrap:anywhere; font-size:14px; }
+.order-dialog button { min-width:44px; min-height:44px; border:0; border-radius:10px; padding:6px; background:#e6ebf2; color:#25354b; touch-action:manipulation; }
+.order-dialog button:disabled { opacity:.4; }
+.order-fixed { font-size:14px; min-height:44px; }
+.order-dialog .order-grip { touch-action:none; cursor:grab; }
+.order-target { outline:2px solid #b67922; outline-offset:-2px; }
+.order-dragging { opacity:.65; }
+.order-dialog [data-save] { background:#a86a0c; color:white; padding:8px 16px; }

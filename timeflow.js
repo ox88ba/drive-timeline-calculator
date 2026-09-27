@@ -262,10 +262,7 @@
       box = document.createElement('div');
       box.id = 'tfWhatif';
       box.className = 'tf-whatif';
-      box.innerHTML =
-        '<div class="tf-whatif-head"><span>WHAT-IF · 拖动预览出发时刻</span>' +
-        '<output id="tfWhatifOut">—</output></div>' +
-        '<input id="tfWhatifRange" type="range" min="0" max="1439" step="15" aria-label="拖动预览出发时刻" />';
+      box.innerHTML = '<input id="tfWhatifRange" type="range" min="0" max="1439" step="15" aria-label="调整出发时刻" />';
       card.insertBefore(box, card.querySelector('.quick-starts'));
       var range = box.querySelector('#tfWhatifRange');
       range.addEventListener('input', function () {
