@@ -556,6 +556,7 @@
     card.dataset.lodging = destination.lodgingPlanned ? 'yes' : 'no';
     const picker = card.querySelector('.place-picker'), input = picker.querySelector('input');
     input.setAttribute('aria-label', '搜索目的地');
+    card.querySelector('.card-topline').append(card.querySelector('[data-place-address]'));
     if (destination.location) {
       const name = document.createElement('button'); name.type = 'button'; name.className = 'place-name'; name.textContent = destination.location.name; name.setAttribute('aria-label', `更改目的地：${destination.location.name}`);
       name.title = destination.location.name;

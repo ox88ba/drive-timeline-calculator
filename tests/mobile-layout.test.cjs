@@ -71,7 +71,8 @@ function fixture(count) { return { startLocation:start, startSearchText:start.na
     const row=card.querySelector('.card-topline'), picker=row.querySelector('.place-picker');
     return {number:[n.font,s.font,n.webkitTextStrokeWidth,s.webkitTextStrokeWidth,n.textShadow,s.textShadow],dateTop:date.top,timeTop:time.top,fieldsBottom:Math.max(date.bottom,time.bottom),sliderTop:slider.top,sliderBottom:slider.bottom,
       inRow:!!picker && !!row.querySelector('.card-more'),underline:getComputedStyle(picker.querySelector('.place-name')).borderBottomWidth,
-      addressBelow:card.querySelector('.place-address').getBoundingClientRect().top>=row.getBoundingClientRect().bottom,
+      addressBelow:card.querySelector('.place-address').getBoundingClientRect().top>=picker.getBoundingClientRect().bottom,
+      addressAligned:Math.abs(card.querySelector('.place-address').getBoundingClientRect().left-picker.getBoundingClientRect().left)<1,
       blur:getComputedStyle(document.querySelector('.trip-dock')).backdropFilter};
   });
   assert.equal(compact.number[0],compact.number[1]); assert.equal(compact.number[2],compact.number[3]); assert.equal(compact.number[4],compact.number[5]);
@@ -79,7 +80,7 @@ function fixture(count) { return { startLocation:start, startSearchText:start.na
   assert.equal(await page.locator('.quick-starts,.summary,#tkTemplatesBtn').count(),0);
   assert.equal(await page.locator('.preview-summary').count(),1);
   assert.equal(await page.locator('#tfRhythm').count(),1);
-  assert.ok(compact.inRow && compact.addressBelow); assert.equal(compact.underline,'1px'); assert.match(compact.blur,/blur/);
+  assert.ok(compact.inRow && compact.addressBelow && compact.addressAligned); assert.equal(compact.underline,'1px'); assert.match(compact.blur,/blur/);
   const flagSizes=await page.locator('.card-flags').evaluateAll(flags=>flags.filter(f=>f.querySelector('.derived-tag')).map(f=>[getComputedStyle(f.querySelector('.derived-tag')).fontSize,getComputedStyle(f.querySelector('.overnight-badge')).fontSize]));
   assert.ok(flagSizes.length>0);
   for(const [derived,night] of flagSizes) assert.equal(derived,night);

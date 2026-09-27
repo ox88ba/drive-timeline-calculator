@@ -208,6 +208,10 @@ html .destination-card .card-topline .card-more > summary { display:flex; align-
 html .destination-card .card-topline .card-more > summary::-webkit-details-marker { display:none; }
 html .destination-card .card-topline .card-actions { margin-left:0; }
 html .destination-card > .place-address { margin-top:6px; }
+/* Address shares the title's grid column, including three-digit stop numbers. */
+html .destination-card .card-topline > .place-address {
+ grid-column:2/-1; grid-row:2; min-width:0; margin:0; overflow-wrap:anywhere;
+}
 html[data-skin="voyage"][data-engine="timeflow"] .destination-card .station-number,
 html[data-skin="voyage"][data-engine="timeflow"] .start-card .start-number {
  font:700 15px "Sora","DM Mono",monospace; letter-spacing:.04em;
