@@ -47,7 +47,7 @@
     });
 
     var stops = Math.max(0, names.length - 1);
-    var dist = (document.getElementById('totalDistance') || {}).textContent || '—';
+    var dist = (document.getElementById('previewDistance') || {}).textContent || '—';
     var meta = stops > 0 ? stops + '站 · ' + dist.trim() : 'ROADBOOK';
 
     var sig = names.join('→') + '|' + meta;
@@ -72,7 +72,7 @@
     observer = new MutationObserver(schedule);
     var timeline = document.getElementById('timeline');
     if (timeline) observer.observe(timeline, { childList: true, subtree: true });
-    ['startPlaceInput', 'totalDistance'].forEach(function (id) {
+    ['startPlaceInput', 'previewDistance'].forEach(function (id) {
       var el = document.getElementById(id);
       if (el) observer.observe(el, { childList: true, characterData: true, subtree: true });
       if (el && el.tagName === 'INPUT') el.addEventListener('change', schedule);

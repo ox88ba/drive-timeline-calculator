@@ -3,11 +3,12 @@
 <button id="fixtureOpen">打开测试行程（不调用 API）</button><button id="fixtureFail">测试地图失败</button>
 <div id="shareModal" class="modal-backdrop share-backdrop" hidden><section class="share-modal">
 <button id="shareClose">关闭</button><input id="shareNameInput" placeholder="标题"><span id="shareNameCount"></span>
-<button id="shareQuickRoute"></button><button id="shareQuickStamp"></button>
 <div class="share-export-options"><label><input id="shareIncludeMap" type="checkbox">包含地图</label><label><input id="shareIncludeAi" type="checkbox">AI 摘要</label><button id="shareRetryMap">重试地图</button><button id="shareRetry">重新生成</button></div>
-<div class="share-preview"><div id="sharePosterHost"></div></div><div id="shareParts"></div><div class="share-actions"><button id="shareSystem">系统分享</button><button id="shareDownload">保存 PNG</button></div><p id="shareStatus"></p></section></div>
+<div class="share-preview"><div id="sharePosterHost"></div></div><div id="shareParts"></div><div class="share-actions"><button id="shareSystem">系统分享</button><button id="shareDownload">保存长截图</button><button id="tkCopyLink">复制分享链接</button><button id="tkCopyCode">复制分享码</button></div><p id="shareStatus"></p></section></div>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script><script src="../share-layout.js"></script><script src="../share-v2.js"></script>
 <script>
+// Isolated fixture only: never creates a real share record.
+window.DriveTripShare={prepare:async()=>({code:'TEST23',url:'https://example.test/?s=TEST23',expiresAt:Date.now()+7*86400000}),copy:()=>{}};
 let fail = false;
 const renderCanvas = window.html2canvas;
 window.html2canvas = async (...args) => {

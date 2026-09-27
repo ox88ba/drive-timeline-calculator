@@ -12,6 +12,7 @@ trip.destinations[0].location.name='大柴旦光影之城景区草原野奢营�
   if(u.href.includes('html2canvas@1.4.1/')) return r.fulfill({body:fs.readFileSync(lib),contentType:'application/javascript'});
   if(u.hostname!=='local.test') return r.abort();
   if(u.pathname==='/config.js')return r.fulfill({body:'globalThis.DRIVE_AI_ENABLED=false;',contentType:'application/javascript'});
+  if(u.pathname==='/api/trip-share')return r.fulfill({json:{code:'AB2CD3',expiresAt:Date.now()+7*86400000}});
   if(u.pathname.startsWith('/api/'))return r.fulfill({json:{elevationMeters:100}});
   const file=path.join(root,u.pathname==='/'?'index.html':u.pathname.slice(1)); if(!fs.existsSync(file))return r.abort();
   return r.fulfill({body:fs.readFileSync(file),contentType:file.endsWith('.js')?'application/javascript':file.endsWith('.css')?'text/css':'text/html'});
@@ -29,14 +30,20 @@ trip.destinations[0].location.name='大柴旦光影之城景区草原野奢营�
  assert.equal(await page.locator('.rb-station-head h3').nth(1).evaluate(el=>el.scrollWidth<=el.clientWidth),true,'long names wrap within the exported card');
  const download=page.waitForEvent('download');await page.locator('#shareDownload').click();await (await download).saveAs('/tmp/roadbook-export-1.png');
  const second=page.waitForEvent('download');await page.locator('#shareParts button').nth(1).click();await (await second).saveAs('/tmp/roadbook-export-2.png');
- const png=fs.readFileSync('/tmp/roadbook-export-1.png');assert.equal(png.readUInt32BE(16),1200);assert.ok(png.readUInt32BE(20)<=7244);
- await page.getByRole('button',{name:'放大阅读',exact:true}).click();
- assert.equal(await page.locator('#sharePoster').evaluate(el=>getComputedStyle(el).transform),'matrix(1, 0, 0, 1, 0, 0)');
- const reach=await page.locator('.share-preview').evaluate(el=>{el.scrollLeft=el.scrollWidth;el.scrollTop=el.scrollHeight;return {left:el.scrollLeft,top:el.scrollTop,w:el.scrollWidth-el.clientWidth,h:el.scrollHeight-el.clientHeight}});
- assert.ok(reach.left>0);assert.ok(reach.top>0);assert.ok(Math.abs(reach.left-reach.w)<2);assert.ok(Math.abs(reach.top-reach.h)<2);
- await page.getByRole('button',{name:'适应宽度',exact:true}).click();assert.equal(await page.locator('#shareDownload').isDisabled(),false);
+ const png=fs.readFileSync('/tmp/roadbook-export-1.png');assert.ok(png.readUInt32BE(16)<=1200);assert.ok(png.readUInt32BE(20)>7244);assert.ok(png.readUInt32BE(20)<=16001);
+ const ratio=png.readUInt32BE(20)/png.readUInt32BE(16);
+ const expected=await page.locator('#sharePoster').evaluate(el=>el.scrollHeight/400);
+ assert.ok(Math.abs(ratio-expected)<.03,'complete poster aspect ratio, no crop');
+ assert.equal(await page.getByRole('button',{name:'放大阅读',exact:true}).count(),0);
+ assert.equal(await page.locator('#shareIncludeAddress').count(),0);
+ assert.equal(await page.locator('.share-name-shortcuts').count(),0);
+ assert.match(await page.locator('.rb-brand').innerText(),/分享码：AB2CD3/);
+ await page.evaluate(()=>Object.defineProperty(navigator,'clipboard',{configurable:true,value:{writeText:async t=>{window.testCopied=t;}}}));
+ await page.locator('#tkCopyLink').click();assert.equal(await page.evaluate(()=>window.testCopied),'https://local.test/?s=AB2CD3');
+ await page.locator('#tkCopyCode').click();assert.equal(await page.evaluate(()=>window.testCopied),'AB2CD3');
+ await page.screenshot({path:'/tmp/roadbook-share-redesign.png'});
  await page.locator('#shareNameInput').fill('新版长图');await page.locator('#shareClose').click();await page.locator('#openShare').click();
  await page.waitForFunction(()=>!document.querySelector('#shareDownload').disabled,{},{timeout:60000});assert.equal(await page.locator('#sharePoster h1').innerText(),'我的自驾行程');
- assert.deepEqual(errors,[]); console.log('PASS real PNG: 8 stops, multi-page, 1200px, zoom four edges, latest-session cancellation');
+ assert.deepEqual(errors,[]); console.log('PASS complete PNG, segmented alternatives, share-code subtitle, direct short link/code copy, removed controls, session cancellation');
  } finally {await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});

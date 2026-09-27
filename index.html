@@ -14,7 +14,7 @@
     <link rel="stylesheet" href="./voyage.css?v=20260925-emil" />
     <link rel="stylesheet" href="./tripkit.css?v=20260925-emil" />
     <link rel="stylesheet" href="./share-v2.css?v=20260927-readable" />
-    <link rel="stylesheet" href="./mobile-ux.css?v=20260927-readable" />
+    <link rel="stylesheet" href="./mobile-ux.css?v=20260928-share-cleanup" />
   </head>
   <body>
     <aside class="trip-dock is-collapsed" aria-label="行程导航">
@@ -35,14 +35,6 @@
           </div>
         </div>
       </header>
-
-      <section class="summary" aria-label="行程汇总">
-        <div><span>总里程</span><strong id="totalDistance">—</strong></div>
-        <div><span>驾驶时间</span><strong id="totalDrive">—</strong></div>
-        <div><span>停留时间</span><strong id="totalStay">0分</strong></div>
-        <div><span>总行程</span><strong id="totalDuration">—</strong></div>
-        <div class="summary-arrival"><span>预计最终抵达</span><strong id="finalArrival">添加目的地后计算</strong></div>
-      </section>
 
       <section id="aiAnalysis" class="ai-analysis" aria-labelledby="aiAnalysisTitle">
         <div class="ai-analysis-head"><div><h2 id="aiAnalysisTitle">AI 行程总评</h2></div><button id="openAiAnalysis" type="button">分析当前行程</button></div>
@@ -65,10 +57,6 @@
         <div class="start-schedule">
           <label class="date-field">出发日期<input id="departureDate" type="date" /></label>
           <label class="time-field">时间<input id="departureTime" type="time" /></label>
-        </div>
-        <div class="quick-starts" aria-label="快捷出发时间">
-          <span>快捷出发</span>
-          <!-- 档位由 app.js buildQuickStarts() 相对当前时间动态注入，勿再硬编码日期 -->
         </div>
       </section>
 
@@ -102,9 +90,7 @@
           </div>
           <div class="route-status" data-route-status></div>
           <div class="stay-section">
-            <span>停留时间</span>
             <div class="stay-buttons" data-stay-buttons></div>
-            <p data-stay-current>当前停留：0分</p>
             <div class="departure-block" data-departure-block hidden><span>预计出发</span><strong data-departure>—</strong></div>
           </div>
         </section>
@@ -134,21 +120,16 @@
           <label for="shareNameInput">长图命名 <span id="shareNameCount">0/50</span></label>
           <input id="shareNameInput" type="text" maxlength="50" autocomplete="off" placeholder="为这版长图添加名称" aria-describedby="shareNameHint" />
           <small id="shareNameHint">显示在长图顶部，并用于保存 PNG 与系统分享的文件名</small>
-          <div class="share-name-shortcuts" aria-label="快捷填入名称">
-            <div><button id="shareQuickRoute" type="button">—</button><button id="shareQuickStamp" type="button">DDHHMM</button></div>
-            <div><button class="share-name-suffix" type="button">（酒店更新）</button><button class="share-name-suffix" type="button">（目的地更新）</button><button class="share-name-suffix" type="button">（景点更新）</button></div>
-          </div>
         </section>
         <div class="share-export-options">
           <label><input id="shareIncludeMap" type="checkbox" />包含地图</label>
           <label><input id="shareIncludeAi" type="checkbox" />包含已有 AI 评价摘要</label>
-          <label><input id="shareIncludeAddress" type="checkbox" />包含详细地址</label>
           <button id="shareRetryMap" type="button">重试地图快照</button>
           <button id="shareRetry" type="button">重新生成</button>
         </div>
         <div class="share-preview"><div id="sharePosterHost"></div></div>
         <div id="shareParts" aria-label="分图保存"></div>
-        <div class="share-actions"><button id="shareSystem" type="button" disabled>系统分享</button><button id="shareDownload" type="button" disabled>保存 PNG</button></div>
+        <div class="share-actions"><button id="shareSystem" type="button" disabled>系统分享</button><button id="shareDownload" type="button" disabled>保存长截图</button><button id="tkCopyLink" type="button" disabled>复制分享链接</button><button id="tkCopyCode" type="button" disabled>复制分享码</button></div>
         <p id="shareStatus" class="share-status" role="status" aria-live="polite">正在准备分享视图…</p>
       </section>
     </div>
@@ -160,14 +141,14 @@
     <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
     <script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" defer></script>
     <script src="./share-layout.js?v=20260923-export2"></script>
-    <script src="./share-v2.js?v=20260928-static-map"></script>
+    <script src="./share-v2.js?v=20260928-share-cleanup"></script>
     <script src="./scenic-ai.js?v=20260925"></script>
-    <script src="./tripkit.js?v=20260927-share-code"></script>
+    <script src="./tripkit.js?v=20260928-share-cleanup"></script>
     <script src="./map-export.js?v=20260928-static-map"></script>
-    <script src="./app.js?v=20260928-static-map"></script>
-    <script src="./timeflow.js?v=20260927-sky-stable"></script>
-    <script src="./voyage.js?v=20260916-contained-scroll"></script>
-    <script src="./mobile-ux.js?v=20260927-share-code"></script>
-    <script src="./reorder.js?v=20260927"></script>
+    <script src="./app.js?v=20260928-share-cleanup"></script>
+    <script src="./timeflow.js?v=20260928-origin-cleanup"></script>
+    <script src="./voyage.js?v=20260928-origin-cleanup"></script>
+    <script src="./mobile-ux.js?v=20260928-share-cleanup"></script>
+    <script src="./reorder.js?v=20260928"></script>
   </body>
 </html>

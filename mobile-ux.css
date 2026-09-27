@@ -96,7 +96,7 @@ html .card-more .card-actions [data-action="remove"] { color:#ad2532; }
 html .destination-wrap:has(.card-more[open]),html .destination-card:has(.card-more[open]) { z-index:11; position:relative; overflow:visible; }
 .stay-editor { width:100%; }
 html .stay-editor summary { cursor:pointer; padding:10px 0; color:inherit; font-size:16px; font-weight:600; }
-.lodging-control { display:flex; align-items:center; gap:8px; min-height:44px; font-size:14px; }
+.lodging-control { flex-wrap:wrap; display:flex; align-items:center; gap:8px; min-height:44px; font-size:14px; }
 .lodging-control input { width:20px; height:20px; }
 .stay-editor small { display:block; font-size:12px; margin:4px 0; }
 html .tf-daylight-row, html[data-engine="timeflow"] .arrival-hints { flex-wrap:wrap!important; align-items:center!important; }
@@ -117,7 +117,7 @@ html[data-engine="timeflow"] .destination-card[data-tf-overnight] [data-stay-cur
 html .altitude-warning,html .tf-daylight { white-space:normal!important; }
 html .map-readonly #routeMap { pointer-events:none; touch-action:pan-y; }
 html .map-readonly { touch-action:pan-y; }
-.map-interaction-toggle { margin:0 0 12px; }
+.map-interaction-toggle { display:block; width:max-content; max-width:100%; margin:0 0 12px auto; }
 html .map-interaction-toggle,html .dock-sort { padding:8px 12px; border:1px solid #b8c4d2; border-radius:16px; background:#f5f7fb; color:#34465e; font:500 14px/1.5 sans-serif; cursor:pointer; }
 .shared-preview-banner { background:#fff5d9; color:#3f3420; padding:16px; border-radius:20px; }
 .shared-preview-banner button { margin:4px; }
@@ -204,7 +204,7 @@ html .destination-card .card-topline { display:grid; grid-template-columns:max-c
 html .destination-card .card-topline > .place-picker { min-width:0; margin-top:0; }
 html .destination-card .card-topline .place-name { font-size:16px; line-height:1.45; padding:8px 0; border-bottom:1px solid var(--line); }
 html[data-engine="timeflow"] .destination-card[data-sky-a] .card-topline .place-name { border-bottom-color:color-mix(in srgb,var(--tf-a-ink) 30%,transparent); }
-html .destination-card .card-topline .card-more > summary { padding:8px; list-style:none; }
+html .destination-card .card-topline .card-more > summary { display:flex; align-items:center; justify-content:center; min-width:44px; min-height:44px; box-sizing:border-box; padding:8px; line-height:1; text-align:center; white-space:nowrap; list-style:none; }
 html .destination-card .card-topline .card-more > summary::-webkit-details-marker { display:none; }
 html .destination-card .card-topline .card-actions { margin-left:0; }
 html .destination-card > .place-address { margin-top:6px; }
@@ -263,3 +263,16 @@ html .vg-route .order-open { flex-shrink:0; margin-left:8px; padding:6px 10px; b
 /* Truncate only the field display, never the stored POI name or search results. */
 html .destination-card .card-topline .place-name,
 html .place-picker input { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; overflow-wrap:normal; }
+/* Keep route facts clear of decorative shadows and remove the remaining date-line dashes. */
+html[data-skin="voyage"][data-theme="light"] .date-divider { background-image:none; }
+html[data-skin="voyage"] .destination-card,
+html[data-skin="voyage"][data-theme="light"] .destination-card { box-shadow:0 5px 12px -8px rgba(28,36,60,.22)!important; }
+html .route-connector { position:relative; z-index:1; }
+.lodging-night { font-size:13px; font-weight:400; color:#acbde8; }
+.share-link-gate { position:fixed; inset:0; z-index:10000; background:#f5f7fb; display:flex; flex-wrap:wrap; gap:16px; align-content:center; justify-content:center; padding:24px; }
+.share-link-gate button,.share-link-gate a { padding:12px; }
+html .share-actions { grid-template-columns:repeat(2,minmax(0,1fr)); }
+html .share-actions #shareSystem { grid-column:auto; }
+/* Align the route copy and warning as one group with the via-point control. */
+html .route-connector > span { display:flex; flex-wrap:wrap; align-items:center; gap:6px 8px; }
+html .route-connector .drive-warning { margin:0; flex:0 0 auto; }

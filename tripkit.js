@@ -178,6 +178,24 @@
     }
   }
   restoreFromHash();
+  const initialCode=new URLSearchParams(location.search).get('s');
+  if(initialCode && !globalThis.DriveSharedPreview) {
+    const gate=document.createElement('div');gate.className='share-link-gate';gate.setAttribute('role','status');gate.textContent='正在读取分享行程…';document.body.append(gate);
+    globalThis.DriveShareBoot=(async function(){
+      try {
+        const compact=await resolveCode(initialCode.toUpperCase());
+        globalThis.DriveSharedPreview=expandTrip(compact);globalThis.DriveSharedPreviewKind='shared';
+        gate.remove();
+      } catch(e) {
+        gate.textContent=e.message+' ';
+        const retry=document.createElement('button');retry.textContent='重试';retry.onclick=()=>location.reload();
+        const back=document.createElement('a');back.href=location.pathname;back.textContent='返回我的行程';
+        gate.append(retry,back);
+        // Do not present the local draft as if it were the failed shared trip.
+        await new Promise(()=>{});
+      }
+    })();
+  }
   /* 关键修复：已打开本站的标签页里点开分享链接只是 hash 变化，
      浏览器不会整页重载，PART A 不会重跑 → 用户看到自己缓存的行程。
      监听 hashchange：还原后立即 reload，让 app.js 用新行程启动。 */
@@ -213,67 +231,36 @@
     return location.origin + location.pathname + HASH_PREFIX + b64encode(JSON.stringify(compact));
   }
 
-  function copyLink() {
-    var trip = readTrip();
-    if (!trip || !trip.destinations || !trip.destinations.length) {
-      toast('请先添加目的地再生成链接');
-      return;
-    }
-    var url = tripUrl();
-    if (!url) { toast('链接生成失败，请重试'); return; }
-    function done() { toast('行程链接已复制，好友打开即还原完整行程'); }
-    function fallback() { window.prompt('复制以下行程链接：', url); }
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(url).then(done, fallback);
-    } else fallback();
+  var preparedShares=new Map();
+  function shortUrl(code) { return location.origin+location.pathname+'?s='+encodeURIComponent(code); }
+  async function prepareShare(trip) {
+    var compact=compactTrip(trip);
+    if(!compact || !compact.d.length)throw new Error('请先添加目的地');
+    var key=JSON.stringify(compact), cached=preparedShares.get(key);
+    if(cached && cached.expiresAt>Date.now()+60000)return cached;
+    if(cached?.promise)return cached.promise;
+    var promise=(async function(){
+      var response=await fetch((globalThis.DRIVE_API_BASE_URL||'')+'/api/trip-share',{method:'POST',headers:{'content-type':'application/json'},body:key,signal:AbortSignal.timeout(15000)});
+      var data=await response.json();if(!response.ok)throw new Error(data.message||'分享码生成失败');
+      if(!/^[A-HJ-NP-Z2-9]{6}$/.test(data.code)||!Number.isFinite(data.expiresAt))throw new Error('分享码响应无效');
+      var result={code:data.code,url:shortUrl(data.code),expiresAt:data.expiresAt};
+      preparedShares.set(key,result);return result;
+    })();
+    preparedShares.set(key,{promise:promise});
+    try{return await promise;}catch(e){preparedShares.delete(key);throw e;}
   }
-
-  async function shareLink(event) {
-    var trip = readTrip();
-    if (!trip || !trip.destinations || !trip.destinations.length) {
-      toast('请先添加目的地再分享链接'); return;
-    }
-    var url = tripUrl();
-    if (!url) { toast('链接生成失败，请重试'); return; }
-    // Start both privileged operations in the click, without awaiting network.
-    var copied = navigator.clipboard?.writeText(url).then(function(){return true;},function(){return false;}) || Promise.resolve(false);
-    generateShareCode(compactTrip(trip));
-    if (typeof navigator.share !== 'function') { if(await copied) toast('行程链接已复制'); else window.prompt('复制行程链接：',url); return; }
-    // Trip dates use Beijing time, regardless of the sharing device's timezone.
-    var departureMs = Date.parse(trip.initialDepartureTime);
-    var datePrefix = Number.isFinite(departureMs)
-      ? new Date(departureMs + 8 * 3600000).toISOString().slice(5, 10).replace('-', '/') : '';
-    var originName = trip.startLocation && trip.startLocation.name || '起点';
-    var title = datePrefix + originName + '出发，快来查看我的自驾行程！';
-    var button = event.currentTarget;
-    button.disabled = true;
-    try {
-      // Call inside the user's click gesture; do not wait for image generation.
-      await navigator.share({ title: title, text: title + '\n' + url, url: url });
-      toast(await copied ? '行程链接已复制，系统分享已结束' : '系统分享已结束；自动复制未获授权，请手动复制链接');
-    } catch (error) {
-      if (error.name === 'AbortError') {
-        if(await copied)toast('已取消系统分享，行程链接仍已复制');
-      } else {
-        toast('系统分享暂不可用，可点击“复制行程链接”后发送');
-        window.prompt('复制完整行程链接：', url);
-      }
-    } finally { button.disabled = false; }
+  function copyShare(value,label) {
+    if(!value)return;
+    if(navigator.clipboard?.writeText)navigator.clipboard.writeText(value).then(function(){toast(label+'已复制');},function(){window.prompt('复制'+label,value);});
+    else window.prompt('复制'+label,value);
   }
-
-  var shareCodeSequence=0;
-  async function generateShareCode(compact) {
-    var seq=++shareCodeSequence;
-    var box=document.getElementById('tripShareCode');
-    if(!box){box=document.createElement('p');box.id='tripShareCode';box.setAttribute('role','status');document.querySelector('.share-actions').after(box);}
-    box.textContent='正在生成分享码（7天有效，持码者可查看行程）…';
-    try {
-      var response=await fetch((globalThis.DRIVE_API_BASE_URL||'')+'/api/trip-share',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(compact),signal:AbortSignal.timeout(15000)});
-      var data=await response.json(); if(!response.ok)throw new Error(data.message||'分享码生成失败');
-      if(seq!==shareCodeSequence)return;
-      box.textContent='分享码：'+data.code+'（7天有效，请勿公开私人住址）';
-      var copy=document.createElement('button');copy.type='button';copy.textContent='复制分享码';copy.onclick=function(){if(!navigator.clipboard){window.prompt('复制分享码',data.code);return;}navigator.clipboard.writeText(data.code).then(function(){toast('分享码已复制');},function(){window.prompt('复制分享码',data.code);});};box.append(copy);
-    }catch(e){if(seq===shareCodeSequence)box.textContent='分享码暂不可用，完整行程链接仍可使用。';}
+  globalThis.DriveTripShare={prepare:prepareShare,copy:copyShare};
+  async function resolveCode(code) {
+    if(!/^[A-HJ-NP-Z2-9]{6}$/.test(code))throw new Error('请输入6位分享码');
+    var response=await fetch((globalThis.DRIVE_API_BASE_URL||'')+'/api/trip-share?code='+code,{signal:AbortSignal.timeout(15000)});
+    var data=await response.json();if(!response.ok)throw new Error(data.message||'分享码读取失败');
+    if(!expandTrip(data.trip))throw new Error('行程格式无效');
+    return data.trip;
   }
   globalThis.DriveImportTrip = async function () {
     var value=window.prompt('输入分享码或完整行程链接（先预览，不覆盖当前行程）：');
@@ -282,7 +269,7 @@
       var compact;
       if(value.includes('#trip=')){compact=JSON.parse(b64decode(value.split('#trip=')[1].trim()));}
       else {
-        var code=value.replace(/[-\s]/g,'').toUpperCase();
+        var code=(value.includes('?') ? new URL(value).searchParams.get('s') || '' : value).replace(/[-\s]/g,'').toUpperCase();
         if(!/^[A-HJ-NP-Z2-9]{6}$/.test(code))throw new Error('请输入6位分享码或完整行程链接');
         var response=await fetch((globalThis.DRIVE_API_BASE_URL||'')+'/api/trip-share?code='+code,{signal:AbortSignal.timeout(15000)});
         var data=await response.json();if(!response.ok)throw new Error(data.message||'导入失败');compact=data.trip;
@@ -386,7 +373,7 @@
   function applyTrip(trip, message, undoLabel) {
     if (!trip || !stashLoadUndo(undoLabel)) return;
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(trip)); } catch (e) { toast('保存失败，当前行程未替换'); return; }
-    history.replaceState(null, '', location.pathname + location.search);
+    history.replaceState(null, '', location.pathname);
     toast(message || '行程已更新，正在载入…');
     setTimeout(function () { location.reload(); }, 450);
   }
@@ -496,6 +483,7 @@
 
   /* ---------- 模板弹窗 ---------- */
   var tplModal = null;
+  globalThis.DriveOpenTemplates = openTemplates;
   function openTemplates() {
     if (!tplModal) {
       tplModal = buildModal('tkTemplateModal', 'TEMPLATES', '模板行程');
@@ -638,7 +626,8 @@
   globalThis.TripkitFirstTemplate = function () { return templateTrip(TEMPLATES[0]); };
 
   /* ---------- 挂载入口 ---------- */
-  function mount() {
+  async function mount() {
+    if (globalThis.DriveShareBoot) await globalThis.DriveShareBoot;
     if (globalThis.DriveSharedPreview) {
       var banner = document.createElement('section'); banner.className = 'shared-preview-banner';
       banner.innerHTML = '<h2>正在预览分享的行程</h2><p>你的原行程未改变。链接中的导航为保存时的数据，接纳后可重新获取。</p><button type="button" data-copy>保存副本</button><button type="button" data-replace>替换当前行程</button><button type="button" data-exit>返回我的行程</button>';
@@ -646,31 +635,15 @@
       document.querySelector('.hero').after(banner);
       banner.querySelector('[data-copy]').onclick = function () { openSnapshots('save'); };
       banner.querySelector('[data-replace]').onclick = function () { if (confirm('替换当前行程？将先备份当前行程，载入后可撤销。')) applyTrip(globalThis.DriveSharedPreview, '正在载入分享行程', '分享行程'); };
-      banner.querySelector('[data-exit]').onclick = function () { history.replaceState(null, '', location.pathname + location.search); location.reload(); };
+      banner.querySelector('[data-exit]').onclick = function () { history.replaceState(null, '', location.pathname); location.reload(); };
       document.querySelectorAll('.shell input, .shell button').forEach(function (el) { if (!banner.contains(el) && el.id !== 'backToTop') el.disabled = true; });
       return;
     }
     checkLoadUndo();
-    /* 分享弹窗里使用系统链接分享；不支持时提供明确的复制后备入口。 */
-    var shareActions = document.querySelector('.share-actions');
-    if (shareActions && !document.getElementById('tkCopyLink')) {
-      var linkBtn = document.createElement('button');
-      linkBtn.id = 'tkCopyLink';
-      linkBtn.type = 'button';
-      linkBtn.textContent = typeof navigator.share === 'function' ? '分享行程链接' : '复制行程链接';
-      linkBtn.addEventListener('click', shareLink);
-      shareActions.append(linkBtn);
-    }
-
-    /* 行程操作区加「载入模板 / 保存方案 / 分享」 */
+    /* 分享页直接提供复制短链接、分享码。 */
+    /* 行程操作区：保存方案与分享；模板入口保留在顶部。 */
     var actions = document.querySelector('.trip-actions');
-    if (actions && !document.getElementById('tkTemplatesBtn')) {
-      var tplBtn = document.createElement('button');
-      tplBtn.id = 'tkTemplatesBtn';
-      tplBtn.className = 'tk-action-btn';
-      tplBtn.type = 'button';
-      tplBtn.textContent = '✦ 载入模板行程';
-      tplBtn.addEventListener('click', openTemplates);
+    if (actions && !document.getElementById('tkShareBtn')) {
       var snapBtn = document.createElement('button');
       snapBtn.id = 'tkSnapshotsBtn';
       snapBtn.className = 'tk-action-btn';
@@ -690,7 +663,7 @@
       shareBtn.type = 'button';
       shareBtn.textContent = '↗ 分享';
       shareBtn.addEventListener('click', function () { var open = document.getElementById('openShare'); if (open) open.click(); });
-      actions.append(tplBtn, snapshotActions, shareBtn);
+      actions.append(snapshotActions, shareBtn);
     }
   }
 

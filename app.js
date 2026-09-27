@@ -1,6 +1,7 @@
 /* global TripTimeline, SolarPhotography */
-(() => {
+(async () => {
   'use strict';
+  if (globalThis.DriveShareBoot) await globalThis.DriveShareBoot;
   const STORAGE_KEY = 'drive-timeline-trip-v1';
   const ROUTE_CACHE_KEY = 'drive-timeline-route-cache-v1';
   const SUNSET_CACHE_KEY = 'drive-timeline-sunset-cache-v1';
@@ -260,7 +261,7 @@
 
   function badge(moment) { if (!moment) return null; const node = document.createElement('b'); node.className = `photo-badge ${moment.kind}`; node.textContent = moment.label; return node; }
   function attachTime(node, iso, photo) { node.replaceChildren(); node.append(document.createTextNode(formatDateTime(iso))); if (photo?.moment) node.append(badge(photo.moment)); }
-  function updateSummary() { const s = trip.summary; $('#previewAverageSpeed').textContent = s.routeChainIsComplete && Number.isFinite(s.distanceMeters) && s.distanceMeters >= 0 && Number.isFinite(s.drivingSeconds) && s.drivingSeconds > 0 ? `${(s.distanceMeters * 3.6 / s.drivingSeconds).toFixed(1)}km/h` : '待导航'; const distance = s.routeChainIsComplete ? formatDistance(s.distanceMeters) : '待导航'; const drive = s.routeChainIsComplete ? formatDuration(s.drivingSeconds) : '待导航'; const stay = `${formatStay(s.totalStayMinutes)}${s.routeChainIsComplete ? '' : '（已计算部分）'}`; const duration = s.routeChainIsComplete ? formatDuration(s.totalDurationSeconds) : '待导航'; const finalArrival = s.finalArrivalTime ? formatDateTime(s.finalArrivalTime, true) : (trip.destinations.length ? '等待完整导航数据' : '添加目的地后计算'); $('#totalDistance').textContent = distance; $('#totalDrive').textContent = drive; $('#totalStay').textContent = stay; $('#totalDuration').textContent = duration; $('#finalArrival').textContent = finalArrival; $('#previewDistance').textContent = distance; $('#previewDrive').textContent = drive; $('#previewStay').textContent = stay; $('#previewDuration').textContent = duration; $('#previewDeparture').textContent = trip.initialDepartureTime ? formatDateTime(trip.initialDepartureTime, true) : '—'; $('#previewFinalArrival').textContent = finalArrival; }
+  function updateSummary() { const s = trip.summary; $('#previewAverageSpeed').textContent = s.routeChainIsComplete && Number.isFinite(s.distanceMeters) && s.distanceMeters >= 0 && Number.isFinite(s.drivingSeconds) && s.drivingSeconds > 0 ? `${(s.distanceMeters * 3.6 / s.drivingSeconds).toFixed(1)}km/h` : '待导航'; const distance = s.routeChainIsComplete ? formatDistance(s.distanceMeters) : '待导航'; const drive = s.routeChainIsComplete ? formatDuration(s.drivingSeconds) : '待导航'; const stay = `${formatStay(s.totalStayMinutes)}${s.routeChainIsComplete ? '' : '（已计算部分）'}`; const duration = s.routeChainIsComplete ? formatDuration(s.totalDurationSeconds) : '待导航'; const finalArrival = s.finalArrivalTime ? formatDateTime(s.finalArrivalTime, true) : (trip.destinations.length ? '等待完整导航数据' : '添加目的地后计算'); $('#previewDistance').textContent = distance; $('#previewDrive').textContent = drive; $('#previewStay').textContent = stay; $('#previewDuration').textContent = duration; $('#previewDeparture').textContent = trip.initialDepartureTime ? formatDateTime(trip.initialDepartureTime, true) : '—'; $('#previewFinalArrival').textContent = finalArrival; }
   /* 统一转北京时间 ISO（+08:00）：Dots 按字面读取时间，UTC 的 Z 时间会被误当本地时间分析 */
   const beijingIso = (iso) => { const t = Date.parse(iso); if (!Number.isFinite(t)) return null; return `${new Date(t + 8 * 3600e3).toISOString().slice(0, 19)}+08:00`; };
   function buildAiTrip() {
@@ -332,7 +333,7 @@
     });
     const start = { number: '01', name: locationText(trip.startLocation), address: trip.startLocation.address || '', location: shareLocation(trip.startLocation), departure: formatDateTime(trip.initialDepartureTime), departureIso: trip.initialDepartureTime };
     const routeTitle = [start.name, ...destinations.map((destination) => destination.name)].filter(Boolean).join(' → ');
-    return { version: 2, generatedAt: new Date().toISOString(), complete: chainComplete, skippedCount: trip.destinations.filter(d => d.isSkipped).length, title: routeTitle, subtitle: `${destinations.length} 个目的地`, departureText: formatDateTime(trip.initialDepartureTime, true), start, destinations, summary: { averageSpeed: chainComplete && summary.drivingSeconds > 0 ? (summary.distanceMeters * 3.6 / summary.drivingSeconds).toFixed(1) + 'km/h' : '待导航', distance: chainComplete ? formatDistance(summary.distanceMeters) : '待导航', drive: chainComplete ? formatDuration(summary.drivingSeconds) : '待导航', stay: formatStay(summary.totalStayMinutes), duration: chainComplete ? formatDuration(summary.totalDurationSeconds) : '待导航', finalArrival: summary.finalArrivalTime ? formatDateTime(summary.finalArrivalTime, true) : '等待完整导航数据' } };
+    return { tripSnapshot: structuredClone(trip), version: 2, generatedAt: new Date().toISOString(), complete: chainComplete, skippedCount: trip.destinations.filter(d => d.isSkipped).length, title: routeTitle, subtitle: `${destinations.length} 个目的地`, departureText: formatDateTime(trip.initialDepartureTime, true), start, destinations, summary: { averageSpeed: chainComplete && summary.drivingSeconds > 0 ? (summary.distanceMeters * 3.6 / summary.drivingSeconds).toFixed(1) + 'km/h' : '待导航', distance: chainComplete ? formatDistance(summary.distanceMeters) : '待导航', drive: chainComplete ? formatDuration(summary.drivingSeconds) : '待导航', stay: formatStay(summary.totalStayMinutes), duration: chainComplete ? formatDuration(summary.totalDurationSeconds) : '待导航', finalArrival: summary.finalArrivalTime ? formatDateTime(summary.finalArrivalTime, true) : '等待完整导航数据' } };
   }
   function routeConnector(destination, index) { const node = document.createElement('div'); node.className = 'route-connector'; const routeInfo = document.createElement('span'); if (destination.isSkipped) { node.classList.add('skipped-connector'); routeInfo.textContent = '此站已跳过'; } else if (!destination.location) { routeInfo.textContent = '选择具体 POI 后获取导航'; } else if (destination.routeLoading) { routeInfo.innerHTML = '<span class="route-loading"><i class="spinner"></i>正在获取导航数据…</span>'; } else if (destination.route) { node.classList.add('connector-route'); const avgSpeed = destination.route.durationSeconds > 0 ? Math.round(destination.route.distanceMeters / 1000 / (destination.route.durationSeconds / 3600)) : 0; routeInfo.textContent = `${formatDistance(destination.route.distanceMeters)} · ${formatDuration(destination.route.durationSeconds)}${avgSpeed > 0 ? ` · 平均${avgSpeed}km/h` : ''}`; } else { routeInfo.textContent = '导航数据待获取'; } node.append(routeInfo); const addVia = document.createElement('button'); addVia.type = 'button'; addVia.className = 'add-via-point'; addVia.dataset.action = 'add-via-point'; addVia.dataset.index = String(index); addVia.textContent = '添加途径点'; node.append(addVia); return node; }
   function routeStatus(destination, index) { const node = document.createElement('div'); node.className = 'route-status'; if (destination.isSkipped) { node.textContent = '已跳过，不参与导航、时间与汇总计算。'; return node; } if (!destination.location) { node.textContent = '选择候选地点后，才会调用官方导航服务。'; return node; } if (!isValidLocation(trip.startLocation)) { node.textContent = '请先搜索并选择出发点 POI。'; return node; } if (destination.routeLoading) { node.innerHTML = '<span class="route-loading"><i class="spinner"></i>正在获取导航数据…</span>'; return node; } if (destination.routeError) { node.classList.add('error'); node.append(`${destination.routeError || '导航数据获取失败'}，`); const retry = document.createElement('button'); retry.className = 'retry'; retry.dataset.action = 'retry-route'; retry.dataset.index = index; retry.textContent = '点击重新计算'; node.append(retry); return node; } if (destination.route) { /* 路线就绪后不再显示「起点 → 终点」标签，减少信息噪音；该条只是状态占位 */ node.hidden = true; return node; } node.textContent = '正在等待可用的起终点坐标。'; return node; }
@@ -513,7 +514,7 @@
     const focused = document.activeElement;
     if (pickerEdit || (focused && /^(INPUT|TEXTAREA)$/.test(focused.tagName) && focused.closest('.shell'))) { renderDeferred = true; updateSummary(); return; }
     renderDeferred = false;
-    calculate(); const departure = new Date(trip.initialDepartureTime); $('#departureDate').value = dateInputValue(departure); $('#departureTime').value = timeInputValue(departure); const startInput = $('#startPlaceInput'); startInput.value = trip.startLocation?.name || trip.startSearchText || ''; $('#startPlaceAddress').textContent = trip.startLocation ? (trip.startLocation.address || '已选择具体地点') : '请搜索并选择具体 POI'; $('#startPoiResults').hidden = true; $('#startPoiResults').replaceChildren(); document.querySelectorAll('[data-quick-start]').forEach((button) => { const date = SolarPhotography.chinaDateTimeToDate(button.dataset.quickStart); button.classList.toggle('active', date?.getTime() === departure.getTime()); }); updateSummary(); renderAiAnalysis(); renderDock(); timelineNode.replaceChildren(); let priorDay = dayKey(trip.initialDepartureTime); const overnights = overnightStays(); const nextTimeSnapshot = new Map();
+    calculate(); const departure = new Date(trip.initialDepartureTime); $('#departureDate').value = dateInputValue(departure); $('#departureTime').value = timeInputValue(departure); const startInput = $('#startPlaceInput'); startInput.value = trip.startLocation?.name || trip.startSearchText || ''; $('#startPlaceAddress').textContent = trip.startLocation ? (trip.startLocation.address || '已选择具体地点') : '请搜索并选择具体 POI'; $('#startPoiResults').hidden = true; $('#startPoiResults').replaceChildren(); updateSummary(); renderAiAnalysis(); renderDock(); timelineNode.replaceChildren(); let priorDay = dayKey(trip.initialDepartureTime); const overnights = overnightStays(); const nextTimeSnapshot = new Map();
     trip.destinations.forEach((destination, index) => {
       const fragment = template.content.cloneNode(true); const wrap = fragment.querySelector('.destination-wrap'); const card = wrap.querySelector('.destination-card'); card.id = `destination-${destination.id}`; card.dataset.id = destination.id; card.dataset.index = index; if (destination.isSkipped) card.classList.add('is-skipped'); const cardMoment = destination.arrivalPhoto?.moment || destination.departurePhoto?.moment; if (cardMoment) card.classList.add(`photo-${cardMoment.kind}`);
       wrap.replaceChild(routeConnector(destination, index), wrap.querySelector('[data-route-connector]')); const divider = wrap.querySelector('.date-divider'); if (!destination.isSkipped && destination.arrivalTime && dayKey(destination.arrivalTime) !== priorDay) { divider.hidden = false; divider.textContent = formatDay(destination.arrivalTime); priorDay = dayKey(destination.arrivalTime); }
@@ -531,7 +532,7 @@
         if (flags.childElementCount) card.querySelector('[data-place-meta]').after(flags);
       }
       if (destination.hasDepartureDisplay && !destination.isSkipped) { departureStrong.classList.add('is-derived'); departureStrong.dataset.derived = '1'; }
-      card.querySelector('.route-status').replaceWith(routeStatus(destination, index)); const buttons = card.querySelector('[data-stay-buttons]'); const relativeButtons = document.createElement('div'); relativeButtons.className = 'stay-relative-buttons'; const untilButtons = document.createElement('div'); untilButtons.className = 'stay-until-buttons'; STAY_OPTIONS.forEach((option) => { const button = document.createElement('button'); button.type = 'button'; button.dataset.action = 'toggle-stay'; button.dataset.minutes = option.minutes; button.textContent = option.label; if (destination.stayMode === 'duration' && destination.selectedStayButtons.includes(option.minutes)) button.classList.add('active'); relativeButtons.append(button); }); ['08:00', '09:00', '10:00'].forEach((time) => { const button = document.createElement('button'); button.type = 'button'; button.dataset.action = 'until-stay'; button.dataset.until = time; button.textContent = `至${time}`; if (destination.stayMode === 'until' && destination.untilTime === time) button.classList.add('active'); untilButtons.append(button); }); buttons.append(relativeButtons, untilButtons); card.querySelector('[data-stay-current]').textContent = `当前停留：${formatStay(destination.stayMinutes)}`;
+      card.querySelector('.route-status').replaceWith(routeStatus(destination, index)); const buttons = card.querySelector('[data-stay-buttons]'); const relativeButtons = document.createElement('div'); relativeButtons.className = 'stay-relative-buttons'; const untilButtons = document.createElement('div'); untilButtons.className = 'stay-until-buttons'; (destination.selectedStayButtons.includes(20) ? [{minutes:20,label:'20分（旧版，可取消）'}, ...STAY_OPTIONS] : STAY_OPTIONS).forEach((option) => { const button = document.createElement('button'); button.type = 'button'; button.dataset.action = 'toggle-stay'; button.dataset.minutes = option.minutes; button.textContent = option.label; if (destination.stayMode === 'duration' && destination.selectedStayButtons.includes(option.minutes)) button.classList.add('active'); relativeButtons.append(button); }); ['08:00', '09:00', '10:00'].forEach((time) => { const button = document.createElement('button'); button.type = 'button'; button.dataset.action = 'until-stay'; button.dataset.until = time; button.textContent = `至${time}`; if (destination.stayMode === 'until' && destination.untilTime === time) button.classList.add('active'); untilButtons.append(button); }); buttons.append(relativeButtons, untilButtons);
       const skip = card.querySelector('[data-action="toggle-skip"]'); skip.setAttribute('aria-label', destination.isSkipped ? '恢复目的地' : '暂时跳过目的地'); skip.title = destination.isSkipped ? '恢复目的地' : '暂时跳过目的地'; skip.textContent = destination.isSkipped ? '显示' : '跳过'; if (destination.isReturnToOrigin) { input.classList.add('return-input'); card.querySelector('[data-action="move-up"]').disabled = true; card.querySelector('[data-action="move-down"]').disabled = true; } if (destination.isSkipped) { card.querySelector('.stay-section').hidden = true; departureBlock.hidden = true; }
       decorateCompactCard(card, destination);
       renderLegWarnings(card, wrap, destination);
@@ -576,6 +577,7 @@
     const label = document.createElement('label'); label.className = 'lodging-control'; const check = document.createElement('input'); check.type = 'checkbox'; check.checked = destination.lodgingPlanned;
     check.onchange = () => { const current = trip.destinations.find(d => d.id === destination.id); if (!current) return; current.lodgingPlanned = check.checked; persist(); check.blur(); render(); };
     label.append(check, '我已安排在此住宿'); details.append(label);
+    if (card.dataset.overnight) { const badge = document.createElement('span'); badge.className = 'lodging-night'; badge.textContent = '🌙 夜间停留'; label.append(badge); }
     const note = document.createElement('small'); note.textContent = '夜间停留不等于已安排住宿。'; details.append(note);
     if (destination.lodgingPlanned) summary.append(' · 已安排住宿');
     details.addEventListener('toggle', () => { if (!details.isConnected) return; if (details.open) expandedStays.add(destination.id); else expandedStays.delete(destination.id); });
@@ -708,56 +710,6 @@
   });
   $('#clearTripDialog').addEventListener('close', () => $('#clearTrip').focus());
   function setDeparture() { const date = $('#departureDate').value; const time = $('#departureTime').value; const next = SolarPhotography.chinaDateTimeToDate(`${date}T${time}`); if (!next || Number.isNaN(next.getTime())) return; trip.initialDepartureTime = next.toISOString(); calculate(); persist(); render(); }
-  function setQuickDeparture(value) { const next = SolarPhotography.chinaDateTimeToDate(value); if (!next) return; trip.initialDepartureTime = next.toISOString(); calculate(); persist(); render(); }
-  /* 快捷出发 = 下一个「休 ≥5 天」法定节假日的前一天的 12:00 / 15:00 / 17:00 / 18:00。
-     数据：国务院办公厅《关于2026年部分节假日安排的通知》（国办发明电〔2025〕7号），
-     每年 11 月新通知发布后在此追加下一年数据；表内没有未来假期时退回相对档位 */
-  const LONG_HOLIDAYS = [
-    { name: '春节', start: '2026-02-15', end: '2026-02-23' },
-    { name: '劳动节', start: '2026-05-01', end: '2026-05-05' },
-    { name: '国庆节', start: '2026-10-01', end: '2026-10-07' },
-  ];
-  function buildQuickStarts() {
-    const host = document.querySelector('.quick-starts'); if (!host) return;
-    host.querySelectorAll('[data-quick-start]').forEach((node) => node.remove());
-    const lead = host.querySelector('span');
-    const pad = (n) => String(n).padStart(2, '0');
-    const chinaLocal = (daysAhead, hour, minute) => {
-      const now = SolarPhotography.chinaParts(new Date());
-      const day = new Date(Date.UTC(now.year, now.month - 1, now.day) + daysAhead * 86400000);
-      return `${day.getUTCFullYear()}-${pad(day.getUTCMonth() + 1)}-${pad(day.getUTCDate())}T${pad(hour)}:${pad(minute)}:00`;
-    };
-    const nowMs = Date.now();
-    const chinaNow = SolarPhotography.chinaParts(new Date());
-    const todayStr = `${chinaNow.year}-${pad(chinaNow.month)}-${pad(chinaNow.day)}`;
-    const slots = [];
-    const nextHoliday = LONG_HOLIDAYS.find((item) => item.start > todayStr);
-    if (nextHoliday) {
-      const dayBefore = new Date(new Date(`${nextHoliday.start}T00:00:00Z`).getTime() - 86400000);
-      const y = dayBefore.getUTCFullYear(); const m = pad(dayBefore.getUTCMonth() + 1); const d = pad(dayBefore.getUTCDate());
-      const dateLabel = `${dayBefore.getUTCMonth() + 1}/${dayBefore.getUTCDate()}`;
-      [12, 15, 17, 18].forEach((hour) => {
-        const value = `${y}-${m}-${d}T${pad(hour)}:00:00`;
-        const time = SolarPhotography.chinaDateTimeToDate(value);
-        if (time && time.getTime() > nowMs + 15 * 60000) slots.push({ value, label: `${dateLabel} ${pad(hour)}:00` });
-      });
-      if (slots.length && lead) lead.textContent = `${nextHoliday.name}前出发`;
-    }
-    if (!slots.length) {
-      if (lead) lead.textContent = '快捷出发';
-      const evening = SolarPhotography.chinaDateTimeToDate(chinaLocal(0, 18, 0));
-      if (evening && evening.getTime() > nowMs + 15 * 60000) slots.push({ value: chinaLocal(0, 18, 0), label: '今天 18:00' });
-      else slots.push({ value: chinaLocal(1, 18, 0), label: '明晚 18:00' });
-      slots.push({ value: chinaLocal(1, 5, 30), label: '明早 05:30' });
-      slots.push({ value: chinaLocal(1, 8, 0), label: '明早 08:00' });
-    }
-    slots.forEach((slot) => {
-      const button = document.createElement('button');
-      button.type = 'button'; button.dataset.quickStart = slot.value; button.textContent = slot.label;
-      button.addEventListener('click', () => setQuickDeparture(slot.value));
-      host.append(button);
-    });
-  }
   function toggleStay(destination, minutes) { flashSuppress.add(destination.id); if (destination.stayMode === 'until') { destination.stayMode = 'duration'; destination.untilTime = null; destination.selectedStayButtons = []; } destination.selectedStayButtons = destination.selectedStayButtons.includes(minutes) ? destination.selectedStayButtons.filter((item) => item !== minutes) : [...destination.selectedStayButtons, minutes]; calculate(); persist(); render(); }
   function toggleUntil(destination, time) { flashSuppress.add(destination.id); if (destination.stayMode === 'until' && destination.untilTime === time) { destination.stayMode = 'duration'; destination.untilTime = null; } else { destination.stayMode = 'until'; destination.untilTime = time; destination.selectedStayButtons = []; } calculate(); persist(); render(); }
   function resetRefreshChallenge() { turnstileToken = ''; const confirm = $('#refreshConfirm'); const status = $('#refreshHumanStatus'); if (confirm) confirm.disabled = true; if (status) status.textContent = '请完成 Cloudflare 人机验证'; if (globalThis.turnstile && turnstileWidgetId) globalThis.turnstile.reset(turnstileWidgetId); }
@@ -828,7 +780,7 @@
   dockToggle.addEventListener('click', () => setDockCollapsed(!dockShell.classList.contains('is-collapsed')));
   /* 删除确认弹窗已退役：撤销逻辑全部走 .undo-snackbar 自身按钮回调，无需全局代理 */
   $('#aiAnalysisResult').addEventListener('click', (event) => { const anchor = event.target.closest('[data-ai-anchor]'); if (!anchor) return; document.getElementById(`destination-${anchor.dataset.aiAnchor}`)?.scrollIntoView({ behavior: (event.detail === 0 || matchMedia('(prefers-reduced-motion: reduce)').matches) ? 'instant' : 'smooth', block: 'center' }); });
-  bindStartPicker($('#startPlaceInput'), $('#startPoiResults')); $('#addDestination').addEventListener('click', addDestination); $('#returnOrigin').addEventListener('click', addReturnOrigin); $('#refreshRoutePreview').addEventListener('click', openRefreshModal); $('#centerRoutePreview').addEventListener('click', centerRoutePreview); $('#refreshConfirm').addEventListener('click', confirmRefresh); $('#refreshCancel').addEventListener('click', closeRefreshModal); $('#refreshModal').addEventListener('click', (event) => { if (event.target === event.currentTarget) closeRefreshModal(); }); $('#openAiAnalysis').addEventListener('click', openAiModal); $('#aiConfirm').addEventListener('click', confirmAiAnalysis); $('#aiCancel').addEventListener('click', closeAiModal); $('#aiModal').addEventListener('click', (event) => { if (event.target === event.currentTarget) closeAiModal(); }); $('#openShare').addEventListener('click', () => { const model = buildShareModel(); if (!model) { showDockToast('至少添加一个有效目的地后再分享'); return; } if (!globalThis.DriveShare) { showDockToast('分享功能暂不可用，请稍后重试'); return; } globalThis.DriveShare.open(model); }); $('#clearTrip').addEventListener('click', clearTripWithUndo); $('#departureDate').addEventListener('change', setDeparture); $('#departureTime').addEventListener('change', setDeparture); /* 快捷出发按钮由 buildQuickStarts() 生成并各自绑定 */
+  bindStartPicker($('#startPlaceInput'), $('#startPoiResults')); $('#addDestination').addEventListener('click', addDestination); $('#returnOrigin').addEventListener('click', addReturnOrigin); $('#refreshRoutePreview').addEventListener('click', openRefreshModal); $('#centerRoutePreview').addEventListener('click', centerRoutePreview); $('#refreshConfirm').addEventListener('click', confirmRefresh); $('#refreshCancel').addEventListener('click', closeRefreshModal); $('#refreshModal').addEventListener('click', (event) => { if (event.target === event.currentTarget) closeRefreshModal(); }); $('#openAiAnalysis').addEventListener('click', openAiModal); $('#aiConfirm').addEventListener('click', confirmAiAnalysis); $('#aiCancel').addEventListener('click', closeAiModal); $('#aiModal').addEventListener('click', (event) => { if (event.target === event.currentTarget) closeAiModal(); }); $('#openShare').addEventListener('click', () => { const model = buildShareModel(); if (!model) { showDockToast('至少添加一个有效目的地后再分享'); return; } if (!globalThis.DriveShare) { showDockToast('分享功能暂不可用，请稍后重试'); return; } globalThis.DriveShare.open(model); }); $('#clearTrip').addEventListener('click', clearTripWithUndo); $('#departureDate').addEventListener('change', setDeparture); $('#departureTime').addEventListener('change', setDeparture);
   const cancelAnalysis = document.createElement('button'); cancelAnalysis.id = 'cancelAiAnalysis'; cancelAnalysis.type = 'button'; cancelAnalysis.hidden = true; cancelAnalysis.textContent = '取消等待'; cancelAnalysis.onclick = () => aiController?.abort(); $('.ai-analysis-head').append(cancelAnalysis);
   const cancelRoutes = document.createElement('button'); cancelRoutes.type = 'button'; cancelRoutes.textContent = '停止刷新';
   cancelRoutes.onclick = () => { routeRebuildVersion++; routeRequests.clear(); routeAborters.forEach(c => c.abort()); routeAborters.clear(); trip.destinations.forEach(d => { if (d.routeLoading) { delete d.routeLoading; if (!d.route) d.routeError = '已取消获取，可单独重试此路段'; } }); calculate(); persist(); render(); showDockToast('已停止刷新，保留已获取的导航数据'); };
@@ -856,6 +808,6 @@
   // Legacy routes get their endpoint identity once, before any user edits.
   calculate();
   activeLegs().forEach(leg => { if (leg.destination.route && !leg.destination.route.requestKey) leg.destination.route.requestKey = routeCacheKey(leg.origin, leg.destination.location, leg.destination.route.strategy || 'highway'); });
-  buildQuickStarts(); calculate(); persist(); render();
+  calculate(); persist(); render();
   if (!sharedPreview) { if (activeLegs().some((leg) => !leg.destination.route)) rebuildRouteGraph(); refreshElevations(); }
 })();

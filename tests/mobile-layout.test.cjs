@@ -17,7 +17,30 @@ function fixture(count) { return { startLocation:start, startSearchText:start.na
   });
   await page.goto('https://local.test/',{waitUntil:'domcontentloaded'}); await page.waitForTimeout(450);
   assert.deepEqual(errors,[],`JS errors ${width}`);
-  const measurements=await page.evaluate(()=>({ overflow:document.documentElement.scrollWidth>innerWidth+1, start:document.querySelector('#startCard').getBoundingClientRect().top, date:document.querySelector('#departureDate').getBoundingClientRect().bottom, summary:document.querySelector('.summary').getBoundingClientRect().top, menu:getComputedStyle(document.querySelector('.card-more summary')).minHeight, name:document.querySelector('.place-name').textContent, closed:!document.querySelector('.stay-editor').open, map:document.querySelector('#routeMap').inert }));
+  const mapAlignment=await page.evaluate(()=>{
+    const toggle=document.querySelector('.map-interaction-toggle').getBoundingClientRect();
+    const refresh=document.querySelector('#refreshRoutePreview').getBoundingClientRect();
+    return {right:Math.abs(toggle.right-refresh.right),below:toggle.top>=refresh.bottom-1};
+  });
+  assert.ok(mapAlignment.right<1 && mapAlignment.below,`map control aligned at ${width}`);
+  const moreAlignment=await page.locator('.card-more > summary').first().evaluate(el=>{
+    const range=document.createRange();range.selectNodeContents(el);
+    const text=range.getBoundingClientRect(),button=el.getBoundingClientRect();
+    return {x:Math.abs(text.left+text.width/2-button.left-button.width/2),y:Math.abs(text.top+text.height/2-button.top-button.height/2),width:button.width,height:button.height};
+  });
+  assert.ok(moreAlignment.x<1 && moreAlignment.y<2,`more text centered at ${width}: ${JSON.stringify(moreAlignment)}`);
+  assert.ok(moreAlignment.width>=44 && moreAlignment.height>=44,'more keeps touch target');
+  const alignment=await page.locator('.route-connector').first().evaluate(el=>{
+    const group=el.querySelector(':scope > span'), button=el.querySelector('.add-via-point'),pill=el.querySelector('.drive-warning');
+    const center=e=>{const r=e.getBoundingClientRect();return r.top+r.height/2;};
+    const range=document.createRange();range.selectNodeContents(group.firstChild);const text=range.getBoundingClientRect();
+    return {group:Math.abs(center(group)-center(button)),pillMargin:getComputedStyle(pill).marginTop,
+      sameLine:Math.abs(text.top+text.height/2-center(pill)),overflow:el.scrollWidth>el.clientWidth};
+  });
+  assert.ok(alignment.group<1,`route group/button centered at ${width}`);
+  assert.equal(alignment.pillMargin,'0px');assert.equal(alignment.overflow,false);
+  if(width===1280)assert.ok(alignment.sameLine<3,'text and warning share a centerline');
+  const measurements=await page.evaluate(()=>({ overflow:document.documentElement.scrollWidth>innerWidth+1, start:document.querySelector('#startCard').getBoundingClientRect().top, date:document.querySelector('#departureDate').getBoundingClientRect().bottom, summary:document.querySelector('.preview-summary').getBoundingClientRect().top, menu:getComputedStyle(document.querySelector('.card-more summary')).minHeight, name:document.querySelector('.place-name').textContent, closed:!document.querySelector('.stay-editor').open, map:document.querySelector('#routeMap').inert }));
   assert.equal(measurements.overflow,false,`overflow ${width}`); assert.ok(measurements.start<measurements.summary); assert.ok(measurements.date<844,`date off first screen ${width}: ${measurements.date}`); assert.equal(measurements.closed,true); assert.equal(measurements.map,true); assert.equal(measurements.menu,'44px');
   const typography=await page.locator('.destination-card').first().evaluate(card=>{
     const style=s=>getComputedStyle(card.querySelector(s));
@@ -28,11 +51,10 @@ function fixture(count) { return { startLocation:start, startSearchText:start.na
   });
   assert.equal(typography.address,typography.label);
   if(width===393) {
-    await context.route('**/api/trip-share',r=>r.fulfill({json:{code:'AB2CD3'}}));
-    await page.evaluate(()=>{window.sharedPayload=null;window.copiedLink=null;Object.defineProperty(navigator,'share',{configurable:true,value:async data=>{window.sharedPayload=data;}});Object.defineProperty(navigator,'clipboard',{configurable:true,value:{writeText:async text=>{window.copiedLink=text;}}});document.querySelector('#tkCopyLink').click();});
-    await page.waitForTimeout(100);
-    const share=await page.evaluate(()=>({data:window.sharedPayload,copy:window.copiedLink}));
-    assert.ok(share.data.url.includes('#trip='));assert.ok(share.data.text.includes(share.data.url));assert.equal(share.copy,share.data.url);
+    await context.route('**/api/trip-share',r=>r.fulfill({json:{code:'AB2CD3',expiresAt:Date.now()+7*86400000}}));
+    const shared=await page.evaluate(async()=>DriveTripShare.prepare(JSON.parse(localStorage.getItem('drive-timeline-trip-v1'))));
+    assert.equal(shared.url,'https://local.test/?s=AB2CD3');
+    assert.equal(shared.code,'AB2CD3');
     assert.equal(await page.getByRole('button',{name:'导入行程',exact:true}).count(),1);
   }
   const field=await page.locator('.place-name').first().evaluate(el=>({whiteSpace:getComputedStyle(el).whiteSpace,ellipsis:getComputedStyle(el).textOverflow,title:el.title,text:el.textContent}));
@@ -41,15 +63,18 @@ function fixture(count) { return { startLocation:start, startSearchText:start.na
     const rect=s=>document.querySelector(s).getBoundingClientRect();
     const card=document.querySelector('.destination-card');
     const n=getComputedStyle(card.querySelector('.station-number')),s=getComputedStyle(document.querySelector('.start-number'));
-    const date=rect('.date-field'),time=rect('.time-field'),slider=rect('#tfWhatif'),quick=rect('.quick-starts');
+    const date=rect('.date-field'),time=rect('.time-field'),slider=rect('#tfWhatif');
     const row=card.querySelector('.card-topline'), picker=row.querySelector('.place-picker');
-    return {number:[n.font,s.font,n.webkitTextStrokeWidth,s.webkitTextStrokeWidth,n.textShadow,s.textShadow],dateTop:date.top,timeTop:time.top,fieldsBottom:Math.max(date.bottom,time.bottom),sliderTop:slider.top,sliderBottom:slider.bottom,quickTop:quick.top,
+    return {number:[n.font,s.font,n.webkitTextStrokeWidth,s.webkitTextStrokeWidth,n.textShadow,s.textShadow],dateTop:date.top,timeTop:time.top,fieldsBottom:Math.max(date.bottom,time.bottom),sliderTop:slider.top,sliderBottom:slider.bottom,
       inRow:!!picker && !!row.querySelector('.card-more'),underline:getComputedStyle(picker.querySelector('.place-name')).borderBottomWidth,
       addressBelow:card.querySelector('.place-address').getBoundingClientRect().top>=row.getBoundingClientRect().bottom,
       blur:getComputedStyle(document.querySelector('.trip-dock')).backdropFilter};
   });
   assert.equal(compact.number[0],compact.number[1]); assert.equal(compact.number[2],compact.number[3]); assert.equal(compact.number[4],compact.number[5]);
-  assert.equal(compact.dateTop,compact.timeTop); assert.ok(compact.sliderTop>=compact.fieldsBottom); assert.ok(compact.quickTop>=compact.sliderBottom);
+  assert.equal(compact.dateTop,compact.timeTop); assert.ok(compact.sliderTop>=compact.fieldsBottom);
+  assert.equal(await page.locator('.quick-starts,.summary,#tkTemplatesBtn').count(),0);
+  assert.equal(await page.locator('.preview-summary').count(),1);
+  assert.equal(await page.locator('#tfRhythm').count(),1);
   assert.ok(compact.inRow && compact.addressBelow); assert.equal(compact.underline,'1px'); assert.match(compact.blur,/blur/);
   const flagSizes=await page.locator('.card-flags').evaluateAll(flags=>flags.filter(f=>f.querySelector('.derived-tag')).map(f=>[getComputedStyle(f.querySelector('.derived-tag')).fontSize,getComputedStyle(f.querySelector('.overnight-badge')).fontSize]));
   assert.ok(flagSizes.length>0);
@@ -61,7 +86,7 @@ function fixture(count) { return { startLocation:start, startSearchText:start.na
   const orderBefore=await page.evaluate(()=>DriveOrder.read().stops.map(d=>d.id));
   await page.locator('.order-open').click();
   if(width===393) await page.screenshot({path:'/tmp/roadbook-order-dialog.png'});
-  await page.locator('.order-row[data-index="0"] button').last().click();
+  await page.locator('.order-row[data-index="0"] button[aria-label^="下移"]').click();
   assert.deepEqual(await page.evaluate(()=>DriveOrder.read().stops.map(d=>d.id)),orderBefore,'draft must not mutate trip');
   await page.locator('.order-dialog footer [data-close]').click();
   assert.deepEqual(await page.evaluate(()=>DriveOrder.read().stops.map(d=>d.id)),orderBefore,'cancel must preserve order');
@@ -101,7 +126,7 @@ function fixture(count) { return { startLocation:start, startSearchText:start.na
   }
   const beforeSave=await page.evaluate(()=>DriveOrder.read().stops.map(d=>d.id));
   await page.locator('.order-open').click();
-  await page.locator('.order-row[data-index="0"] button').last().click();
+  await page.locator('.order-row[data-index="0"] button[aria-label^="下移"]').click();
   await page.locator('.order-dialog [data-save]').click();
   assert.deepEqual((await page.evaluate(()=>DriveOrder.read().stops.map(d=>d.id))).slice(0,2),[beforeSave[1],beforeSave[0]],'save applies draft');
   await page.locator('#tfWhatifRange').evaluate(el=>{el.value='480';el.dispatchEvent(new Event('input',{bubbles:true}));});

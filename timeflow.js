@@ -263,7 +263,7 @@
       box.id = 'tfWhatif';
       box.className = 'tf-whatif';
       box.innerHTML = '<input id="tfWhatifRange" type="range" min="0" max="1439" step="15" aria-label="调整出发时刻" />';
-      card.insertBefore(box, card.querySelector('.quick-starts'));
+      card.appendChild(box);
       var range = box.querySelector('#tfWhatifRange');
       range.addEventListener('input', function () {
         whatifPending = Number(range.value);
@@ -301,7 +301,7 @@
   }
 
   function processRhythm() {
-    var summary = document.querySelector('.summary');
+    var summary = document.getElementById('startCard');
     if (!summary) return;
     var host = document.getElementById('tfRhythm');
     if (!host) {

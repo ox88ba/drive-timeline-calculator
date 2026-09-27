@@ -44,7 +44,7 @@ async function fixture(options={}){
  });
  if(options.clock)await page.clock.install();
  await page.goto('https://review.test/'+(options.hash||''),{waitUntil:'domcontentloaded'});
- await page.locator('[data-place-input]').first().waitFor({state:'attached'});await sleep(100);
+ if(!options.noApp)await page.locator('[data-place-input]').first().waitFor({state:'attached'});await sleep(100);
  return {page,context,calls,blocked,errors,requestFailures,read:()=>page.evaluate(K=>JSON.parse(localStorage.getItem(K)),K),close:()=>context.close()};
 }
 async function test(name,fn){if(arg('--filter','')&&!name.includes(arg('--filter','')))return;const started=Date.now();let f;try{await fn(async o=>(f=await fixture(o)));results.push({name,status:'PASS',ms:Date.now()-started});}catch(e){results.push({name,status:e.message.startsWith('HARNESS')||e.name==='TimeoutError'||e.message.includes('strict mode violation')?'ERROR':'FAIL',message:e.message,ms:Date.now()-started});}finally{if(f){results.at(-1).apiCalls=f.calls;results.at(-1).blockedExternal=f.blocked;results.at(-1).pageErrors=f.errors;results.at(-1).requestFailures=f.requestFailures;await f.close();}console.log(results.at(-1).status+' '+name+(results.at(-1).message?' — '+results.at(-1).message.split('\n')[0]:''));}}
@@ -61,7 +61,40 @@ async function chooseB(f){await edit(f,'地点B');await f.page.getByRole('button
  await test('search/uncommitted-edit-preserves-trip',async make=>{const f=await make();await edit(f,'尚未确认');const d=(await f.read()).destinations[0];assert.equal(d.location?.name,'地点A','候选确认前不得清掉已提交地点');assert.equal(d.route?.durationSeconds,900)});
  await test('search/stale-error-does-not-replace-new-results',async make=>{const gate=deferred();const f=await make({api:c=>c.path==='/api/poi'&&c.query.keywords==='旧查询'?gate.promise:undefined});await edit(f,'旧查询');await until(()=>f.calls.some(c=>c.query.keywords==='旧查询'),'old search');await edit(f,'新查询');await f.page.locator('[data-poi-results] button').filter({hasText:'新查询'}).waitFor();gate.resolve({status:500,json:{error:{message:'旧查询超时'}}});await sleep(150);assert.match(await f.page.locator('[data-poi-results]').innerText(),/新查询/,'旧失败不得覆盖新候选')});
  await test('search/late-result-after-clear-remains-hidden',async make=>{const gate=deferred();const f=await make({api:c=>c.path==='/api/poi'?gate.promise:undefined});await edit(f,'旧查询');await until(()=>f.calls.some(c=>c.path==='/api/poi'),'search');await edit(f,'');gate.resolve({status:500,json:{error:{message:'旧查询超时'}}});await sleep(150);assert.equal(await f.page.locator('[data-poi-results]').isVisible(),false)});
+ await test('stay/legacy20-can-be-cancelled',async make=>{
+   const legacy=stop();legacy.selectedStayButtons=[20,60];const f=await make({seed:trip([legacy])});
+   await f.page.locator('.stay-editor summary').first().click();
+   assert.equal(await f.page.locator('[data-stay-current]').count(),0);
+   await f.page.locator('[data-action="toggle-stay"][data-minutes="20"]').click();
+   assert.deepEqual((await f.read()).destinations[0].selectedStayButtons,[60]);
+   await f.page.reload();assert.deepEqual((await f.read()).destinations[0].selectedStayButtons,[60]);
+ });
+ await test('stay/night-badge-next-to-lodging',async make=>{
+   const legacy=stop();legacy.selectedStayButtons=[600,480];const f=await make({seed:trip([legacy])});
+   assert.equal(await f.page.locator('.lodging-control .lodging-night').count(),1);
+   assert.equal(await f.page.locator('.order-open').count(),1);
+   await f.page.locator('.order-open').click();
+   assert.equal(await f.page.locator('.order-row[data-index] button:last-child').first().getAttribute('class'),'order-grip');
+ });
  const shared={v:1,s:{n:'分享起点',la:28,lo:105},dep:'2030-10-01T00:00:00Z',d:[{n:'分享目的地',la:32,lo:112,stay:[],r:{ds:123,dur:123}}]};const hash='#trip='+Buffer.from(JSON.stringify(shared)).toString('base64url');
+ await test('share/expired-short-link-preserves-draft',async make=>{
+   const f=await make({hash:'?s=AB2CD3',noApp:true,api:c=>c.path==='/api/trip-share'?{status:404,json:{message:'分享码不存在或已过期'}}:undefined});
+   await f.page.getByText('分享码不存在或已过期',{exact:false}).waitFor();
+   assert.equal((await f.read()).startLocation.name,origin.name);
+   assert.equal(f.calls.length,1);
+   assert.equal(await f.page.locator('#timeline .destination-card').count(),0);
+ });
+ await test('share/short-link-preview-and-exit',async make=>{
+   const f=await make({hash:'?s=AB2CD3',api:c=>c.path==='/api/trip-share'?{trip:shared,expiresAt:Date.now()+60000}:undefined});
+   await f.page.locator('.shared-preview-banner').waitFor();
+   assert.match(await f.page.locator('#timeline').innerText(),/分享目的地/);
+   assert.equal((await f.read()).startLocation.name,origin.name);
+   assert.equal(f.calls.filter(c=>c.path==='/api/route').length,0);
+   assert.equal(await f.page.locator('.planning-shortcuts button:enabled').count(),0);
+   await f.page.locator('[data-exit]').click();await until(()=>!f.page.url().includes('?s='),'exit short link');
+   await f.page.locator('[data-place-input]').first().waitFor({state:'attached'});
+   assert.equal((await f.read()).startLocation.name,origin.name);
+ });
  await test('share/cold-open-preserves-draft',async make=>{const f=await make({hash});assert.equal((await f.read()).startLocation.name,origin.name,'分享链接打开不得覆盖本地草稿')});
  await test('share/hashchange-preserves-draft',async make=>{const f=await make();await f.page.evaluate(hash=>location.hash=hash,hash);await sleep(450);assert.equal((await f.read()).startLocation.name,origin.name,'当前标签页打开分享也不得覆盖草稿')});
  await test('storage/snapshot-failure-no-success',async make=>{const f=await make();await f.page.evaluate(SK=>{const original=Storage.prototype.setItem;Storage.prototype.setItem=function(k,v){if(k===SK)throw new DOMException('QA quota','QuotaExceededError');return original.call(this,k,v)}},SK);await f.page.getByRole('button',{name:'保存本方案',exact:true}).click();await f.page.getByRole('button',{name:'保存当前行程',exact:true}).click();await sleep(100);const text=await f.page.locator('body').innerText();assert.ok(!text.includes('已保存「'),'写入失败不得显示保存成功');assert.equal(await f.page.evaluate(SK=>localStorage.getItem(SK),SK),null);assert.equal(await f.page.getByRole('button',{name:'保存当前行程',exact:true}).isVisible(),true,'失败后保留保存界面以便重试')});
