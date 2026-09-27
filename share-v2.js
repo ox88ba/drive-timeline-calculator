@@ -96,8 +96,8 @@
     }
     poster.append(summary(false)); const map = section('路线概览');
     if ($('#shareIncludeMap').checked && mapUrl) {
-      const img = node(map, 'img', 'rb-map'); img.src = mapUrl; img.alt = '网页地图当前视图的原始快照';
-      node(map, 'p', 'rb-note', '网页路线预览快照 · 保留当前缩放与视角');
+      const img = node(map, 'img', 'rb-map'); img.src = mapUrl; img.alt = '完整行程的真实道路线路';
+      node(map, 'p', 'rb-note', globalThis.DriveMapSnapshot.caption || '完整路线概览');
     } else node(map, 'p', 'rb-note', '本版未包含地图，请在网页中查看完整路线。');
     poster.append(map, rhythm()); let lastDay = L.dayKey(model.start.departureIso);
     node(poster, 'h2', 'rb-timeline-title', '行程时间轴'); node(poster, 'h3', 'rb-date-heading', lastDay ? lastDay.replace(/-/g, '/') : '出发');

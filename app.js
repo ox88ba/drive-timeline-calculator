@@ -443,32 +443,15 @@
     if (mapBatchDepth) throw new Error('导航路线仍在加载，请完成后再生成长图。');
     const data = mapPreviewData();
     if (data.message) throw new Error('网页路线预览尚未完成，请先点击“刷新预览”获取道路轨迹后再生成长图。');
-    if (typeof globalThis.html2canvas !== 'function') throw new Error('地图快照组件未加载。');
-    await mapReadyPromise;
-    if (amapMap) {
-      await new Promise((resolve) => {
-        let settled = false; let timer;
-        const finish = () => { if (settled) return; settled = true; clearTimeout(timer); resolve(); };
-        timer = setTimeout(finish, 500);
-        try { amapMap.once('complete', finish); } catch { /* The timeout still protects the capture. */ }
-      });
-    }
-    await nextPaint();
-    if (mapSignature(data) !== mapSignature(mapPreviewData()) || mapBatchDepth) throw new Error('行程在截图期间发生变化，请重试地图快照。');
-    const capturedMap = amapMap, capturedVersion = mapRenderVersion;
-    const viewKey = () => capturedMap ? JSON.stringify([capturedMap.getCenter().toString(), capturedMap.getZoom(), mapNode.clientWidth, mapNode.clientHeight]) : '';
-    const capturedView = viewKey();
-    const overlay = capturedMap ? globalThis.RoadbookMapExport.project(capturedMap,
-      data.legs.map(leg => leg.destination.route.polyline),
+    const signature = mapSignature(data);
+    const result = await globalThis.RoadbookMapExport.render(
+      data.legs.map(leg => leg.destination.route.polyline.map(point => [...point])),
       [{coordinate:[Number(trip.startLocation.longitude),Number(trip.startLocation.latitude)],number:'01'},
-        ...data.legs.map(leg => ({coordinate:[Number(leg.destination.location.longitude),Number(leg.destination.location.latitude)],number:String(leg.index+2).padStart(2,'0')}))]) : null;
-    const width = Math.max(1, mapNode.clientWidth); const height = Math.max(1, mapNode.clientHeight);
-    const canvas = await globalThis.html2canvas(mapNode, { backgroundColor: '#f5f7fb', useCORS: true, logging: false, scale: Math.min(2, Math.max(1, 1000 / width)), width, height, scrollX: 0, scrollY: 0 });
-    if (capturedVersion !== mapRenderVersion || capturedMap !== amapMap || capturedView !== viewKey() || mapBatchDepth) throw new Error('地图在截图期间发生变化，请重试地图快照。');
-    if (overlay) globalThis.RoadbookMapExport.draw(canvas, overlay, width, height);
-    const blob = await new Promise((resolve, reject) => canvas.toBlob((value) => value ? resolve(value) : reject(new Error('地图快照导出失败。')), 'image/png'));
-    if (blob.size < 5000) throw new Error('地图快照内容不完整，请刷新路线预览后重试。');
-    return blob;
+        ...data.legs.map(leg => ({coordinate:[Number(leg.destination.location.longitude),Number(leg.destination.location.latitude)],number:String(leg.index+2).padStart(2,'0')}))],
+      API_BASE_URL);
+    if (signature !== mapSignature(mapPreviewData()) || mapBatchDepth) throw new Error('行程在出图期间发生变化，请重试地图快照。');
+    globalThis.DriveMapSnapshot.caption = result.caption;
+    return result.blob;
   }
   globalThis.DriveMapSnapshot = { capture: captureRouteMap };
   /* 停留时段与北京时间 23:00–06:00 夜间窗口有交集即视为过夜站（跨午夜必然命中） */
