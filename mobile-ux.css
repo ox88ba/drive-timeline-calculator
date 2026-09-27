@@ -234,7 +234,8 @@ html[data-skin="voyage"][data-theme="light"] .trip-dock::before { background:#f7
 html[data-skin="voyage"] .route-connector::before,
 html[data-skin="voyage"] .route-connector::after { content:none; animation:none; }
 html .date-divider { background:none; }
-html .route-connector { align-items:center; }
+/* Match the card content inset: 16px padding + 1px border. */
+html .route-connector { align-items:center; padding-left:17px; }
 html .route-connector .add-via-point { margin-top:0; }
 html[data-skin="voyage"][data-engine="timeflow"] .destination-card .station-number,
 html[data-skin="voyage"][data-engine="timeflow"] .start-card .start-number { -webkit-text-stroke:0; text-shadow:none; }
