@@ -1,0 +1,92 @@
+/* Shared button geometry. Explicit targets exclude POI fields, result rows,
+   template tiles, map markers and the fluid add-destination control. */
+:root {
+  --button-radius:14px;
+  --button-compact-radius:12px;
+  --button-font:600 15px/1.35 "Noto Sans SC",system-ui,sans-serif;
+}
+/* Author display rules must never reveal conditionally hidden controls. */
+html[data-skin][data-theme] button[hidden] { display:none!important; }
+html[data-skin][data-theme] :is(.hero-text-button,.planning-shortcuts button,
+ .tk-action-btn,.refresh-route-preview,.map-interaction-toggle,.share-actions button,
+ .share-export-options button,[id="shareParts"] button,.tk-primary,.tk-snap-actions button,
+ .order-dialog button,.delete-modal button,.refresh-modal button,.ai-modal button,
+ .add-via-point,.stay-buttons button,.scenic-ai-body button,.poi-review-retry,.poi-review-toggle,.poi-review-close,
+ .card-empty-actions button,.card-more > summary,.card-more .card-actions button,
+ .return-origin,.ai-analysis-head button,.order-open,.back-to-top,.icon-button,
+ .shared-preview-banner button,.share-link-gate button,.share-link-gate a,
+ .tk-body > button,.undo-snackbar-action,.route-status .retry,.ai-anchor) {
+  box-sizing:border-box; display:inline-flex; align-items:center; justify-content:center;
+  gap:6px; min-height:44px; min-width:44px; padding:10px 14px;
+  border-radius:var(--button-radius); font:var(--button-font);
+  letter-spacing:0; text-align:center; text-indent:0; text-decoration:none;
+  box-shadow:none; touch-action:manipulation;
+}
+html[data-skin][data-theme] :is(.add-via-point,.stay-buttons button,
+ .scenic-ai-body button,.poi-review-retry,.poi-review-toggle,.poi-review-close,.card-empty-actions button,
+ .card-more > summary,.card-more .card-actions button,.order-open,
+ .route-status .retry,.ai-anchor,.undo-snackbar-action) {
+  padding:8px 12px; border-radius:var(--button-compact-radius); font-size:14px;
+}
+html[data-skin][data-theme] .card-more > summary { line-height:1.35; }
+html[data-skin][data-theme] .stay-buttons button { font-variant-numeric:tabular-nums; }
+html[data-skin][data-theme] .stay-buttons button.active {
+  color:#30200b; background:#f4cf8c; border-color:#e3b666; box-shadow:none;
+}
+html[data-skin][data-theme] :is(.tk-primary,.order-dialog [data-save],#shareSystem,#aiConfirm,#refreshConfirm):not(:disabled) {
+  background:#a86a0c; color:#fff; border:1px solid #a86a0c; box-shadow:none;
+}
+/* Neutral surfaces share a palette; weather cards retain their local ink. */
+html[data-skin][data-theme] {
+ --button-surface:#f3f5f8; --button-ink:#34465e; --button-line:#bdc8d5;
+}
+html[data-skin][data-theme="dark"] {
+ --button-surface:#242d3d; --button-ink:#edf1f8; --button-line:#596579;
+}
+html[data-skin][data-theme] :is(.planning-shortcuts button,.tk-action-btn,
+ .return-origin,.hero-text-button,.refresh-route-preview,.map-interaction-toggle,
+ .share-export-options button,[id="shareParts"] button,.share-actions button:not([id="shareSystem"]),
+ .tk-body > button,.tk-snap-actions button,.shared-preview-banner button,
+ .share-link-gate button,.share-link-gate a,.icon-button) {
+ background:var(--button-surface); color:var(--button-ink); border:1px solid var(--button-line);
+}
+html[data-skin][data-theme] :is(.tk-danger,[data-action="remove"],#clearTripConfirm):not(:disabled) {
+ color:#a52a36; background:#fff0f1; border:1px solid #e8b7bf;
+}
+html[data-skin][data-theme="dark"] :is(.tk-danger,[data-action="remove"],#clearTripConfirm):not(:disabled) {
+ color:#ffb5bd; background:#472932; border-color:#905462;
+}
+html[data-skin][data-theme] .icon-button {
+ width:44px; height:44px; padding:0; flex:0 0 44px; font-size:24px; line-height:1;
+}
+html[data-skin][data-theme] .order-row button {
+ width:44px; height:44px; padding:0; flex:0 0 44px; font-size:18px;
+}
+html[data-skin][data-theme] .add-destination { font:var(--button-font); letter-spacing:0; }
+html[data-skin][data-theme] .tk-snap-actions { flex-wrap:wrap; gap:8px; }
+html[data-skin][data-theme] .share-export-options { gap:8px 12px; }
+html[data-skin][data-theme] :is(.shell,.modal-backdrop,.order-dialog,.share-link-gate) button:disabled {
+ opacity:.48; cursor:not-allowed; box-shadow:none; transform:none;
+}
+html[data-skin][data-theme] :is(.shell,.modal-backdrop,.order-dialog,.share-link-gate) :is(button,a,summary):focus-visible {
+ outline:2px solid #276fc8; outline-offset:3px; transition:none; transform:none;
+}
+html[data-skin][data-theme] .order-dialog button:not(:disabled):not(.order-grip):active {
+ transform:scale(.97);
+}
+@media (prefers-reduced-motion:reduce) {
+ html[data-skin][data-theme] .order-dialog button { transition:none; transform:none!important; }
+}
+html[data-skin][data-theme] .route-preview-actions { gap:8px; }
+html[data-skin][data-theme] .route-preview-head { flex-wrap:wrap; }
+html[data-skin][data-theme] .route-preview-actions { margin-left:auto; }
+html[data-skin][data-theme] .route-preview-head > div { min-width:0; }
+html[data-skin][data-theme] .route-preview button.map-interaction-toggle { display:flex; margin-left:auto; }
+html[data-skin][data-theme] .order-dialog .order-grip { touch-action:none; }
+html[data-skin][data-theme] :is(.tk-action-btn,.share-actions button) { width:100%; }
+/* Compact visual controls on precise pointers; never shrink phone hit areas. */
+@media (hover:hover) and (pointer:fine) {
+ html[data-skin][data-theme] :is(.add-via-point,.stay-buttons button,.scenic-ai-body button) {
+  min-height:36px; padding-block:6px;
+ }
+}

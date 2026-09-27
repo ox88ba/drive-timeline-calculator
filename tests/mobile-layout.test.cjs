@@ -17,12 +17,16 @@ function fixture(count) { return { startLocation:start, startSearchText:start.na
   });
   await page.goto('https://local.test/',{waitUntil:'domcontentloaded'}); await page.waitForTimeout(450);
   assert.deepEqual(errors,[],`JS errors ${width}`);
+  assert.equal(await page.locator('#cancelAiAnalysis').isVisible(),false,'hidden actions stay hidden');
+  const buttonStyles=await page.locator('.planning-shortcuts button,.refresh-route-preview,.tk-action-btn').evaluateAll(nodes=>nodes.map(el=>{const s=getComputedStyle(el);return {size:s.fontSize,radius:s.borderRadius,weight:s.fontWeight,height:el.getBoundingClientRect().height};}));
+  for(const s of buttonStyles){assert.equal(s.size,'15px');assert.equal(s.radius,'14px');assert.equal(s.weight,'600');assert.ok(s.height>=44);}
+  assert.equal(await page.locator('.card-more > summary').first().evaluate(el=>getComputedStyle(el).borderRadius),'12px');
   const mapAlignment=await page.evaluate(()=>{
     const toggle=document.querySelector('.map-interaction-toggle').getBoundingClientRect();
     const refresh=document.querySelector('#refreshRoutePreview').getBoundingClientRect();
     return {right:Math.abs(toggle.right-refresh.right),below:toggle.top>=refresh.bottom-1};
   });
-  assert.ok(mapAlignment.right<1 && mapAlignment.below,`map control aligned at ${width}`);
+  assert.ok(mapAlignment.right<1 && mapAlignment.below,`map control aligned at ${width}: ${JSON.stringify(mapAlignment)}`);
   const moreAlignment=await page.locator('.card-more > summary').first().evaluate(el=>{
     const range=document.createRange();range.selectNodeContents(el);
     const text=range.getBoundingClientRect(),button=el.getBoundingClientRect();
