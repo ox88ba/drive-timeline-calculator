@@ -1,6 +1,6 @@
 /* Isolated export document: never inherits the editor's sky/dark theme. */
 html #sharePoster.rb-poster {
-  width:600px!important; min-width:600px; box-sizing:border-box; padding:30px; margin:0;
+  width:400px!important; min-width:400px; box-sizing:border-box; padding:14px; margin:0;
   border-radius:0; background:#f5f7fb!important; color:#1b293b!important;
   font:400 14px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans SC",sans-serif;
   transform-origin:top left; text-align:left; letter-spacing:0;
@@ -77,3 +77,31 @@ html #sharePoster.rb-poster .rb-sky .rb-time-line strong { color:var(--rb-sky-in
 .share-export-options label { display:flex; align-items:center; gap:5px; }
 .share-export-options button,#shareParts button { padding:7px 11px; border:1px solid #cbd5e1; border-radius:9px; background:#fff; color:#354b65; }
 #shareParts { display:flex; flex-wrap:wrap; gap:8px; margin-top:10px; }
+/* Phone-sized layout, rendered at 3x: resolution must not shrink reading text. */
+#sharePoster .rb-section { padding:14px; margin-top:18px; border-radius:18px; }
+#sharePoster .rb-station { padding:16px; border-radius:20px; }
+#sharePoster .rb-station-head { gap:10px; align-items:baseline; }
+#sharePoster .rb-number { font-size:20px; color:#b87516!important; }
+#sharePoster .rb-station-head h3 { flex:1; min-width:0; font-size:20px; line-height:1.45; padding-bottom:7px; border-bottom:1px solid #bac5d2; }
+#sharePoster .rb-address,#sharePoster .rb-meta,#sharePoster .rb-caption { font-size:14px; color:#526075!important; }
+#sharePoster .rb-sky .rb-caption { color:inherit!important; }
+#sharePoster .rb-route-title { font-size:14px; line-height:1.65; }
+#sharePoster .rb-time-line strong { font-size:26px; line-height:1.3; }
+#sharePoster .rb-time.rb-sky { padding:14px; }
+#sharePoster .rb-chip { font-size:13px; }
+#sharePoster .rb-hints { gap:4px 12px; }
+#sharePoster .rb-hints .rb-chip { padding:0; border:0; border-radius:0; background:none; color:#526075; font-size:14px; font-weight:400; }
+#sharePoster .rb-stay,#sharePoster .rb-ai { font-size:14px; }
+#sharePoster .rb-leg { padding:16px 10px; gap:10px; font-size:14px; }
+#sharePoster .rb-date-heading { color:#a66b18!important; font-size:16px; }
+#sharePoster .rb-stats { grid-template-columns:repeat(2,minmax(0,1fr)); }
+#sharePoster .rb-stat { padding:12px 8px; }
+#sharePoster .rb-stat:nth-child(2) { border-right:0; }
+#sharePoster .rb-stat:nth-child(3),#sharePoster .rb-stat:nth-child(4) { border-top:1px solid #e4e9f0; }
+#sharePoster .rb-stat span { font-size:14px; }
+#sharePoster .rb-stat strong { font-size:17px; }
+#sharePoster .rb-date { grid-column:1/-1; border-right:0; }
+#sharePoster .rb-date + .rb-date { border-top:1px solid #e4e9f0; }
+#sharePoster .rb-stat small,#sharePoster .rb-note,#sharePoster .rb-ai small,#sharePoster .rb-footer { font-size:12px; color:#526075!important; }
+#sharePoster .rb-legend,#sharePoster .rb-day-label,#sharePoster .rb-day-detail,#sharePoster .rb-day-warning { font-size:13px; }
+#sharePoster .rb-brand { color:#a66b18!important; }

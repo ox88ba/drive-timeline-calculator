@@ -2,6 +2,7 @@
 (() => {
   'use strict';
   const $ = s => document.querySelector(s), L = RoadbookExportLayout;
+  const POSTER_WIDTH = 400, EXPORT_SCALE = 3;
   let model, files = [], revision = 0, session = 0, timer, mapPromise, mapUrl = '', mapError = '';
   let queue = Promise.resolve();
   const name = () => Array.from($('#shareNameInput').value.trim()).slice(0, 50).join('');
@@ -85,7 +86,7 @@
     const poster = node(null, 'article', 'share-poster rb-poster'); poster.id = 'sharePoster'; poster.dataset.exportVersion = '2';
     const h = node(poster, 'header', 'rb-header'); node(h, 'h1', '', name() || '我的自驾行程');
     node(h, 'p', 'rb-brand', '时光路书 / ROADBOOK'); node(h, 'p', 'rb-subtitle', `${model.departureText} 出发 · ${model.destinations.length + 1} 站`);
-    const route = node(h, 'p', 'rb-route-title', model.title); route.style.fontSize = model.title.length > 120 ? '15px' : model.title.length > 60 ? '17px' : '20px';
+    node(h, 'p', 'rb-route-title', model.title);
     const pending = model.destinations.filter(s => s.routePending || !s.arrivalIso).length;
     const unstayed = model.destinations.slice(0, -1).filter(s => !s.stay && s.stayMode !== 'until').length;
     if (pending || !model.complete || unstayed) {
@@ -124,12 +125,12 @@
     await Promise.race([document.fonts?.ready || Promise.resolve(), new Promise(r => setTimeout(r, 3000))]);
     await Promise.race([Promise.all([...poster.querySelectorAll('img')].map(img => img.decode())), new Promise((_, reject) => setTimeout(() => reject(new Error('图片加载超时，请重试或取消包含地图')), 15000))]);
     const rect = poster.getBoundingClientRect(), height = poster.scrollHeight;
-    const breaks = [...poster.children].map(el => el.getBoundingClientRect().top - rect.top - 8);
-    const ranges = L.pageRanges(height, breaks), blobs = [];
+    const breaks = [...poster.children].map(el => el.getBoundingClientRect().top - rect.top);
+    const ranges = L.pageRanges(height, breaks, 2300), blobs = [];
     for (let i = 0; i < ranges.length; i++) {
       if (token !== revision) return null;
       status(`正在生成第 ${i + 1}/${ranges.length} 张…`); const r = ranges[i];
-      const canvas = await globalThis.html2canvas(poster, { backgroundColor: '#f5f7fb', useCORS: true, logging: false, scale: 2, width: 600, height: r.height, y: r.top, scrollX: 0, scrollY: 0, windowWidth: 900, windowHeight: 1000,
+      const canvas = await globalThis.html2canvas(poster, { backgroundColor: '#f5f7fb', useCORS: true, logging: false, scale: EXPORT_SCALE, width: POSTER_WIDTH, height: r.height, y: r.top, scrollX: 0, scrollY: 0, windowWidth: 900, windowHeight: 1000,
         onclone(doc) {
           const cloned = doc.getElementById('sharePoster'); cloned.style.transform = 'none';
           for (let parent = cloned.parentElement; parent && parent !== doc.body; parent = parent.parentElement) {
@@ -137,18 +138,18 @@
           }
         }
       });
-      const paged = document.createElement('canvas'); paged.width = canvas.width; paged.height = canvas.height + 44;
+      const paged = document.createElement('canvas'); paged.width = canvas.width; paged.height = canvas.height + 28 * EXPORT_SCALE;
       const ctx = paged.getContext('2d'); ctx.drawImage(canvas, 0, 0);
-      ctx.fillStyle = '#f5f7fb'; ctx.fillRect(0, canvas.height, canvas.width, 44);
-      ctx.fillStyle = '#526075'; ctx.font = '22px sans-serif'; ctx.textAlign = 'center';
-      ctx.fillText(`时光路书 · 第 ${i + 1}/${ranges.length} 张 · ${model.departureText}`, paged.width / 2, paged.height - 14);
+      ctx.fillStyle = '#f5f7fb'; ctx.fillRect(0, canvas.height, canvas.width, 28 * EXPORT_SCALE);
+      ctx.fillStyle = '#526075'; ctx.font = `${12 * EXPORT_SCALE}px sans-serif`; ctx.textAlign = 'center';
+      ctx.fillText(`时光路书 · 第 ${i + 1}/${ranges.length} 张 · ${model.departureText}`, paged.width / 2, paged.height - 9 * EXPORT_SCALE);
       blobs.push(await toBlob(paged)); canvas.width = canvas.height = paged.width = paged.height = 1;
     } return blobs;
   }
   function filename(i) { return `roadbook_${L.filename(name() || `${model.start.name}→${model.destinations.at(-1).name}`)}${files.length > 1 ? `_${String(i + 1).padStart(2, '0')}` : ''}.png`; }
   function fit() {
     const host = $('#sharePosterHost'), poster = host.firstElementChild; if (!poster) return;
-    const scale = $('#shareModal').classList.contains('preview-zoomed') ? 1 : Math.min(1, host.clientWidth / 600); poster.style.transform = `scale(${scale})`; host.style.height = `${poster.scrollHeight * scale}px`;
+    const scale = $('#shareModal').classList.contains('preview-zoomed') ? 1 : Math.min(1, host.clientWidth / POSTER_WIDTH); poster.style.transform = `scale(${scale})`; host.style.height = `${poster.scrollHeight * scale}px`;
   }
   function schedule() {
     clearTimeout(timer); enabled(false); files = []; $('#shareParts').replaceChildren(); const token = ++revision; status('正在准备新版长图…');

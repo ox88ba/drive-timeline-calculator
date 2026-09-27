@@ -3,6 +3,7 @@ const {chromium}=require('playwright'), fs=require('node:fs'), path=require('nod
 const root=path.join(__dirname,'..'), lib=process.env.HTML2CANVAS_PATH||'/tmp/roadbook-html2canvas-1.4.1.min.js';
 const start={name:'测试起点',latitude:29,longitude:106,poiId:'origin'};
 const trip={startLocation:start,startSearchText:start.name,initialDepartureTime:'2030-09-30T10:00:00Z',destinations:Array.from({length:8},(_,i)=>({id:'stop'+i,location:{name:'测试公园'+i,address:'用于回归测试的长地址',latitude:30+i/10,longitude:107+i/10,poiId:'poi'+i},elevationMeters:3000,route:{durationSeconds:18000,distanceMeters:300000,strategy:'highway'},selectedStayButtons:[480],stayMode:'duration'}))};
+trip.destinations[0].location.name='大柴旦光影之城景区草原野奢营地（北门游客中心停车场）';
 (async()=>{ const browser=await chromium.launch({channel:'chrome',headless:true});
  try {const context=await browser.newContext({viewport:{width:393,height:844},serviceWorkers:'block'}),page=await context.newPage(),errors=[];
  page.on('pageerror',e=>errors.push(e.message));
@@ -20,7 +21,14 @@ const trip={startLocation:start,startSearchText:start.name,initialDepartureTime:
  assert.equal(await page.locator('#shareIncludeMap').isChecked(),false);
  assert.ok(await page.locator('#shareParts button').count()>1,'long itinerary split into pages');
  assert.equal(await page.locator('#sharePoster .rb-station').count(),9);
+ const reading=await page.locator('#sharePoster').evaluate(el=>{
+   const size=s=>parseFloat(getComputedStyle(el.querySelector(s)).fontSize);
+   return {width:el.offsetWidth,overflow:el.scrollWidth>el.offsetWidth,meta:size('.rb-meta'),time:size('.rb-time-line strong'),hint:getComputedStyle(el.querySelector('.rb-hints .rb-chip')).backgroundColor,columns:getComputedStyle(el.querySelector('.rb-stats')).gridTemplateColumns.split(' ').length};
+ });
+ assert.equal(reading.width,400);assert.equal(reading.overflow,false);assert.equal(reading.meta,14);assert.equal(reading.time,26);assert.equal(reading.columns,2);assert.equal(reading.hint,'rgba(0, 0, 0, 0)');
+ assert.equal(await page.locator('.rb-station-head h3').nth(1).evaluate(el=>el.scrollWidth<=el.clientWidth),true,'long names wrap within the exported card');
  const download=page.waitForEvent('download');await page.locator('#shareDownload').click();await (await download).saveAs('/tmp/roadbook-export-1.png');
+ const second=page.waitForEvent('download');await page.locator('#shareParts button').nth(1).click();await (await second).saveAs('/tmp/roadbook-export-2.png');
  const png=fs.readFileSync('/tmp/roadbook-export-1.png');assert.equal(png.readUInt32BE(16),1200);assert.ok(png.readUInt32BE(20)<=7244);
  await page.getByRole('button',{name:'放大阅读',exact:true}).click();
  assert.equal(await page.locator('#sharePoster').evaluate(el=>getComputedStyle(el).transform),'matrix(1, 0, 0, 1, 0, 0)');

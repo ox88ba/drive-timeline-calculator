@@ -138,7 +138,7 @@ html[data-engine="timeflow"] .destination-card .stay-section { background:#18233
 html[data-engine="timeflow"] .destination-card .stay-buttons button { font-size:14px; }
 html .stay-until-buttons button small { display:block; font-size:12px; line-height:1.6; font-weight:400; }
 html #shareModal.preview-zoomed .share-preview { overflow:auto; max-height:65dvh; }
-html #shareModal.preview-zoomed #sharePosterHost { min-width:600px; }
+html #shareModal.preview-zoomed #sharePosterHost { min-width:400px; }
 @media(max-width:600px) {
  html .start-card { grid-template-columns:max-content minmax(0,1fr); }
  html .start-copy { min-width:0; }
