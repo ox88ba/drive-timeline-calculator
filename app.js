@@ -454,8 +454,18 @@
       });
     }
     await nextPaint();
+    if (mapSignature(data) !== mapSignature(mapPreviewData()) || mapBatchDepth) throw new Error('行程在截图期间发生变化，请重试地图快照。');
+    const capturedMap = amapMap, capturedVersion = mapRenderVersion;
+    const viewKey = () => capturedMap ? JSON.stringify([capturedMap.getCenter().toString(), capturedMap.getZoom(), mapNode.clientWidth, mapNode.clientHeight]) : '';
+    const capturedView = viewKey();
+    const overlay = capturedMap ? globalThis.RoadbookMapExport.project(capturedMap,
+      data.legs.map(leg => leg.destination.route.polyline),
+      [{coordinate:[Number(trip.startLocation.longitude),Number(trip.startLocation.latitude)],number:'01'},
+        ...data.legs.map(leg => ({coordinate:[Number(leg.destination.location.longitude),Number(leg.destination.location.latitude)],number:String(leg.index+2).padStart(2,'0')}))]) : null;
     const width = Math.max(1, mapNode.clientWidth); const height = Math.max(1, mapNode.clientHeight);
     const canvas = await globalThis.html2canvas(mapNode, { backgroundColor: '#f5f7fb', useCORS: true, logging: false, scale: Math.min(2, Math.max(1, 1000 / width)), width, height, scrollX: 0, scrollY: 0 });
+    if (capturedVersion !== mapRenderVersion || capturedMap !== amapMap || capturedView !== viewKey() || mapBatchDepth) throw new Error('地图在截图期间发生变化，请重试地图快照。');
+    if (overlay) globalThis.RoadbookMapExport.draw(canvas, overlay, width, height);
     const blob = await new Promise((resolve, reject) => canvas.toBlob((value) => value ? resolve(value) : reject(new Error('地图快照导出失败。')), 'image/png'));
     if (blob.size < 5000) throw new Error('地图快照内容不完整，请刷新路线预览后重试。');
     return blob;
