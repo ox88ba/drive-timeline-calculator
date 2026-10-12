@@ -1070,6 +1070,8 @@ function renderMap(draw) {
       mapMode = 'amap'; map.classList.add('is-amap'); sizeMap();
       AM = { A, map: new A.Map($('#amap'), { viewMode: '2D', zoom: 5, zooms: [3, 15], resizeEnable: true, showLabel: true, mapStyle: isDark() ? 'amap://styles/dark' : 'amap://styles/whitesmoke' }), ov: [] };
       amapState = 'ready'; lastFitSig = '';
+      // 地图初始化完成前缩放不生效，完成后再按路线缩放一次。
+      AM.map.on('complete', () => { lastFitSig = ''; if (mapVisible()) renderAmap(true); });
       renderMap(false);
     }).catch(err => {
       amapState = 'failed';
