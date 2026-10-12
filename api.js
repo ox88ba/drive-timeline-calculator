@@ -34,7 +34,7 @@
     const data = await getJson('/api/poi?' + new URLSearchParams({ keywords }), signal);
     return (data.pois || []).map((p) => ({
       poiId: String(p.poiId || ''), name: String(p.name || ''), address: String(p.address || ''),
-      lon: Number(p.longitude), lat: Number(p.latitude)
+      type: String(p.type || ''), lon: Number(p.longitude), lat: Number(p.latitude)
     })).filter((p) => p.name && Number.isFinite(p.lon) && Number.isFinite(p.lat));
   }
 
@@ -50,6 +50,57 @@
       poly: Array.isArray(data.polyline) ? data.polyline : [],
       strategy: data.strategy || ''
     };
+  }
+
+  async function postJson(path, body, signal, timeout = 60000) {
+    const ctrl = new AbortController();
+    const onAbort = () => ctrl.abort();
+    if (signal) { if (signal.aborted) ctrl.abort(); else signal.addEventListener('abort', onAbort, { once: true }); }
+    let timedOut = false;
+    const timer = setTimeout(() => { timedOut = true; ctrl.abort(); }, timeout);
+    try {
+      const res = await fetch(BASE + path, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body), signal: ctrl.signal });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error((data.error && data.error.message) || data.message || '服务请求失败，请稍后再试');
+      return data;
+    } catch (e) {
+      if (signal && signal.aborted) throw e;
+      if (timedOut) throw new Error('等待超时，请稍后重试');
+      if (e instanceof TypeError) throw new Error('网络不可用，请检查网络后重试');
+      throw e;
+    } finally {
+      clearTimeout(timer);
+      if (signal) signal.removeEventListener('abort', onAbort);
+    }
+  }
+
+  async function elevation(p, signal) {
+    const data = await getJson('/api/elevation?' + new URLSearchParams({ latitude: p.lat, longitude: p.lon }), signal, 15000);
+    const m = Number(data.elevationMeters);
+    if (!Number.isFinite(m)) throw new Error('海拔数据暂不可用');
+    return Math.round(m);
+  }
+
+  // 分享码：服务端只保存紧凑行程快照 7 天。
+  async function createShareCode(compact) {
+    const data = await postJson('/api/trip-share', compact, undefined, 15000);
+    if (!/^[A-HJ-NP-Z2-9]{6}$/.test(data.code || '') || !Number.isFinite(data.expiresAt)) throw new Error('分享码响应无效');
+    return { code: data.code, expiresAt: data.expiresAt };
+  }
+  async function readShareCode(code, signal) {
+    const res = await fetch(BASE + '/api/trip-share?code=' + encodeURIComponent(code), { signal: signal || AbortSignal.timeout(15000) }).catch(() => { throw new Error('网络不可用，请检查网络后重试'); });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.message || '分享码读取失败');
+    return data.trip;
+  }
+
+  const aiAnalysis = (fingerprint, trip, signal) => postJson('/api/ai-analysis', { fingerprint, trip }, signal, 110000);
+  const placeReview = (location, category, signal) => postJson('/api/scenic-analysis', { location, category }, signal, 90000);
+
+  async function staticMap(key, signal) {
+    const res = await fetch(BASE + '/api/static-map?data=' + encodeURIComponent(key), { signal: signal || AbortSignal.timeout(12000) });
+    if (!res.ok || !(res.headers.get('content-type') || '').startsWith('image/')) throw new Error('底图不可用');
+    return res.blob();
   }
 
   let amapPromise = null;
@@ -75,5 +126,5 @@
     return amapPromise;
   }
 
-  root.RoadbookAPI = { searchPoi, route, loadAmap, local: LOCAL };
+  root.RoadbookAPI = { searchPoi, route, loadAmap, elevation, createShareCode, readShareCode, aiAnalysis, placeReview, staticMap, local: LOCAL };
 })(window);

@@ -2,105 +2,11 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
-  <meta name="theme-color" content="#EDEFEA" media="(prefers-color-scheme: light)">
-  <meta name="theme-color" content="#0E1114" media="(prefers-color-scheme: dark)">
   <title>时光路书</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Noto+Sans+SC:wght@400;500;700&family=Noto+Serif+SC:wght@600;700&display=swap">
-  <link rel="stylesheet" href="./app.css?v=20261012-next2">
-  <script>try{var t=localStorage.getItem('roadbook.theme');if(t==='dark'||t==='light')document.documentElement.dataset.theme=t;}catch(e){}</script>
+  <meta name="robots" content="noindex">
+  <link rel="canonical" href="https://road.ox88.work/">
+  <script>location.replace('../' + location.search + location.hash);</script>
+  <noscript><meta http-equiv="refresh" content="0; url=../"></noscript>
 </head>
-<body>
-<div class="app" id="app">
-  <header class="top">
-    <div class="collapsible"><div>
-      <div class="brand-row">时光路书 <span class="tag">新版预览</span></div>
-      <h1 id="tripName">新行程</h1>
-      <button class="depart-chip press" id="departChip" type="button"></button>
-    </div></div>
-    <div class="stats" aria-label="行程摘要">
-      <div class="stat"><span>天数</span><strong id="stDays">—</strong></div>
-      <div class="stat"><span>里程 km</span><strong id="stKm">—</strong></div>
-      <div class="stat"><span>驾驶</span><strong id="stDrive">—</strong></div>
-      <div class="stat"><span>最终抵达</span><strong id="stEnd">—</strong></div>
-    </div>
-    <div class="top-actions">
-      <button class="icon-btn press" id="undoBtn" type="button" aria-label="撤销上一步" title="撤销（⌘Z）" disabled></button>
-      <button class="icon-btn press" id="shareBtn" type="button" aria-label="分享与导出"></button>
-      <button class="icon-btn press" id="moreBtn" type="button" aria-label="更多操作" aria-haspopup="menu" aria-expanded="false"></button>
-    </div>
-    <nav class="daychips" id="dayChips" aria-label="按天跳转"></nav>
-  </header>
-
-  <div class="panes">
-    <section class="pane pane-trip is-active" id="paneTrip" aria-label="行程时间轴">
-      <div class="pane-inner">
-        <section class="welcome" id="welcome" hidden>
-          <h2>规划一次自驾，每一站几点到一目了然</h2>
-          <p>选好出发地和目的地，按高德驾车导航推算每一站的到达时间，并提醒日落后驾驶和过夜安排。</p>
-          <button class="btn btn-primary press" id="pickOrigin" type="button">选择出发地</button>
-          <button class="btn btn-ghost press" id="loadSample" type="button">载入示例：青甘大环线</button>
-        </section>
-        <section class="warns" id="warns" data-open="false" hidden>
-          <button class="warns-head" id="warnsToggle" type="button" aria-expanded="false" aria-controls="warnsList"></button>
-          <div class="warns-list" id="warnsList"><div id="warnsItems"></div></div>
-        </section>
-        <div class="tl-tools" id="tlTools">
-          <h2>时间轴</h2>
-          <button class="tool-btn press" id="reorderBtn" type="button"></button>
-        </div>
-        <div class="tl" id="tl"></div>
-        <button class="add-big press" id="addBtn" type="button"></button>
-        <p class="foot" id="foot">里程与驾驶时长来自高德驾车导航（高速优先）的基础预计时长，不含休息与临时路况。</p>
-      </div>
-    </section>
-
-    <section class="pane pane-map" id="paneMap" aria-label="路线地图">
-      <div class="pane-inner">
-        <div class="map-days" id="mapDays" role="group" aria-label="按天筛选路线"></div>
-        <div class="map-wrap" id="mapWrap">
-          <div class="map" id="map">
-            <svg id="mapSvg" aria-hidden="true"></svg>
-            <div id="pins"></div>
-            <div class="amap" id="amap" aria-label="高德地图路线"></div>
-            <span class="map-loading" id="mapLoading" hidden><i class="spin"></i>正在加载高德地图</span>
-            <span class="map-note" id="mapNote">示意图 · 高德地图暂不可用</span>
-          </div>
-        </div>
-        <div class="day-list" id="dayList"></div>
-      </div>
-    </section>
-
-    <section class="pane pane-done" id="paneDone" aria-label="总览">
-      <div class="pane-inner" id="doneInner"></div>
-    </section>
-
-    <aside class="inspector" id="inspector" aria-label="站点详情与总览"></aside>
-  </div>
-
-  <nav class="tabbar" role="tablist" aria-label="视图">
-    <span class="tab-ind" id="tabInd"></span>
-    <button class="tab" role="tab" data-tab="trip" aria-selected="true" type="button"></button>
-    <button class="tab" role="tab" data-tab="map" aria-selected="false" type="button"></button>
-    <button class="tab" role="tab" data-tab="done" aria-selected="false" type="button"></button>
-  </nav>
-</div>
-
-<div class="layer" id="layer" hidden>
-  <div class="scrim" id="scrim"></div>
-  <section class="sheet" id="sheet" role="dialog" aria-modal="true" aria-label="编辑" tabindex="-1">
-    <div class="grab" aria-hidden="true"></div>
-    <div class="sheet-body" id="sheetBody"></div>
-  </section>
-</div>
-
-<div class="toast" id="toast" role="status" aria-live="polite"><span id="toastMsg"></span><button id="toastUndo" type="button" hidden>撤销</button></div>
-
-<!-- config.js 只包含公开的 Worker 地址；高德 Key 与安全码留在 Worker Secrets。 -->
-<script src="../config.js?v=20260911-turnstile1"></script>
-<script src="./api.js?v=20261012-next1"></script>
-<script src="./app.js?v=20261012-next2"></script>
-</body>
+<body><p>时光路书已搬到 <a href="../">首页</a>。</p></body>
 </html>
