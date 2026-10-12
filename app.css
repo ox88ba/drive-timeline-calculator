@@ -111,7 +111,7 @@ h1{font-family:var(--f-display);font-size:26px;line-height:1.25;font-weight:700;
 .warn-item{display:flex;align-items:center;gap:8px;min-height:40px;padding:6px 8px 6px 34px;border-radius:10px;font-size:13px;color:var(--warn-ink);text-align:left}
 .warn-item:last-child{margin-bottom:6px}
 .warn-item:hover{background:var(--warn-chip)}
-.warn-item span{flex:1}
+.warn-item>span:not(.ic){flex:1;min-width:0}
 
 /* ---------- timeline ---------- */
 .tl-tools{display:flex;align-items:center;justify-content:space-between;gap:8px}
