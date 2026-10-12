@@ -282,7 +282,7 @@ function summarize(P) {
   P.forEach((r, i) => {
     if (!i || r.skipped || r.unknown) return;
     if (r.dark > 0) warns.push({ key: 'leg:' + r.id, text: `前往${r.s.poi.name}时日落后驾驶 ${dur(r.dark)}` });
-    if (r.overnight && !r.s.lodging) warns.push({ key: 'night:' + r.id, text: `${r.s.poi.name}过夜，尚未标记住宿` });
+    if (r.overnight && !r.s.lodging) warns.push({ key: 'stop:' + r.id, text: `${r.s.poi.name}过夜，未订住宿` });
     const e1 = elevOf(r.s.poi), e0 = elevOf(r.from.s.poi);
     if (e1 != null && e0 != null && e1 >= 3000 && e1 - e0 >= 800) warns.push({ key: 'stop:' + r.id, text: `${r.s.poi.name}海拔 ${fmtKm(e1)} m，比上一站高 ${fmtKm(e1 - e0)} m` });
   });
@@ -308,7 +308,6 @@ function buildRows(P) {
     ensure(r.day);
     rows.push({ type: 'leg', key: 'leg:' + r.id, r, day: r.day });
     rows.push({ type: 'stop', key: 'stop:' + r.id, r, day: r.day });
-    if (r.overnight) rows.push({ type: 'night', key: 'night:' + r.id, r, day: r.day });
     prevA = r;
   }
   return rows;
@@ -385,8 +384,6 @@ function createRow(d) {
       h('span', { class: 'leg-state' }), h('span', { class: 'pill warn leg-warn' }),
       h('button', { class: 'leg-retry press', type: 'button', onclick: () => { const r = findR(id); if (r && r.legKey) retryLeg(r.legKey); } }, '重试'),
       h('button', { class: 'leg-add press', type: 'button', 'aria-label': '在这里插入地点', title: '在这里插入地点', onclick: () => openSheet('add', { at: stopIndex(id) }) }, icon('plus', 16))));
-  } else if (d.type === 'night') {
-    n = h('div', { class: 'row row-night' }, h('span', {}), h('span', {}), h('div', { class: 'night' }, icon('moon', 16), h('b', {}), h('span', { class: 'n-sub' }), h('button', { class: 'night-btn press', type: 'button', onclick: () => { const s = S.stops.find(x => x.id === d.r.id); if (!s) return; mutate(() => { s.lodging = true; }); buzz(); toast(`已标记在${s.poi.name}住宿`, true); } }, '标记已住宿')));
   } else {
     const id = d.r.id;
     const skipB = h('button', { class: 'sa sa-skip', type: 'button', onclick: () => { closeSwipe(); toggleSkip(id); } }, icon('skip', 18), h('span', {}, '跳过'));
@@ -394,7 +391,7 @@ function createRow(d) {
     const acts = h('div', { class: 'swipe-acts', inert: true }, skipB, delB);
     const card = h('button', { class: 'card', type: 'button' },
       h('span', { class: 'card-top' }, h('span', { class: 'num' }), h('span', { class: 'name' })),
-      h('span', { class: 'card-meta' }, h('span', { class: 'phase' }, h('i', {}), h('span', { class: 'ph-l' })), h('span', { class: 'sub' }), h('span', { class: 'alt' })));
+      h('span', { class: 'card-meta' }, h('span', { class: 'phase' }, h('i', {}), h('span', { class: 'ph-l' })), h('span', { class: 'sub' }), h('span', { class: 'lodge' }), h('span', { class: 'alt' })));
     const sw = h('div', { class: 'swipe' }, acts, card);
     n = h('div', { class: 'row row-stop' }, h('div', { class: 'tcol' }, h('span', { class: 'time' }), h('span', { class: 'delta', hidden: true })), h('span', { class: 'dot' }), sw);
     bindSwipe(sw, card, id);
@@ -426,12 +423,6 @@ function updateRow(n, d, isNew) {
     if (n._sig !== sig) { n._sig = sig; n.querySelector('.leg-state').replaceChildren(...legStateNode(r)); }
     const w = n.querySelector('.leg-warn'); w.hidden = !(r.dark > 0); w.textContent = `日落后驾驶 ${dur(r.dark || 0)}`;
     n.querySelector('.leg-retry').hidden = r.legState !== 'error';
-  } else if (d.type === 'night') {
-    const s = d.r.s, nb = n.querySelector('.night');
-    nb.classList.toggle('warn', !s.lodging);
-    nb.querySelector('b').textContent = `夜宿 ${s.poi.name}`;
-    nb.querySelector('.n-sub').textContent = s.lodging ? '· 已安排住宿' : '· 尚未标记住宿';
-    nb.querySelector('.night-btn').hidden = !!s.lodging;
   } else {
     const r = d.r, s = r.s, idx = stopIndex(r.id), known = !r.skipped && !r.unknown;
     n.classList.toggle('skipped', !!r.skipped);
@@ -449,6 +440,8 @@ function updateRow(n, d, isNew) {
     ph.hidden = !known;
     if (known) { ph.style.setProperty('--c', r.ph.color); ph.querySelector('.ph-l').textContent = r.ph.label; }
     const stay = s.mode === 'until' ? `过夜 · 次日 ${hm(s.at ?? 480)} 出发` : s.min ? `停留 ${dur(s.min)}` : '不停留';
+    const lodge = n.querySelector('.lodge');
+    lodge.hidden = !(known && r.overnight); lodge.classList.toggle('no', !s.lodging); lodge.textContent = s.lodging ? '已订住宿' : '未订住宿';
     const elev = elevOf(s.poi), alt = n.querySelector('.alt');
     alt.hidden = !(known && elev != null && elev >= 2500); alt.textContent = `高原 ${elev != null ? fmtKm(elev) : ''} m`;
     n.querySelector('.sub').textContent = r.skipped ? '已跳过 · 不计入路线'
@@ -643,7 +636,7 @@ function buildEditor() {
   e.untils = h('div', { class: 'chips' }, ...[390, 420, 450, 480, 510, 540, 600].map(m => h('button', { class: 'chip mono press', type: 'button', 'data-m': m, 'aria-pressed': 'false', onclick: () => setUntil(m) }, hm(m))));
   e.lodge = h('button', { class: 'switch', type: 'button', role: 'switch', 'aria-checked': 'false', 'aria-labelledby': 'lodgeLbl', onclick: toggleLodging });
   e.untilPane = h('div', { class: 'stack g10' }, h('span', { class: 'lbl' }, '次日出发时间'), e.untils,
-    h('div', { class: 'switch-row' }, h('span', { class: 'sw-t', id: 'lodgeLbl' }, '已在这里订好住宿'), e.lodge));
+    h('div', { class: 'switch-row' }, h('span', { class: 'sw-t', id: 'lodgeLbl' }, '已订住宿'), e.lodge));
   e.dep = h('strong', { class: 'mono res-v' }); e.impact = h('span', { class: 'impact' });
   e.result = h('div', { class: 'result' }, h('div', { class: 'result-row' }, h('span', { class: 'lbl' }, '预计出发'), e.dep), e.impact);
   e.controls = h('div', { class: 'stack g14' }, e.seg, e.durPane, e.untilPane, e.result);
@@ -1181,8 +1174,7 @@ function itineraryText() {
     if (d.type === 'day') lines.push('', `第${d.d - SUM.d0 + 1}天 ${md(d.d)} ${wk(d.d)}`);
     else if (d.type === 'dep') lines.push(`${hm(d.t)} 从${d.name}出发`);
     else if (d.type === 'leg' && !d.r.unknown) lines.push(`      ↓ ${fmtKm(d.r.km)} km · ${dur(d.r.drive)}`);
-    else if (d.type === 'stop' && !d.r.skipped && !d.r.unknown) lines.push(`${hm(d.r.arr)} 到达 ${d.r.s.poi.name}` + (d.r.last ? '（终点）' : d.r.overnight ? '' : d.r.s.min ? `，停留 ${dur(d.r.s.min)}` : ''));
-    else if (d.type === 'night') lines.push(`      夜宿 ${d.r.s.poi.name}${d.r.s.lodging ? '' : '（未订住宿）'}`);
+    else if (d.type === 'stop' && !d.r.skipped && !d.r.unknown) lines.push(`${hm(d.r.arr)} 到达 ${d.r.s.poi.name}` + (d.r.last ? '（终点）' : d.r.overnight ? `，过夜${d.r.s.lodging ? '' : '（未订住宿）'}` : d.r.s.min ? `，停留 ${dur(d.r.s.min)}` : ''));
   }
   lines.push('', '路线与时长来自高德驾车导航 · 时光路书');
   return lines.join('\n');
@@ -1272,7 +1264,7 @@ function jumpTo(key) {
     const pane = $('#paneTrip');
     const top = n.getBoundingClientRect().top - pane.getBoundingClientRect().top + pane.scrollTop - pane.clientHeight / 2 + 40;
     pane.scrollTo({ top: Math.max(0, top), behavior: RM.matches ? 'auto' : 'smooth' });
-    const target = n.querySelector('.card,.night,.leg-body') || n;
+    const target = n.querySelector('.card,.leg-body') || n;
     target.classList.remove('pulse'); void target.offsetWidth; target.classList.add('pulse');
     setTimeout(() => target.classList.remove('pulse'), 1400);
   });
@@ -1868,18 +1860,13 @@ async function drawPoster(opt) {
       const r = d.r;
       if (r.skipped || r.unknown) continue;
       const name = wrap(r.s.poi.name, `700 30px ${SANS}`, CW - 48);
-      const sub = r.last ? '终点' : r.overnight ? `过夜 · 次日 ${hm(r.dep)} 出发` : r.s.min ? `停留 ${dur(r.s.min)} · ${hm(r.dep)} 出发` : '不停留';
+      const sub = r.last ? '终点' : r.overnight ? `过夜 · 次日 ${hm(r.dep)} 出发 · ${r.s.lodging ? '已订住宿' : '未订住宿'}` : r.s.min ? `停留 ${dur(r.s.min)} · ${hm(r.dep)} 出发` : '不停留';
       const hh = 34 + name.length * 40 + 40, top = y + 6, elev = elevOf(r.s.poi);
       text(hm(r.arr), TX, top + 44, `500 30px ${MONO}`, C.ink, 'right');
       op(ctx => { ctx.beginPath(); ctx.arc(RX, top + 34, 11, 0, Math.PI * 2); ctx.fillStyle = r.ph.color; ctx.fill(); ctx.lineWidth = 5; ctx.strokeStyle = C.bg; ctx.stroke(); rr(ctx, CX, top, CW, hh, 18); ctx.fillStyle = C.card; ctx.fill(); ctx.strokeStyle = C.line; ctx.lineWidth = 2; ctx.stroke(); });
       let yy = top + 8; name.forEach(l => { yy += 40; text(l, CX + 24, yy, `700 30px ${SANS}`, C.ink); });
       text(`${r.ph.label} · ${sub}${elev != null && elev >= 2500 ? ` · 海拔 ${fmtKm(elev)} m` : ''}`, CX + 24, yy + 38, `400 22px ${SANS}`, C.ink3);
       y = top + hh + 6;
-    } else if (d.type === 'night') {
-      const top = y + 4, s = d.r.s;
-      op(ctx => { rr(ctx, CX, top, CW, 52, 14); ctx.fillStyle = s.lodging ? C.nightBg : C.warnBg; ctx.fill(); });
-      text(`夜宿 ${s.poi.name} · ${s.lodging ? '已安排住宿' : '尚未标记住宿'}`, CX + 22, top + 35, `400 22px ${SANS}`, s.lodging ? C.nightInk : C.warnInk);
-      y = top + 62;
     }
   }
   y += 40;

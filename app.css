@@ -163,11 +163,6 @@ h1{font-family:var(--f-display);font-size:26px;line-height:1.25;font-weight:700;
 .leg-add{margin-left:auto;width:32px;height:32px;border-radius:50%;display:grid;place-items:center;color:var(--ink-3);border:1px dashed var(--line-2)}
 .leg-add:hover{color:var(--ink);border-color:var(--ink-3)}
 @media (hover:hover){.leg-add{opacity:0}.row-leg:hover .leg-add,.leg-add:focus-visible{opacity:1}}
-.row-night{padding:4px 0}
-.night{grid-column:3;display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:8px 8px 8px 12px;border-radius:12px;background:var(--night-bg);color:var(--night-ink);font-size:13px;transition:background .3s,color .3s}
-.night b{font-weight:700}
-.night.warn{background:var(--warn-chip);color:var(--warn-ink)}
-.night-btn{margin-left:auto;height:30px;padding:0 10px;border-radius:8px;background:var(--surface);color:var(--ink);font-size:12px;font-weight:500;border:1px solid var(--warn-line)}
 .pulse{animation:pulse 1s var(--out) .25s}
 @keyframes pulse{0%{box-shadow:0 0 0 0 var(--pulse)}60%{box-shadow:0 0 0 8px transparent}100%{box-shadow:0 0 0 0 transparent}}
 .add-big{display:flex;align-items:center;justify-content:center;gap:8px;height:50px;border-radius:14px;border:1.5px dashed var(--line-2);font-size:15px;font-weight:500;color:var(--ink)}
@@ -410,6 +405,8 @@ a.btn-primary{color:var(--bg)}
 .plan-main b{display:block;font-size:15px;overflow-wrap:anywhere}
 .plan-main small{display:block;font-size:12px;color:var(--ink-3)}
 .alt{font-size:12px;color:var(--warn-ink)}
+.lodge{font-size:11.5px;padding:1px 7px;border-radius:6px;background:var(--night-bg);color:var(--night-ink)}
+.lodge.no{background:var(--warn-chip);color:var(--warn-ink)}
 .review{display:flex;flex-direction:column;gap:10px;padding:14px;border-radius:16px;border:1px solid var(--line);background:var(--surface-2)}
 .rv-head{display:flex;align-items:center;justify-content:space-between;gap:8px}
 .rv-head h3,.panel.ai h4{font-size:14px;font-weight:700}
