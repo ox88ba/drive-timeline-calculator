@@ -1,155 +1,116 @@
 <!doctype html>
 <html lang="zh-CN">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content" />
-    <meta name="theme-color" content="#f7f8fa" />
-    <script src="./skin.js?v=20260923-light-only"></script>
-    <title>时光路书</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;600&family=Sora:wght@400;600;700&family=Noto+Sans+SC:wght@400;500;600;700&family=Noto+Serif+SC:wght@600;700&family=Source+Serif+4:opsz,wght@8..60,300;8..60,400;8..60,600&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="./styles.css?v=20260916-ui5" />
-    <link rel="stylesheet" href="./timeflow.css?v=20260925-emil" />
-    <link rel="stylesheet" href="./voyage.css?v=20260925-emil" />
-    <link rel="stylesheet" href="./tripkit.css?v=20260925-emil" />
-    <link rel="stylesheet" href="./share-v2.css?v=20260927-readable" />
-    <link rel="stylesheet" href="./mobile-ux.css?v=20260928-address-align" />
-    <link rel="stylesheet" href="./buttons.css?v=20260928-sitewide" />
-  </head>
-  <body>
-    <aside class="trip-dock is-collapsed" aria-label="行程导航">
-      <div class="dock-head"><div class="dock-title" hidden aria-live="polite"></div><button id="dockToggle" class="dock-toggle" type="button" aria-expanded="false" aria-controls="tripDock">展开行程</button></div>
-      <div id="tripDock" hidden></div>
-    </aside>
-    <main class="shell">
-      <header class="hero">
-        <div class="eyebrow"><span class="pulse"></span> 高德导航 / 高速优先</div>
-        <div class="hero-row">
-          <div>
-            <h1>时光路书</h1>
-            <p>基于高德导航的行程时间，精确规划未来旅程</p>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
+  <meta name="theme-color" content="#EDEFEA" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#0E1114" media="(prefers-color-scheme: dark)">
+  <title>时光路书</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Noto+Sans+SC:wght@400;500;700&family=Noto+Serif+SC:wght@600;700&display=swap">
+  <link rel="stylesheet" href="./app.css?v=20261012-v3">
+  <script>try{var t=localStorage.getItem('roadbook.theme');if(t==='dark'||t==='light')document.documentElement.dataset.theme=t;}catch(e){}</script>
+</head>
+<body>
+<div class="app" id="app">
+  <header class="top">
+    <div class="collapsible"><div>
+      <div class="brand-row">时光路书 </div>
+      <h1 id="tripName">新行程</h1>
+      <button class="depart-chip press" id="departChip" type="button"></button>
+    </div></div>
+    <div class="stats" aria-label="行程摘要">
+      <div class="stat"><span>天数</span><strong id="stDays">—</strong></div>
+      <div class="stat"><span>里程 km</span><strong id="stKm">—</strong></div>
+      <div class="stat"><span>驾驶</span><strong id="stDrive">—</strong></div>
+      <div class="stat"><span>最终抵达</span><strong id="stEnd">—</strong></div>
+    </div>
+    <div class="top-actions">
+      <button class="icon-btn press" id="undoBtn" type="button" aria-label="撤销上一步" title="撤销（⌘Z）" disabled></button>
+      <button class="icon-btn press" id="shareBtn" type="button" aria-label="分享与导出"></button>
+      <button class="icon-btn press" id="moreBtn" type="button" aria-label="更多操作" aria-haspopup="menu" aria-expanded="false"></button>
+    </div>
+    <nav class="daychips" id="dayChips" aria-label="按天跳转"></nav>
+  </header>
+
+  <div class="panes">
+    <section class="pane pane-trip is-active" id="paneTrip" aria-label="行程时间轴">
+      <div class="pane-inner">
+        <section class="pvbar" id="previewBar" hidden>
+          <div class="stack"><b id="pvTitle"></b><span id="pvNote"></span></div>
+          <div class="pv-acts" id="pvActs">
+            <button class="btn btn-primary btn-sm press" id="pvAdopt" type="button">存为我的行程</button>
+            <button class="btn btn-ghost btn-sm press" id="pvLeave" type="button">返回我的行程</button>
           </div>
-          <div class="hero-actions">
-            <button id="openShare" class="hero-text-button" type="button">分享</button>
-            <button id="clearTrip" class="hero-text-button" type="button">清空</button>
+        </section>
+        <section class="welcome" id="welcome" hidden>
+          <h2>每一站几点到，一目了然</h2>
+          <p>选好出发地和目的地，按高德导航排出每天的到达时间。</p>
+          <button class="btn btn-primary press" id="pickOrigin" type="button">选择出发地</button>
+          <div class="btn-row">
+            <button class="btn btn-ghost press" id="loadSample" type="button">看示例路线</button>
+            <button class="btn btn-ghost press" id="openCode" type="button">打开分享码</button>
           </div>
+        </section>
+        <section class="warns" id="warns" data-open="false" hidden>
+          <button class="warns-head" id="warnsToggle" type="button" aria-expanded="false" aria-controls="warnsList"></button>
+          <div class="warns-list" id="warnsList"><div id="warnsItems"></div></div>
+        </section>
+        <div class="tl-tools" id="tlTools">
+          <h2>时间轴</h2>
+          <button class="tool-btn press" id="reorderBtn" type="button"></button>
         </div>
-      </header>
-
-      <section id="aiAnalysis" class="ai-analysis" aria-labelledby="aiAnalysisTitle">
-        <div class="ai-analysis-head"><div><h2 id="aiAnalysisTitle">AI 行程总评</h2></div><button id="openAiAnalysis" type="button">分析当前行程</button></div>
-        <p id="aiAnalysisHint" class="ai-analysis-hint">完成全部官方导航后，可生成按天摘要、风险提醒与调整建议。</p>
-        <p class="ai-data-note">住宿标记仅用于本地行程与分享，AI 总评暂不读取该标记；夜间停留不代表已安排住宿。</p>
-        <div id="aiAnalysisResult" class="ai-analysis-result" hidden></div>
-      </section>
-
-      <section id="startCard" class="start-card" aria-label="出发点">
-        <div class="station-number start-number">01</div>
-        <div class="start-copy">
-          <span class="section-label">出发点</span>
-          <div class="place-picker start-place-picker">
-            <input id="startPlaceInput" type="search" autocomplete="off" aria-label="搜索出发地点" placeholder="搜索出发地点，如：重庆市" />
-            <span class="search-mark">⌕</span>
-            <div id="startPoiResults" class="poi-results" hidden></div>
-          </div>
-          <p id="startPlaceAddress" class="place-address">请搜索并选择具体 POI</p>
-        </div>
-        <div class="start-schedule">
-          <label class="date-field">出发日期<input id="departureDate" type="date" /></label>
-          <label class="time-field">时间<input id="departureTime" type="time" /></label>
-        </div>
-      </section>
-
-      <div id="timeline" class="timeline" aria-live="polite"></div>
-
-      <div class="trip-actions">
-        <button id="addDestination" class="add-destination" type="button"><span>＋</span> 添加目的地</button>
-        <button id="returnOrigin" class="return-origin" type="button">添加起点</button>
+        <div class="tl" id="tl"></div>
+        <button class="add-big press" id="addBtn" type="button"></button>
+        <p class="foot" id="foot">时长来自高德导航，不含休息和临时路况。</p>
       </div>
-      <section class="route-preview" aria-label="路线预览"><div class="route-preview-head"><div><span class="section-label">高德道路轨迹</span><h2>路线预览</h2></div><div class="route-preview-actions"><button id="centerRoutePreview" class="refresh-route-preview" type="button" title="将地图恢复到路线默认全览">回到全览</button><button id="refreshRoutePreview" class="refresh-route-preview" type="button" title="重新获取高德道路轨迹并刷新地图预览">刷新预览</button></div></div><div id="routeMap" class="route-map" tabindex="0"></div><div class="preview-summary" aria-label="路线统计"><div><span>总里程</span><strong id="previewDistance">—</strong></div><div><span>驾驶时间</span><strong id="previewDrive">—</strong></div><div><span>停留时间</span><strong id="previewStay">0分</strong></div><div><span>总行程</span><strong id="previewDuration">—</strong></div><div class="preview-speed"><span>平均时速</span><strong id="previewAverageSpeed">待导航</strong><small>该时速为总里程/驾驶时间得到，仅供验证长途驾驶可行性</small></div><div class="preview-departure"><span>出发时间</span><strong id="previewDeparture">—</strong></div><div class="preview-arrival"><span>最终抵达</span><strong id="previewFinalArrival">—</strong></div></div></section>
-      <p class="footnote">路线、里程与预计驾驶时长均来自高德地图官方驾车路径规划。未来行程使用地图服务返回的基础预计时长。</p>
-      <button id="backToTop" class="back-to-top" type="button">回到顶部</button>
-    </main>
+    </section>
 
-    <template id="destinationTemplate">
-      <article class="destination-wrap">
-        <div class="route-connector" data-route-connector></div>
-        <div class="date-divider" hidden></div>
-        <section class="destination-card">
-          <div class="card-topline"><span class="station-number" data-station-number></span>
-          <div class="place-picker">
-            <input data-place-input type="search" autocomplete="off" placeholder="搜索地点，如：大柴旦翡翠湖" />
-            <span class="search-mark">⌕</span>
-            <div class="poi-results" data-poi-results hidden></div>
+    <section class="pane pane-map" id="paneMap" aria-label="路线地图">
+      <div class="pane-inner">
+        <div class="map-days" id="mapDays" role="group" aria-label="按天筛选路线"></div>
+        <div class="map-wrap" id="mapWrap">
+          <div class="map" id="map">
+            <svg id="mapSvg" aria-hidden="true"></svg>
+            <div id="pins"></div>
+            <div class="amap" id="amap" aria-label="高德地图路线"></div>
+            <span class="map-loading" id="mapLoading" hidden><i class="spin"></i>正在加载高德地图</span>
+            <span class="map-note" id="mapNote">示意图</span>
           </div>
-          <div class="card-actions"><button type="button" data-action="retry-route" aria-label="重新获取导航数据" title="重新获取导航数据">刷新</button><button type="button" data-action="toggle-skip" aria-label="暂时跳过目的地">跳过</button><button type="button" data-action="move-up" aria-label="上移">上移</button><button type="button" data-action="move-down" aria-label="下移">下移</button><button type="button" data-action="remove" aria-label="删除">删除</button></div></div>
-          <p class="place-address" data-place-address>请搜索并选择具体 POI</p>
-          <p class="place-meta" data-place-meta>日出 — · 日落 — · 海拔待获取</p>
-          <div class="time-grid">
-            <div><span>预计到达</span><strong data-arrival>等待导航数据</strong></div>
-          </div>
-          <div class="route-status" data-route-status></div>
-          <div class="stay-section">
-            <div class="stay-buttons" data-stay-buttons></div>
-            <div class="departure-block" data-departure-block hidden><span>预计出发</span><strong data-departure>—</strong></div>
-          </div>
-        </section>
-      </article>
-    </template>
-
-    <dialog id="clearTripDialog" aria-labelledby="clearTripTitle" aria-describedby="clearTripDescription">
-      <section class="delete-modal">
-        <h2 id="clearTripTitle">清空当前行程？</h2>
-        <p id="clearTripDescription">当前行程的地点、停留安排和导航数据将被清空。确定要继续吗？</p>
-        <div><button id="clearTripCancel" type="button" autofocus>取消</button><button id="clearTripConfirm" class="danger" type="button">确认清空</button></div>
-      </section>
-    </dialog>
-
-    <div id="refreshModal" class="modal-backdrop" hidden role="dialog" aria-modal="true" aria-labelledby="refreshTitle">
-      <section class="delete-modal refresh-modal"><span class="section-label">高德路线刷新</span><h2 id="refreshTitle">重新计算整条路线？</h2><p>这会逐段重新请求高德驾车导航，可能需要等待较长时间，并会消耗地图服务配额。</p><div id="refreshTurnstile" class="turnstile-wrap" aria-label="Cloudflare 人机验证"></div><small id="refreshHumanStatus" class="human-check-status">请完成 Cloudflare 人机验证</small><div><button id="refreshCancel" type="button">取消</button><button id="refreshConfirm" class="danger" type="button" disabled>确认并刷新</button></div></section>
-    </div>
-
-    <div id="aiModal" class="modal-backdrop" hidden role="dialog" aria-modal="true" aria-labelledby="aiModalTitle">
-      <section class="delete-modal refresh-modal ai-modal"><span class="section-label">DOTS / 行程审阅</span><h2 id="aiModalTitle">生成 AI 行程分析？</h2><p>将发送当前行程的地点名称、已计算的导航数据、时间、停留和海拔信息，用于生成每日摘要与风险建议。不会发送地图 Key，也不会改变你的行程。</p><small id="aiHumanStatus" class="human-check-status"></small><div><button id="aiCancel" type="button">取消</button><button id="aiConfirm" class="danger" type="button">生成分析</button></div></section>
-    </div>
-
-    <div id="shareModal" class="modal-backdrop share-backdrop" hidden role="dialog" aria-modal="true" aria-labelledby="shareTitle">
-      <section class="share-modal">
-        <header class="share-modal-head"><div><span class="section-label">ROADBOOK</span><h2 id="shareTitle">分享行程</h2></div><button id="shareClose" class="icon-button" type="button" aria-label="关闭分享">×</button></header>
-        <section class="share-name-panel" aria-label="长图命名">
-          <label for="shareNameInput">长图命名 <span id="shareNameCount">0/50</span></label>
-          <input id="shareNameInput" type="text" maxlength="50" autocomplete="off" placeholder="为这版长图添加名称" aria-describedby="shareNameHint" />
-          <small id="shareNameHint">显示在长图顶部，并用于保存 PNG 与系统分享的文件名</small>
-        </section>
-        <div class="share-export-options">
-          <label><input id="shareIncludeMap" type="checkbox" />包含地图</label>
-          <label><input id="shareIncludeAi" type="checkbox" />包含已有 AI 评价摘要</label>
-          <button id="shareRetryMap" type="button">重试地图快照</button>
-          <button id="shareRetry" type="button">重新生成</button>
         </div>
-        <div class="share-preview"><div id="sharePosterHost"></div></div>
-        <div id="shareParts" aria-label="分图保存"></div>
-        <div class="share-actions"><button id="shareSystem" type="button" disabled>系统分享</button><button id="shareDownload" type="button" disabled>保存长截图</button><button id="tkCopyLink" type="button" disabled>复制分享链接</button><button id="tkCopyCode" type="button" disabled>复制分享码</button></div>
-        <p id="shareStatus" class="share-status" role="status" aria-live="polite">正在准备分享视图…</p>
-      </section>
-    </div>
+        <div class="day-list" id="dayList"></div>
+      </div>
+    </section>
 
-    <!-- config.js is generated by GitHub Pages from the public API URL only; it never contains the AMap key. -->
-    <script src="./config.js?v=20260911-turnstile1"></script>
-    <script src="./timeline.js?v=20260909-route-labels"></script>
-    <script src="./sunset.js?v=20260909-share1"></script>
-    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
-    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" defer></script>
-    <script src="./share-layout.js?v=20260923-export2"></script>
-    <script src="./share-v2.js?v=20260928-share-cleanup"></script>
-    <script src="./scenic-ai.js?v=20260925"></script>
-    <script src="./tripkit.js?v=20260928-share-cleanup"></script>
-    <script src="./map-export.js?v=20260928-static-map"></script>
-    <script src="./app.js?v=20260928-address-align"></script>
-    <script src="./timeflow.js?v=20260928-origin-cleanup"></script>
-    <script src="./voyage.js?v=20260928-origin-cleanup"></script>
-    <script src="./mobile-ux.js?v=20260928-share-cleanup"></script>
-    <script src="./reorder.js?v=20260928"></script>
-  </body>
+    <section class="pane pane-done" id="paneDone" aria-label="总览">
+      <div class="pane-inner" id="doneInner"></div>
+    </section>
+
+    <aside class="inspector" id="inspector" aria-label="站点详情与总览"></aside>
+  </div>
+
+  <nav class="tabbar" role="tablist" aria-label="视图">
+    <span class="tab-ind" id="tabInd"></span>
+    <button class="tab" role="tab" data-tab="trip" aria-selected="true" type="button"></button>
+    <button class="tab" role="tab" data-tab="map" aria-selected="false" type="button"></button>
+    <button class="tab" role="tab" data-tab="done" aria-selected="false" type="button"></button>
+  </nav>
+</div>
+
+<div class="layer" id="layer" hidden>
+  <div class="scrim" id="scrim"></div>
+  <section class="sheet" id="sheet" role="dialog" aria-modal="true" aria-label="编辑" tabindex="-1">
+    <div class="grab" aria-hidden="true"></div>
+    <div class="sheet-body" id="sheetBody"></div>
+  </section>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"><span id="toastMsg"></span><button id="toastUndo" type="button" hidden>撤销</button></div>
+
+<!-- config.js 只包含公开的 Worker 地址；高德 Key 与安全码留在 Worker Secrets。 -->
+<script src="./config.js?v=20260911-turnstile1"></script>
+<script src="./api.js?v=20261012-v3"></script>
+<script src="./app.js?v=20261012-v3"></script>
+</body>
 </html>
