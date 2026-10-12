@@ -338,6 +338,8 @@ function renderHeader() {
     if (SUM.complete) set('#stEnd', `${md(dayOf(SUM.end))} ${hm(SUM.end)}`);
     else set('#stEnd', SUM.failed ? '导航失败' : `导航中 ${SUM.legs}/${SUM.total}`, true);
   }
+  $('#sumLine').textContent = SUM.empty ? '添加出发地和目的地后显示' : !SUM.legs ? (SUM.failed ? '导航失败' : '导航中…')
+    : `${SUM.days}天 · ${fmtKm(SUM.km)} km · 驾驶 ${durShort(SUM.drive)} · ` + (SUM.complete ? `${md(dayOf(SUM.end))} ${hm(SUM.end)} 抵达` : SUM.failed ? '导航失败' : `导航中 ${SUM.legs}/${SUM.total}`);
   $('#undoBtn').disabled = !undoStack.length;
   renderDayChips();
 }
@@ -1031,7 +1033,8 @@ function startDrag(e, li, grip) {
 let mapMode = 'svg', amapState = 'idle', AM = null, PROJ = null, lastFitSig = '';
 const mapVisible = () => WIDE.matches || UI.tab === 'map';
 const cssVar = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
-const isDark = () => { const t = document.documentElement.dataset.theme; return t === 'dark' || (t !== 'light' && DARK.matches); };
+// 跟随页面实际生效的深浅色，而不是只看系统设置。
+const isDark = () => getComputedStyle(document.documentElement).colorScheme.includes('dark');
 function pinList() {
   const act = P.filter(r => !r.skipped), seen = new Map(), pins = [];
   act.forEach(r => {
@@ -1047,12 +1050,12 @@ function sizeMap() {
   const wrap = $('#mapWrap'), map = $('#map');
   if (mapMode === 'amap') {
     map.style.width = '100%';
-    map.style.height = WIDE.matches ? Math.max(320, wrap.clientHeight) + 'px' : Math.round(Math.min(innerHeight * 0.62, 560)) + 'px';
+    map.style.height = Math.max(240, wrap.clientHeight) + 'px';
     return wrap.clientWidth;
   }
   if (!PROJ) return 0;
   let w = wrap.clientWidth, ht = w * PROJ.H / PROJ.W;
-  if (WIDE.matches) { const ch = wrap.clientHeight; if (ht > ch) { ht = ch; w = ht * PROJ.W / PROJ.H; } }
+  const ch = wrap.clientHeight; if (ch && ht > ch) { ht = ch; w = ht * PROJ.W / PROJ.H; }
   map.style.width = Math.floor(w) + 'px'; map.style.height = Math.floor(ht) + 'px';
   return w;
 }
@@ -1100,7 +1103,7 @@ function renderAmap(fit) {
   });
   map.add(ov); AM.ov = ov;
   const sig = UI.mapDay + '|' + pinList().map(o => ptKey(o.r.s.poi)).join(';');
-  if (fit && sig !== lastFitSig) { lastFitSig = sig; map.setFitView(fitOv.length ? fitOv : ov, false, [56, 48, 48, 48]); }
+  if (fit && sig !== lastFitSig) { lastFitSig = sig; map.setFitView(fitOv.length ? fitOv : ov, false, WIDE.matches ? [56, 48, 48, 48] : [72, 36, UI.mapDay != null ? 84 : 36, 36]); }
 }
 function project(pts) {
   let a = Infinity, b = -Infinity, c = Infinity, d = -Infinity;
@@ -1151,12 +1154,15 @@ function renderSvgMap(draw) {
 function renderMapDays() {
   const show = !SUM.empty && SUM.legs;
   $('#mapDays').hidden = !show; $('#dayList').hidden = !show;
-  if (!show) return;
+  if (!show) { $('#mapDayCard').hidden = true; return; }
   const d0 = SUM.d0;
   const mk = (d, label) => h('button', { class: 'mchip press', type: 'button', 'aria-pressed': String(UI.mapDay === d), onclick: () => { UI.mapDay = UI.mapDay === d ? null : d; buzz(4); renderMap(false); } }, label);
   const chips = [mk(null, '全部')];
   for (let d = d0; d < d0 + SUM.days; d++) chips.push(mk(d, `第${d - d0 + 1}天`));
   $('#mapDays').replaceChildren(...chips);
+  const card = $('#mapDayCard');
+  card.hidden = UI.mapDay == null;
+  if (UI.mapDay != null) { const st = SUM.ds[UI.mapDay] || { drive: 0, km: 0 }; card.textContent = `第${UI.mapDay - d0 + 1}天 · ${md(UI.mapDay)} ${wk(UI.mapDay)} · ` + (st.drive ? `驾驶 ${dur(st.drive)} · ${fmtKm(st.km)} km` : '休整'); }
   $('#dayList').replaceChildren(...Array.from({ length: SUM.days }, (_, j) => {
     const d = d0 + j, st = SUM.ds[d] || { drive: 0, km: 0 };
     return h('button', { class: 'day-line', type: 'button', onclick: () => { UI.mapDay = d; renderMap(false); $('#paneMap').scrollTo({ top: 0, behavior: RM.matches ? 'auto' : 'smooth' }); } },
@@ -1238,7 +1244,7 @@ const PANE = { trip: '#paneTrip', map: '#paneMap', done: '#paneDone' };
 function setTab(t) {
   if (UI.tab === t) return;
   const dir = TABS.indexOf(t) > TABS.indexOf(UI.tab) ? 1 : -1;
-  UI.tab = t; buzz(4);
+  UI.tab = t; app.dataset.tab = t; buzz(4);
   TABS.forEach(x => $(PANE[x]).classList.toggle('is-active', x === t));
   $$('.tab').forEach(b => b.setAttribute('aria-selected', String(b.dataset.tab === t)));
   $('#tabInd').style.transform = `translateX(${TABS.indexOf(t) * 100}%)`;

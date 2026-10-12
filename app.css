@@ -367,6 +367,8 @@ h1{font-family:var(--f-display);font-size:26px;line-height:1.25;font-weight:700;
 .leg-retry{height:30px;padding:0 10px;border-radius:8px;border:1px solid var(--danger-line);background:var(--surface);color:var(--danger);font-size:12px;font-weight:500}
 .row-stop.unknown .time{color:var(--ink-3)}
 .row-stop.unknown .dot{background:var(--bg);box-shadow:0 0 0 3px var(--bg),inset 0 0 0 2px var(--line-2)}
+.sumline{display:none}
+.map-daycard{position:absolute;left:12px;right:12px;bottom:12px;z-index:6;margin:0;padding:10px 14px;border-radius:12px;background:var(--surface);border:1px solid var(--line);box-shadow:var(--shadow);font-size:13.5px;color:var(--ink)}
 .stat strong.muted{color:var(--ink-3);font-family:var(--f-body);font-size:14px}
 .welcome{display:flex;flex-direction:column;gap:14px;padding:22px 18px;border-radius:20px;background:var(--surface);border:1px solid var(--line)}
 .welcome h2{font-family:var(--f-display);font-size:24px;line-height:1.3;text-wrap:balance}
@@ -429,3 +431,30 @@ a.btn-primary{color:var(--bg)}
 .ai-risk.sv-medium{background:var(--warn-bg)}
 .ai-risk small{font-size:12.5px;color:var(--ink-2)}
 .ai-sug p{color:var(--ink-2)}
+
+/* ---------- phone: give the content the screen ---------- */
+@media (max-width:999px){
+  .top{padding:calc(8px + env(safe-area-inset-top,0px)) 16px 0}
+  .brand-row{display:none}
+  h1{font-size:20px;line-height:38px;margin:0;padding-right:128px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .top-actions{top:calc(8px + env(safe-area-inset-top,0px));gap:6px}
+  .top-actions .icon-btn{width:38px;height:38px}
+  .depart-chip{min-height:30px;margin:2px 0 6px;font-size:12.5px;gap:6px}
+  .stats{display:none}
+  .sumline{display:block;margin:0 0 8px;font-size:12.5px;color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .daychips{padding-bottom:8px}
+  .dchip{flex-direction:row;align-items:baseline;gap:6px;min-width:0;padding:5px 12px;border-radius:999px}
+  .dchip i{display:none}
+  .dchip.long b::after{content:"";display:inline-block;width:6px;height:6px;margin-left:5px;border-radius:50%;background:var(--danger);vertical-align:middle}
+  .app[data-tab="map"] .daychips,.app[data-tab="done"] .daychips{display:none}
+  .app[data-tab="map"] .depart-chip,.app[data-tab="done"] .depart-chip{display:none}
+  .pane-map{overflow:hidden}
+  .pane-map .pane-inner{position:absolute;inset:0;padding:0;gap:0}
+  .pane-map .map-wrap{position:absolute;inset:0}
+  .pane-map .map{border-radius:0;border:0}
+  .pane-map .map-days{position:absolute;top:10px;left:0;right:0;z-index:6;padding:0 12px}
+  .pane-map .mchip{box-shadow:var(--shadow)}
+  .pane-map .day-list{display:none}
+  .map-loading{top:auto;bottom:12px}
+  .tab,.tab-ind{height:46px}
+}
