@@ -9,11 +9,11 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Noto+Sans+SC:wght@400;500;700&family=Noto+Serif+SC:wght@600;700&display=swap">
-  <link rel="stylesheet" href="./app.css?v=20261012-v3">
+  <link rel="stylesheet" href="./app.css?v=20261013-m1">
   <script>try{var t=localStorage.getItem('roadbook.theme');if(t==='dark'||t==='light')document.documentElement.dataset.theme=t;}catch(e){}</script>
 </head>
 <body>
-<div class="app" id="app">
+<div class="app" id="app" data-tab="trip">
   <header class="top">
     <div class="collapsible"><div>
       <div class="brand-row">时光路书 </div>
@@ -26,6 +26,7 @@
       <div class="stat"><span>驾驶</span><strong id="stDrive">—</strong></div>
       <div class="stat"><span>最终抵达</span><strong id="stEnd">—</strong></div>
     </div>
+    <p class="sumline mono" id="sumLine"></p>
     <div class="top-actions">
       <button class="icon-btn press" id="undoBtn" type="button" aria-label="撤销上一步" title="撤销（⌘Z）" disabled></button>
       <button class="icon-btn press" id="shareBtn" type="button" aria-label="分享与导出"></button>
@@ -80,6 +81,7 @@
           </div>
         </div>
         <div class="day-list" id="dayList"></div>
+        <p class="map-daycard" id="mapDayCard" hidden></p>
       </div>
     </section>
 
@@ -111,6 +113,6 @@
 <!-- config.js 只包含公开的 Worker 地址；高德 Key 与安全码留在 Worker Secrets。 -->
 <script src="./config.js?v=20260911-turnstile1"></script>
 <script src="./api.js?v=20261012-v3"></script>
-<script src="./app.js?v=20261012-v3"></script>
+<script src="./app.js?v=20261013-m1"></script>
 </body>
 </html>
